@@ -47,14 +47,14 @@ void TimerStore::add_timer(Timer* t)
   {
     // Timer is too far in the future to be handled by the buckets, put it in the
     // extra heap.
-    // LOG_INFO("Adding timer to extra heap, consider re-building with a larger"
+    // LOG_INFO("Adding timer to extra heap, consider re-building with a larger "
     //          "NUM_SECOND_BUCKETS constant");
     _extra_heap.push_back(t);
     std::push_heap(_extra_heap.begin(), _extra_heap.end());
   }
 
   // Finally add the timer to the lookup table.
-  _timer_lookup_table.insert(std::pair<unsigned int, Timer*>(t->id, t));
+  _timer_lookup_table.insert(std::pair<TimerID, Timer*>(t->id, t));
 }
 
 // Delete a timer from the store by ID.
@@ -85,36 +85,37 @@ void TimerStore::delete_timer(TimerID id)
 //
 // If the returned set is empty, there are no timers in the store and the caller
 // will try again later (after a signal that a new timer has been added).
-std::unordered_set<Timer *> TimerStore::get_next_timer()
+void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 {
-  std::unordered_set<Timer*> bucket;
-
   // If there are no timers, simply return an empty set.
   if (_timer_lookup_table.empty())
   {
-    return bucket;
+    return;
   }
 
   // The store is not empty, find the first set that will pop.
-  while (bucket.empty())
+  while (_ten_ms_buckets[_current_ms].empty())
   {
-    if (_current_ms == 100)
+    if (_current_ms >= 100)
     {
       refill_ms_buckets();
     }
-    bucket = _ten_ms_buckets[_current_ms];
+    else
+    {
+      _current_ms++;
+    }
   }
 
-  // Remove the timers from the lookup table, this function passes ownership of the
+  // Remove the timers from the lookup table, and pass ownership of the
   // memory for the timers to the caller.
-  for (auto it = bucket.begin(); it != bucket.end(); it++)
+  for (auto it = _ten_ms_buckets[_current_ms].begin();
+       it != _ten_ms_buckets[_current_ms].end();
+       it++)
   {
     _timer_lookup_table.erase((*it)->id);
+    set.insert(*it);
   }
-
-  // Return the bucket by value to pass the contents to the caller, also increment
-  // the current bucket count.
-  return bucket;
+  _ten_ms_buckets[_current_ms].clear();
 }
 
 /*****************************************************************************/

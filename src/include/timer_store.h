@@ -22,7 +22,7 @@ public:
   void delete_timer(TimerID timer_id);
 
   // Get the next bucket of timers to pop.
-  std::unordered_set<Timer *> get_next_timer();
+  void get_next_timers(std::unordered_set<Timer*>&);
 
 private:
 
