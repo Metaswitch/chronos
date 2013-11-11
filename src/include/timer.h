@@ -19,7 +19,19 @@ public:
         std::string);
   ~Timer();
 
-  unsigned int id;
+  // Returns the next time to pop in ms after epoch
+  unsigned int next_pop_time();
+
+  // Returns the next time to pop in ns after epoch in a timespec
+  void next_pop_time(struct timespec&);
+
+  // Construct the URL for this timer given a hostname
+  std::string url(std::string);
+
+  // Convert this timer to JSON to be sent to replicas
+  std::string to_json();
+
+  TimerID id;
   unsigned int start_time;
   unsigned int interval;
   unsigned int repeat_for;
