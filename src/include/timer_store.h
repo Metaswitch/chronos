@@ -17,6 +17,7 @@ public:
 
   // Add a timer to the store.
   void add_timer(Timer *);
+  void add_timers(std::unordered_set<Timer*>&);
 
   // Remove a timer by ID from the store.
   void delete_timer(TimerID timer_id);

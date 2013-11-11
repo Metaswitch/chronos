@@ -57,6 +57,17 @@ void TimerStore::add_timer(Timer* t)
   _timer_lookup_table.insert(std::pair<TimerID, Timer*>(t->id, t));
 }
 
+// Add a collection of timers to the data store.  The collection is emptied by this
+// operation, since the timers are now owned by the store.
+void TimerStore::add_timers(std::unordered_set<Timer*>& set)
+{
+  for (auto it = set.begin(); it != set.end(); it++)
+  {
+    add_timer(*it);
+  }
+  set.clear();
+}
+
 // Delete a timer from the store by ID.
 void TimerStore::delete_timer(TimerID id)
 {
