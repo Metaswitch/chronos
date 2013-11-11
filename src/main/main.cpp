@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "timer_store.h"
+#include "timer_handler.h"
 
 #include <iostream>
 #include <cassert>
@@ -22,6 +23,13 @@ Timer* default_timer(TimerID id)
 
 int main(int argc, char** argv)
 {
+  {
+    Timer* timer = default_timer(1);
+    timer->start_time = 123456789;
+    assert(timer->url("localhost") == "http://localhost/timers/1");
+    assert(timer->to_json() == "{\"timing\":{\"start-at\":\"123456789\",\"sequence-number\":\"0\",\"interval\":\"100\",\"repeat-for\":\"100\"},\"callback\":{\"http\":{\"uri\":\"localhost:80/callback\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":{\"replicas\":[\"10.0.0.1\"]}}");
+  }
+
   TimerStore* store = new TimerStore();
 
   // Test 1 - Adding a timer and then retrieving the next set returns
@@ -63,6 +71,20 @@ int main(int argc, char** argv)
     Timer* timer = default_timer(1);
     store->add_timer(timer);
     delete store;
+  }
+
+  // Test 4 - Timer Handler test.  Join a handler to the store.
+  {
+    TimerHandler* handler = new TimerHandler(store);
+    delete handler;
+  }
+
+  // Test 5 - Leak test.  Add timer to the handler then destroy the handler.
+  {
+    TimerHandler* handler = new TimerHandler(store);
+    Timer* timer = default_timer(1);
+    store->add_timer(timer);
+    delete handler;
   }
 
   delete store;
