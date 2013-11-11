@@ -19,7 +19,7 @@ private:
   void pop(Timer*);
 
   TimerStore* _store;
-//  Replicator* _replicator;
+  Replicator* _replicator;
 //  CallbackHandler* _callback;
 
   pthread_t _handler_thread;

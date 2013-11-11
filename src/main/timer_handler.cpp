@@ -142,7 +142,7 @@ void TimerHandler::pop(Timer* timer)
     timer->sequence_number++;
     if (timer->sequence_number * timer->interval <= timer->repeat_for)
     {
-      // _replicator->replicate(timer);
+      _replicator->replicate(timer);
     }
     else
     {
