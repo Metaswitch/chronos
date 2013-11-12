@@ -22,10 +22,13 @@ Replicator::~Replicator()
 void Replicator::replicate(Timer* timer)
 {
   CURL* curl = get_curl_handle();
-  std::string body = timer->to_json();
 
   for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
   {
+    // TODO This should use cURL's multi-mode to parallelize requests.
+    
+    // Need to make copy of the body since sending is destructive.
+    std::string body = timer->to_json();
     curl_easy_setopt(curl, CURLOPT_URL, (timer->url(*it)).c_str());
     curl_easy_setopt(curl, CURLOPT_READDATA, &body);
     curl_easy_perform(curl);
