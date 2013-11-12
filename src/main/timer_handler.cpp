@@ -8,9 +8,14 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
   return NULL;
 }
 
-TimerHandler::TimerHandler(TimerStore* store) : _store(store),
-                                                _terminate(false),
-                                                _nearest_new_timer(0)
+TimerHandler::TimerHandler(TimerStore* store,
+                           Replicator* replicator,
+                           Callback* callback) :
+                           _store(store),
+                           _replicator(replicator),
+                           _callback(callback),
+                           _terminate(false),
+                           _nearest_new_timer(0)
 {
   pthread_mutex_init(&_mutex, NULL);
   pthread_cond_init(&_cond_var, NULL);
@@ -39,6 +44,9 @@ TimerHandler::~TimerHandler()
 
   pthread_cond_destroy(&_cond_var);
   pthread_mutex_destroy(&_mutex);
+
+  delete _replicator;
+  delete _callback;
 }
 
 void TimerHandler::signal_new_timer(unsigned int pop_time)
@@ -135,9 +143,10 @@ void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 // reset the timer for another pop, otherwise destroy the timer record.
 void TimerHandler::pop(Timer* timer)
 {
-  //bool success = _callback->perform(timer->callback_url,
-  //                                  timer->callback_body);
-  //if (success)
+  bool success = _callback->perform(timer->callback_url,
+                                    timer->callback_body,
+                                    timer->sequence_number);
+  if (success)
   {
     timer->sequence_number++;
     if (timer->sequence_number * timer->interval <= timer->repeat_for)

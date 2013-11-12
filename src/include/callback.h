@@ -1,5 +1,5 @@
 #ifndef CALLBACK_H__
-#define CALLBACH_H__
+#define CALLBACK_H__
 
 #include <string>
 
@@ -7,6 +7,8 @@
 class Callback
 {
 public:
+  virtual ~Callback() {};
+
   // Returns the protocol handled by this callback (e.g. http or zmq).
   // This can be compared to the requested callback from the timer
   // to chose a callback hander to manage it.

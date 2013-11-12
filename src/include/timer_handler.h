@@ -5,11 +5,12 @@
 
 #include "timer_store.h"
 #include "replicator.h"
+#include "callback.h"
 
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*);
+  TimerHandler(TimerStore*, Replicator*, Callback*);
   ~TimerHandler();
   void signal_new_timer(unsigned int);
   void run();
@@ -20,7 +21,7 @@ private:
 
   TimerStore* _store;
   Replicator* _replicator;
-//  CallbackHandler* _callback;
+  Callback* _callback;
 
   pthread_t _handler_thread;
   volatile bool _terminate;
