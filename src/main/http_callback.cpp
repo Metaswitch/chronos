@@ -5,7 +5,6 @@
 
 HTTPCallback::HTTPCallback()
 {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
   _curl = curl_easy_init();
 
   curl_easy_setopt(_curl, CURLOPT_POST, 1);

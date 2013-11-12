@@ -26,6 +26,7 @@ Timer* default_timer(TimerID id)
 
 int main(int argc, char** argv)
 {
+  curl_global_init(CURL_GLOBAL_DEFAULT);
   {
     Timer* timer = default_timer(1);
     timer->start_time = 123456789;
@@ -89,5 +90,6 @@ int main(int argc, char** argv)
 
   delete store;
 
+  curl_global_cleanup();
   return 0;
 }

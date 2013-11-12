@@ -5,7 +5,6 @@
 Replicator::Replicator()
 {
   pthread_key_create(&_thread_local_key, cleanup_curl);
-  curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
 Replicator::~Replicator()
