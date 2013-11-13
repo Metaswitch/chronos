@@ -4,6 +4,7 @@
 #include "replicator.h"
 #include "callback.h"
 #include "http_callback.h"
+#include "controller.h"
 
 #include <iostream>
 #include <cassert>
@@ -90,6 +91,38 @@ int main(int argc, char** argv)
 
   delete store;
 
+  Controller* controller = new Controller();
+  struct event_base* base;
+  struct evhttp* http;
+
+  // Create an event reactor.
+  base = event_base_new();
+  if (!base) {
+    fprintf(stderr, "Couldn't create an event_base: exiting\n");
+    return 1;
+  }
+
+  // Create an HTTP server instance.
+  http = evhttp_new(base);
+  if (!http) {
+    fprintf(stderr, "couldn't create evhttp. Exiting.\n");
+    return 1;
+  }
+
+  // Register a callback for the "/ping" path.
+  evhttp_set_cb(http, "/ping", Controller::controller_ping_cb, NULL);
+
+  // Register a callback for the "/timers" path, we have to do this with the
+  // generic callback as libevent doesn't support regex paths.
+  evhttp_set_gencb(http, Controller::controller_cb, controller);
+
+  // Bind to the correct port
+  evhttp_bind_socket(http, "0.0.0.0", 7253);
+
+  // Start the reactor, this blocks the current thread
+  event_base_dispatch(base);
+
   curl_global_cleanup();
+
   return 0;
 }
