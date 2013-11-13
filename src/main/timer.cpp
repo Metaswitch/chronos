@@ -76,3 +76,16 @@ std::string Timer::to_json()
   ss << "]}}";
   return ss.str();
 }
+
+TimerID Timer::generate_timer_id()
+{
+  // TODO snowflake?
+  return 1;
+}
+
+Timer* Timer::from_json(TimerID id, std::string json)
+{
+  // TODO Parse the JSON + add validate function to Timer
+  Timer* timer = new Timer(id);
+  return timer;
+}

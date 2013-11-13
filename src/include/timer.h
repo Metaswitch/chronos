@@ -10,13 +10,13 @@ class Timer
 {
 public:
   Timer(TimerID,
-        unsigned int,
-        unsigned int,
-        unsigned int,
-        unsigned int,
-        std::vector<std::string>,
-        std::string,
-        std::string);
+        unsigned int = 0,
+        unsigned int = 0,
+        unsigned int = 0,
+        unsigned int = 0,
+        std::vector<std::string> = std::vector<std::string>(),
+        std::string = "",
+        std::string = "");
   ~Timer();
 
   // Returns the next time to pop in ms after epoch
@@ -31,6 +31,7 @@ public:
   // Convert this timer to JSON to be sent to replicas
   std::string to_json();
 
+  // Member variables
   TimerID id;
   unsigned int start_time;
   unsigned int interval;
@@ -39,6 +40,10 @@ public:
   std::vector<std::string> replicas;
   std::string callback_url;
   std::string callback_body;
+
+  // Class functions
+  static TimerID generate_timer_id();
+  static Timer* from_json(TimerID, std::string);
 };
 
 #endif
