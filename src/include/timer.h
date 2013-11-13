@@ -37,6 +37,7 @@ public:
   unsigned int interval;
   unsigned int repeat_for;
   unsigned int sequence_number;
+  unsigned int replication_factor;
   std::vector<std::string> replicas;
   std::string callback_url;
   std::string callback_body;
