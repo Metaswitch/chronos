@@ -86,6 +86,11 @@ void Controller::handle_request(struct evhttp_request* req)
 
   // Now we have a valid timer object, maybe determine replicas if they weren't
   // specified in the request.
+  evhttp_add_header(evhttp_request_get_output_headers(req),
+                    "Location", timer->url("localhost").c_str());
+  evhttp_send_reply(req, 200, "OK", NULL);
+
+  printf("%s\n", timer->to_json().c_str());
   delete timer;
 }
 
