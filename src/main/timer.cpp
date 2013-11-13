@@ -87,23 +87,30 @@ TimerID Timer::generate_timer_id()
 
 #define JSON_PARSE_ERROR(STR) {                                               \
   printf STR;                                                                 \
+  printf("\n");                                                               \
+  fflush(NULL);                                                               \
   delete timer;                                                               \
   return NULL;                                                                \
 }
 
 #define JSON_ASSERT_OBJECT(NODE, NODE_NAME) {                                 \
   if (!(NODE).IsObject())                                                     \
-    JSON_PARSE_ERROR((NODE_NAME "should be an object"));                      \
+    JSON_PARSE_ERROR((NODE_NAME " should be an object"));                     \
 }
 
 #define JSON_ASSERT_INTEGER(NODE, NODE_NAME) {                                \
   if (!(NODE).IsInt())                                                        \
-    JSON_PARSE_ERROR((NODE_NAME "should be an integer"));                     \
+    JSON_PARSE_ERROR((NODE_NAME " should be an integer"));                    \
 }
 
 #define JSON_ASSERT_STRING(NODE, NODE_NAME) {                                 \
   if (!(NODE).IsString())                                                     \
-    JSON_PARSE_ERROR((NODE_NAME "should be a string"));                       \
+    JSON_PARSE_ERROR((NODE_NAME " should be a string"));                      \
+}
+
+#define JSON_ASSERT_ARRAY(NODE, NODE_NAME) {                                  \
+  if (!(NODE).IsArray())                                                      \
+    JSON_PARSE_ERROR((NODE_NAME " should be an array"));                      \
 }
 
 #define JSON_ASSERT_CONTAINS(NODE, NODE_NAME, ELEM) {                         \
@@ -195,6 +202,11 @@ Timer* Timer::from_json(TimerID id, std::string json)
   if (reliability.HasMember("replicas"))
   {
     rapidjson::Value& replicas = reliability["replicas"];
+    JSON_ASSERT_ARRAY(replicas, "replicas");
+    if (replicas.Size() == 0)
+    {
+      JSON_PARSE_ERROR(("If replicas are specified, there must be at least one"));
+    }
     for (auto it = replicas.Begin(); it != replicas.End(); it++)
     {
       JSON_ASSERT_STRING(*it, "replica address");
