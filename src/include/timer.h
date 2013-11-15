@@ -44,7 +44,7 @@ public:
 
   // Class functions
   static TimerID generate_timer_id();
-  static Timer* from_json(TimerID, std::string);
+  static Timer* from_json(TimerID, std::string, std::string&);
 
   // Class variables
   static uint32_t deployment_id;

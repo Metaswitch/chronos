@@ -2,6 +2,7 @@
 #include "rapidjson/document.h"
 
 #include <sstream>
+#include <boost/format.hpp>
 
 Timer::Timer(TimerID id,
              unsigned int start_time,
@@ -22,7 +23,7 @@ Timer::Timer(TimerID id,
   callback_body(callback_body)
 {
 }
-
+                   
 Timer::~Timer()
 {
 }
@@ -118,9 +119,7 @@ TimerID Timer::generate_timer_id()
 }
 
 #define JSON_PARSE_ERROR(STR) {                                               \
-  printf STR;                                                                 \
-  printf("\n");                                                               \
-  fflush(NULL);                                                               \
+  error = (STR);                                                              \
   delete timer;                                                               \
   return NULL;                                                                \
 }
@@ -150,16 +149,14 @@ TimerID Timer::generate_timer_id()
     JSON_PARSE_ERROR(("Couldn't find '" ELEM "' in '" NODE_NAME "'"));        \
 }
 
-Timer* Timer::from_json(TimerID id, std::string json)
+Timer* Timer::from_json(TimerID id, std::string json, std::string& error)
 {
   Timer* timer = new Timer(id);
   rapidjson::Document doc;
   doc.Parse<0>(json.c_str());
   if (doc.HasParseError())
   {
-    JSON_PARSE_ERROR(("Failed to parse JSON body, offset: %lu - %s",
-                      doc.GetErrorOffset(),
-                      doc.GetParseError()));
+    JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s") % doc.GetErrorOffset() % doc.GetParseError()));
   }
 
   if (!doc.HasMember("timing"))

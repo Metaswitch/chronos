@@ -77,10 +77,11 @@ void Controller::handle_request(struct evhttp_request* req)
   // At this point, the ReqURI has been parsed and validated and we've got the
   // ID for the timer worked out.  Now, validate the timer body.
   std::string body = get_req_body(req);
-  Timer* timer = Timer::from_json(timer_id, body);
+  std::string error_str;
+  Timer* timer = Timer::from_json(timer_id, body, error_str);
   if (!timer)
   {
-    send_error(req, HTTP_BADREQUEST, "Invalid JSON body");
+    send_error(req, HTTP_BADREQUEST, error_str.c_str());
     return;
   }
 
