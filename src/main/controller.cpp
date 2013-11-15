@@ -61,7 +61,7 @@ void Controller::handle_request(struct evhttp_request* req)
   }
   else if (std::regex_match(path, matches, std::regex("/timers/([1-9][0-9]*)")))
   {
-    if (method != EVHTTP_REQ_PUT)
+    if ((method != EVHTTP_REQ_PUT) && (method != EVHTTP_REQ_DELETE))
     {
       send_error(req, HTTP_BADMETHOD, NULL);
       return;
@@ -75,24 +75,33 @@ void Controller::handle_request(struct evhttp_request* req)
   }
 
   // At this point, the ReqURI has been parsed and validated and we've got the
-  // ID for the timer worked out.  Now, validate the timer body.
-  std::string body = get_req_body(req);
-  std::string error_str;
-  Timer* timer = Timer::from_json(timer_id, body, error_str);
-  if (!timer)
+  // ID for the timer worked out.  Now, create the timer object from the body,
+  // for a DELETE request, we'll create a tombstone record instead.
+  Timer* timer = NULL;
+  if (method == EVHTTP_REQ_DELETE)
   {
-    send_error(req, HTTP_BADREQUEST, error_str.c_str());
-    return;
+    timer = Timer::create_tombstone(timer_id);
+  }
+  else
+  {
+    std::string body = get_req_body(req);
+    std::string error_str;
+    timer = Timer::from_json(timer_id, body, error_str);
+    if (!timer)
+    {
+      send_error(req, HTTP_BADREQUEST, error_str.c_str());
+      return;
+    }
   }
 
-  // Now we have a valid timer object, maybe determine replicas if they weren't
-  // specified in the request.
+  // Now we have a valid timer object, reply to the HTTP request.
   evhttp_add_header(evhttp_request_get_output_headers(req),
                     "Location", timer->url("localhost").c_str());
   evhttp_send_reply(req, 200, "OK", NULL);
 
-  printf("%s\n", timer->to_json().c_str());
-  delete timer;
+  // If the timer has no replicas set up yet, calculate them now.
+
+  
 }
 
 void Controller::controller_cb(struct evhttp_request* req, void* controller)

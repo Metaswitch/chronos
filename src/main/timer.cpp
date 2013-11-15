@@ -118,6 +118,11 @@ TimerID Timer::generate_timer_id()
   return rc;
 }
 
+Timer* Timer::create_tombstone(TimerID id)
+{
+  return new Timer(true, id);
+}
+
 #define JSON_PARSE_ERROR(STR) {                                               \
   error = (STR);                                                              \
   delete timer;                                                               \

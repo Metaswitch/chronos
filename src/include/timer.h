@@ -44,6 +44,7 @@ public:
 
   // Class functions
   static TimerID generate_timer_id();
+  static Timer* create_tombstone(TimerID);
   static Timer* from_json(TimerID, std::string, std::string&);
 
   // Class variables
