@@ -1,0 +1,2062 @@
+make
+cd sprout
+vim stateful_proxy.cpp +3023
+cd sprout
+make
+vim stateful_proxy.cpp +3023
+make
+cd ..
+make deb-only
+vim sprout/stack.cpp +524
+vim Makefile 
+vim mk/platform.mk 
+vim Makefile 
+vim sprout/Makefile 
+make clean
+cd sprout
+make clean
+make
+cd ..
+make deb-only
+git status
+git diff debian/bono.init.d
+git status
+git diff sprout/stateful_proxy.cpp
+git add debian/bono.init.d
+git commit -m "Update init.d to prevent looping"
+git push
+git config --global --list
+git --version
+aptitude show git
+cat /etc/apt/sources.list.d/git-core-ppa-precise.list
+git config --global push.default simple
+cd ../../../
+cd clearwater-
+cd clearwater-live-test/
+ls
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+bundle 
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+ruby --version
+rvm gemset clean
+rvm gemset purge
+rvm gemset help
+rvm gemset cler
+rvm gemset clear
+rvm gemset empty
+bundle 
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+suod updatedb
+sudo updatedb
+locate joker.so
+locate joker.*.so
+locate joker
+rm -rf ~/.rvm/gems/ruby-1.9.3-p392/bundler/gems/joker-a7d44e571e67
+
+bundle 
+locate joker
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+rm -rf ~/.rvm/gems/ruby-1.9.3-p392/bundler/gems/joker-a7d44e571e67
+rm -rf ~/.rvm/gems/ruby-1.9.3-p392/cache/bundler/git/joker-f11c4c2b01f7b5eb645da7045f44f12919d32f80
+bundle 
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+locate joker
+vim /home/ubuntu/.rvm/gems/ruby-1.9.3-p392/bundler/gems/joker-a7d44e571e67/joker.gemspec
+vim /home/ubuntu/.rvm/gems/ruby-1.9.3-p392/bundler/gems/joker-a7d44e571e67/lib/joker.rb 
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+vim lib/live-test.rb 
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+vim Gemfile
+gem install https://github.com/karottenreibe/joker
+cd ..
+git clone git@github.com:karottenreibe/joker
+rake build gem
+cd joker/
+rake build gem
+rake build
+vim Rakefile 
+rake build
+bundle
+vim Rakefile 
+rake build
+vim Rakefile 
+vim tasks/rdoc.rake 
+vim Rakefile 
+vim tasks/rdoc.rake 
+rake build
+vim Rakefile 
+rake build
+vim tasks/c_extensions.rake 
+vim Gemfile.lock 
+ls
+vim ext/joker_native/extconf.rb 
+ruby ext/joker_native/extconf.rb 
+cd ext/joker_native/
+ls
+ruby extconf.rb 
+make
+make install
+dc ..
+cd
+cd src/clearwater-live-test/
+rake test[cw-ngv.com]
+cd ../joker/
+gem build joker.gemspec 
+gem install joker-1.0.0.gem 
+cd ..
+ls
+cd clearwater-live-test/
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true LIVENUMBER=011442083623451
+rake test[cw-ngv.com] TESTS="Live Call*" TRANSPORT=tcp PSTN=true LIVENUMBER=011442083623414
+cd ../../..
+vim mike-cluster.py
+python mike-cluster.py 
+python2.7 mike-cluster.py 
+sudo aptitude install python3
+python2.7 mike-cluster.py 
+python3.2 mike-cluster.py 
+python2.7 mike-cluster.py 
+vim mike-cluster.py 
+python2.7 mike-cluster.py 
+python mike-cluster.py 
+python --version
+python3 --version
+python2.7 mike-cluster.py 
+vim mike-cluster.py 
+python2.7 mike-cluster.py 
+vim mike-cluster.py 
+python2.7 mike-cluster.py 
+vim mike-cluster.py 
+python2.7 mike-cluster.py 
+vim mike-cluster.py 
+python2.7 mike-cluster.py 
+tmux list-sessions
+tmux attach
+git config --global --list
+git history 
+cd src/spo
+cd src/sprout/
+cd src/spo
+git history 
+locate git-bash
+locate git-com
+vim /etc/bash_completion.d/git
+vim /etc/bash_completion.d/git-prompt 
+vim /etc/bash_completion.d/git-sh-prompt 
+vim /etc/bash_completion.d/git-prompt 
+vim /usr/lib/git-core/git-sh-prompt 
+cd ../chef/
+git stuat
+git status
+git diff plugins/knife/dns-records.rb
+git checkout master
+git add plugins/knife/dns-records.rb
+git checkout -b fix-hyphens-in-deployment-name
+git statu
+git status
+git branch -m rearchitect-k-d-r
+git status
+vim .gitignore 
+vim environments/.gitignore
+git status
+git add environments/.gitignore environments/template.rb environments/README.md
+git add environments/.gitignore environments/template.rb environments/README.md -f
+git status
+git reset HEAD plugins/knife/dns-records.rb
+git status
+git commit -m "Ignore environment files"
+cd plugins/knife/
+cp dns-records.rb deployments.rb
+vim deployments.rb 
+tmux
+vim deployments.rb 
+pry
+bundle
+pry
+cd src
+ls
+cd co
+cd docs/
+ls
+cd rf-billing/
+ls
+vim ralf.md
+tmux attach
+tmux
+cd ..
+ls
+cd ..
+ls
+rm sprout_1.0-1309*
+ls
+vim mike-cluster.py 
+python --version
+python3 --version
+vim mike-cluster.py 
+python3 mike-cluster.py 
+vim mike-cluster.py 
+pry
+cd sprout/
+git status
+git diff sprout/stateful_proxy.cpp
+git checkout -- sprout/stateful_proxy.cpp
+git diff sprout/Makefile
+git checkout  -- sprout/Makefile
+git stauts
+git status
+git graph
+git diff HEAD^
+vim debian/bono.init.d 
+git commit -m "Use --alias correctly" -a
+git push
+git config --list
+git push --set-upstream origin handle-not-being-edge-proxy
+git status
+tmux attach
+hello?
+cat ~/.tmux.conf 
+git status
+make
+vim ../include/stack.h 
+vim stack.cpp 
+cd ../../docs/
+ls
+cd rf-billing/
+ls
+vim ralf.md 
+git stauts
+cd ../../chef/
+git fetch -p
+git brnach
+git bracnh
+git branch
+git status
+git checkout master
+git merge
+vim plugins/knife/boxes.rb 
+pry
+tmux attacvh
+tmux attach
+echo DONT KILL ME
+tmux attach
+vim q1.rb
+pry -r q1.rb 
+pry -I . -r q1.rb 
+pry -I . -r q1
+vim q1.rb
+pry -I .
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb 
+pry -I . -r q1
+vim q1.rb +41
+pry -I . -r q1
+vim q1.rb +41
+pry -I . -r q1
+vim q1.rb +41
+pry -I . -r q1
+reset
+pry -I . -r q1
+vim q1.rb 
+vim pjutils.cpp 
+grep stack_data *
+vim main.cp
+vim main.cpp
+grep SBC *
+git status
+git checkout -b record-route-the-cluster
+vim stateful_proxy.cpp 
+make
+vim pjutils.cpp 
+vim ../include/pjutils.h 
+make
+vim pjutils.cpp 
+vim stateful_proxy.cpp 
+vim pjutils.cpp 
+vim ../include/pjutils.h 
+make
+make test
+make clean test
+git status
+git add pjutils.cpp stateful_proxy.cpp ../include/pjutils.h
+vim stateful_proxy.cpp 
+git commit 
+git status
+git branch -m further-proxying-support
+vim stateful_proxy.cpp 
+make
+vim ../include/stateful_proxy.h 
+make
+watch date
+tmux attach
+echo $TMOUT
+watch date
+cd ../docs/
+ls
+cd ..
+git clone git@github.com:Metaswitch/clearwater-docs.wiki.git
+cd clearwater-docs.wiki/
+git branch
+git status
+git branch -a
+git diff master origin/sto521 
+git diff master..origin/sto521 
+git diff master...origin/sto521 
+cd ../chef/
+knife box list -E amc
+openssl version
+pry
+cd
+ls
+mkdir gchq
+cd gchq/
+wget "http://turing.metro.co.uk/docs/comp1.key"
+man ssh-keyscan 
+man ssh-vulnkey 
+man ssh-import-id 
+openssl x509 -in comp1.key -text
+vim comp1.key 
+openssl rsa -in comp1.key -text
+pry
+openssl rsa -in comp1.key -text
+pry
+cd ..
+rm- r gchq/
+rm -r gchq/
+tmux attach
+snmpget localhost netSnmpExampleInteger.0
+snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget localhost .1.3.6.1.4.1.8072.2.1.1.0
+snmpget localhost 1.3.6.1.4.1.8072.2.1.1.0
+snmpwalk localwalk
+snmpwalk localhost
+snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget localhost netSnmpExampleInteger.0
+sudo vim /etc/snmp/snmp.conf 
+snmptranslate -M+. -MNET-SNMP-TUTORIAL-MIB -IR netSnmpExampleIxampleInteger
+snmptranslate -M+. -MNET-SNMP-TUTORIAL-MIB -IR netSnmpExampleInteger
+sudo vim /usr/share/mibs/netsnmp/NET-SNMP-EXAMPLES-MIB 
+snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+sudo snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+sudo vim /usr/share/mibs/netsnmp/SNMP-FRAMEWORK-MIB
+sudo snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+sudo vim /usr/share/mibs/netsnmp/SNMPv2-SMI
+sudo snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+sudo vim /usr/share/mibs/netsnmp/SNMPv2-TC
+sudo snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+sudo vim /usr/share/mibs/netsnmp/INET-ADDRESS-MIB
+sudo snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.
+sudo snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -c public localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -v2 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -v 2 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -v 2 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+vim scalar_int.c
+snmptranslate NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmptranslate -IR NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmptranslate -IR -On NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+vim scalar_int.c
+snmpget -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpset -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+sudo vim /etc/snmp/snmpd.conf 
+snmpset -c amcget -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpset -c amcset -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpset -c amcset -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+sudo vim /etc/snmp/snmpd.conf 
+snmpset -c amcset -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpget -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpset -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpset -c amcset -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpget -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -c pblic -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpset -c public -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpset -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpset -c amc -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 5
+snmpget -c amc -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpset -c amc -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 42
+snmpget -c amc -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpset -c amc -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0 = 192
+snmpget -c amc -v 2c localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -c amc localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpwalk -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger
+snmpwalk -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB
+snmpwalk -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger
+snmpwalk -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.0
+snmpget -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.
+snmpget -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger
+snmpget -c amc -v 1 localhost NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.1
+snmptranslate NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.1
+snmptranslate NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.1 -IO
+snmptranslate NET-SNMP-EXAMPLES-MIB::netSnmpExampleInteger.1 -On
+snmpwalk -c amc -v 1 localhost .1.3
+snmpwalk -c amc -v 1 localhost .1
+snmpwalk -c amc -v 1 localhost .0
+snmpwalk -c amc -v 1 localhost .
+snmpwalk -c amc -v 1 localhost 
+snmpwalk -c amc -v 1 localhost .
+snmpwalk -v 1 localhost .
+snmpwalk -c default -v 1 localhost .
+snmpwalk -c public -v 1 localhost .
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::dskTable
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::ipAddr
+snmpwalk -c public -v 1 localhost IP-MIB::ipAddressTable
+snmpwalk -c public -v 1 localhost IP-MIB::ipAddressTable -On
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::dskTable
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::dskTable -In
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::dskTable -On
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::4
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB.4
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::.4
+snmpwalk -c public -v 1 localhost UCD-SNMP-MIB::memIndex
+snmpwalk -c public -v 1 localhost  .1.3.6.1.4.1.2021.4
+snmpwalk -c public -v 1 localhost  .1.3.6.1.4.1.2021.4 -Oi
+snmpwalk -c public -v 1 localhost  .1.3.6.1.4.1.2021.4 -OS
+snmpwalk -c public -v 1 localhost  .1.3.6.1.4.1.2021.4 -Os
+ls
+ll
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+snmptranslate PROJECT-CLEARWATER.mib 
+snmptranslate PROJECT-CLEARWATER-MIB::bono
+snmptranslate PROJECT-CLEARWATER-MIB::bono -On
+snmptranslate PROJECT-CLEARWATER-MIB::bono.core -On
+snmptranslate PROJECT-CLEARWATER-MIB::bono.bonoLatency -On
+snmpwalk -v2c -c amc PROJECT-CLEARWATER-MIB::bono
+snmpwalk -v2c -c amc localhost PROJECT-CLEARWATER-MIB::bono
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER.mib 
+smilint PROJECT-CLEARWATER.mib 
+mv PROJECT-CLEARWATER.mib PROJECT-CLEARWATER-MIB
+smilint PROJECT-CLEARWATER-MIB 
+vim PROJECT-CLEARWATER.mib 
+vim PROJECT-CLEARWATER-MIB 
+smilint PROJECT-CLEARWATER-MIB 
+sudo cp PROJECT-CLEARWATER-MIB /usr/share/mibs/netsnmp/PROJECT-CLEARWATER-MIB 
+smilint PROJECT-CLEARWATER-MIB 
+smilint /usr/share/mibs/netsnmp/UCD-SNMP-MIB 
+locate *.mib2c
+locate *.mib2c*
+mib2c -c mib2c.scalar.conf `ÏPbonoConnectedClients
+mib2c -c mib2c.scalar.conf scalar.conf bonoConnectedClients
+mib2c -c mib2c.scalar.conf bonoConnectedClients
+mib2c -c mib2c.scalar.conf PROJECT-CLEARWATER-MIB::bonoConnectedClients
+vim bonoConnectedClients.h
+vim bonoConnectedClients.c
+ls
+vim bonoConnectedClients.*
+rm bonoConnectedClients.*
+;s
+ls
+mib2c -c mib2c.scalar.conf PROJECT-CLEARWATER-MIB::bonoLatencyTable
+mib2c -c mib2c.table.conf PROJECT-CLEARWATER-MIB::bonoLatencyTable
+mib2c -c mib2c.genhtml.conf PROJECT-CLEARWATER-MIB
+mib2c -c mib2c.genhtml.conf PROJECT-CLEARWATER-MIB::projectClearwater
+vim projectClearwater.html 
+python -m SimpleHTTPServer
+python -m SimpleHTTPServer -p 8002
+python -m SimpleHTTPServer --port 8002
+python -m SimpleHTTPServer 8002
+mib2c -c mib2c.conf PROJECT-CLEARWATER-MIB::projectClearwater
+ls
+rm bonoLatencyTable.*
+rm projectClearwater.*
+mib2c -c mib2c.conf PROJECT-CLEARWATER-MIB::projectClearwater
+ls
+vim projectClearwater.c 
+vim projectClearwater.h
+vim projectClearwater.c
+rm projectClearwater.*
+mib2c -c mib2c.conf PROJECT-CLEARWATER-MIB::projectClearwater
+vim projectClearwater.c 
+vim projectClearwater.h
+vim projectClearwater.c 
+uncrustify
+sudo aptitude install uncrustify 
+man uncrustify 
+uncrustify --show-cofnig
+uncrustify --show-config
+uncrustify projectClearwater.*
+man uncrustify 
+vim crusty.cfg
+uncrustify projectClearwater.*
+uncrustify -c crusty.cfg projectClearwater.*
+ls
+vim projectClearwater.c.uncrustify 
+vim crusty.cfg 
+uncrustify -c crusty.cfg projectClearwater.*
+ls
+rm *.uncrust*
+uncrustify -c crusty.cfg projectClearwater.*
+vim projectClearwater.c.uncrustify 
+rm *.uncrust*
+vim crusty.cfg 
+rm crusty.cfg 
+ls
+man mib2c
+python -m SimpleHTTPServer 8002
+mib2c mib2c.genhtml.conf PROJECT-CLEARWATER-MIB 
+mib2c mib2c.genhtml.conf PROJECT-CLEARWATER-MIB::projectClearwater
+mib2c -c mib2c.genhtml.conf PROJECT-CLEARWATER-MIB::projectClearwater
+python -m SimpleHTTPServer 8002
+xclip projectClearwater.html 
+echo $DISPLAY
+export DISPLAY=localhost:10.0
+xclip projectClearwater.html 
+sudo aptitude show snmp-mibs-downloader 
+locate PROJECT-CLEARWATER-MIB 
+sudo vim /etc/snmp/snmpd.conf
+snmpwalk -v2c -c systemonly  ÏLem.1.3.6.1.4.1.2021
+snmpwalk -v2c -c systemonly  ÏL.1.3.6.1.4.1.2021
+snmpwalk -v2c -c systemonly  Ïlocalhost L.1.3.6.1.4.1.2021
+snmpwalk -v2c -c systemonly localhost .1.3.6.1.4.1.2021
+history
+snmpwalk -v2c -c public localhost .1.3.6.1.4.1.2021
+sudo vim /etc/snmp/snmpd.conf
+snmpwalk -v2c -c public localhost .1.3.6.1.4.1.2021.4
+swapoff
+sudo swapoff
+mount
+swap
+snmpwalk -v2c -c public localhost .1.3.6.1.4.1.2021.4.11
+snmpwalk -v2c -c public localhost .1.3.6.1.4.1.2021.4.14
+snmpwalk -v2c -c public localhost .1.3.6.1.4.1.2021.4.16
+mib2c ./PROJECT-CLEARWATER-MIB 
+env MIBS="+PROJECT-CLEARWATER-MIB" mib2c  PROJECT-CLEARWATER-MIB::projectClearwater
+vim projectClearwater_access.c 
+smilint PROJECT-CLEARWATER-MIB 
+smilint ./PROJECT-CLEARWATER-MIB 
+smilint ./PROJECT-CLEARWATER-MIB 2| less
+smilint ./PROJECT-CLEARWATER-MIB |2 less
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | less
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/`([a-zA-Z]+'/\1/"
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/'([a-zA-Z]+'/\1/"
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/'([a-zA-Z]+)'/$1/"
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/'([a-zA-Z]+)'/\1/"
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/'\([a-zA-Z]+\)'/\1/"
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/node .\([a-zA-Z]+\)'/\1/"
+smilint ./PROJECT-CLEARWATER-MIB 2>&1 | sed "s/node .\([a-zA-Z]+\). /\1/"
+smilint ./PROJECT-CLEARWATER-MIB 2> amc.out
+vim amc.out 
+smilint ./PROJECT-CLEARWATER-MIB 2> amc.out
+rm amc.out 
+smilint ./PROJECT-CLEARWATER-MIB
+vim PROJECT-CLEARWATER-MIB 
+sudo vim /etc/default/snmpd 
+sudo aptitude update 
+sudo aptitude safe-upgrade 
+sudo aptitude install snmpd
+sudo aptitude install snmpd 
+sudo updatedb
+locate snmpd.conf
+vim /etc/snmp/snmpd.conf 
+sudo vim /etc/snmp/snmpd.conf 
+snmpget localhost NET-SNMP-TUTORIAL-MIB
+sudo aptitude install snmp
+snmpget localhost NET-SNMP-TUTORIAL-MIB
+snmpget localhost 
+snmptable localhost UCD-DLMOD-MIB::dlmodTable
+sudo service snmpd stop
+snmpd -f -L -Ddlmod
+sudo snmpd -f -L -Ddlmod
+sudo service snmpd start
+sudo aptitude install libsnmp-dev
+sudo vim /etc/snmp/snmpd.conf 
+sudo service snmpd stop
+sudo snmpd -f -L -Ddlmod
+ls
+cd
+mkdir snmpd
+cd snmpd/
+ls
+vim scalar_int.c
+cc `net-snmp-config --cflags` -fPIC -shared -g -O0 -o scalar_int.so scalar_int.c `net-snmp-config --libs`
+owd
+pwd
+sudo vim /etc/snmp/snmpd.conf 
+sudo snmpd -f -L -Ddlmod
+sudo service snmpd start
+snmpget localhost netSnmpExampleInteger.0
+sudo service snmpd stop
+sudo snmpd -f -L -Ddlmod,scalar_int
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo vim /etc/snmp/snmpd.conf 
+sudo snmpd -f -L
+sudo vim /etc/snmp/snmpd.conf 
+sudo snmpd -f -L
+sudo vim /etc/snmp/snmpd.conf 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo vim /etc/snmp/snmpd.conf 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+add-apt-repository 'deb http://archive.ubuntu.com/ubuntu precise multiverse'
+sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu precise multiverse'
+sudo apt-get update
+sudo aptitude install snmp-mibs-downloader 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo vim /etc/default/snmpd 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo vim /etc/default/snmpd 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+. /etc/default/snmpd 
+echo $MIBS 
+snmpd -f -L -Ddlmod,example_scalar_int
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo vim /etc/snmp/snmpd.conf.cw
+sudo diff /etc/snmp/snmpd.conf{,.cw}
+sudo vim /etc/snmp/snmpd.conf
+snmpd -f -L
+sudo snmpd -f -L
+sudo vim /etc/snmp/snmpd.conf
+sudo snmpd -f -L
+sudo cp PROJECT-CLEARWATER.mib /usr/share/mibs/netsnmp/PROJECT-CLEARWATER-MIB
+sudo snmpd -f -L
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+vim /etc/default/snmpd 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+env
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo vim /etc/snmp/snmpd.conf
+env
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+unset MIBS
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+MIBS=/usr/share/snmp/mibs sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+. /etc/default/snmpd 
+sudo snmpd -f -L -Ddlmod,example_scalar_int
+sudo env
+visudo
+sudo visudo
+unset MIBS
+sudo MIBDIRS=/usr/share/snmp/mibs snmpd -f -L -Ddlmod,example_scalar_int
+sudo MIBDIRS=/usr/share/snmp/mibs/* snmpd -f -L -Ddlmod,example_scalar_int
+sudo MIBS=* snmpd -f -L -Ddlmod,example_scalar_int
+sudo MIBS=UCD-SNMP-MIB snmpd -f -L -Ddlmod,example_scalar_int
+sudo MIBS=ALL snmpd -f -L -Ddlmod,example_scalar_int
+vim /etc/hosts
+hostname
+dig +trace `hostname`
+dig `hostname`
+dig `hostname -f`
+dig +trace `hostname -f`
+dig `hostname -f`
+hostname
+vim /etc/network/interfaces 
+grep -r ip-10-39 /etc/*
+grep -rn ip-10-39 /etc/*
+sudo grep -rn ip-10-39 /etc/*
+dnsdomainname 
+vim /etc/resolv.conf 
+vim /etc/init.d/hostname 
+vim /etc/init/hostname.conf 
+visudo
+sudo visudo
+sudo vim /etc/monit/monitrc 
+sudo vim /etc/hostname 
+sudo vim /etc/hosts
+dig `hostname`
+dig `hostname -f`
+hostname
+hostname -f
+dnsdomainname 
+dmidecode 
+sudo dmidecode 
+sudo dmidecode -h
+man dmidecode
+sudo dmidecode 
+cd sprout
+vim stateful_proxy.cpp 
+hostid
+vim stateful_proxy.cpp 
+cd ../../clearwater-live-test/
+ls
+git fetch -p
+git merge
+git branch
+git diff master
+git status
+vim lib/live-test.rb
+rake test[amc.cw-ngv.com]
+rvm
+rake test[amc.cw-ngv.com]
+. ~/.rvm/scripts/rvm
+rake test[amc.cw-ngv.com]
+vim lib/live-test.rb
+rake test[amc.cw-ngv.com]
+locate joker.rb
+bundle install
+rake test[amc.cw-ngv.com]
+cd ../chef/
+git fetch -p
+git merge
+git branch
+git status
+knife cookbook upload clearwater
+rake test[amc.cw-ngv.com]
+cd ../clearwater-live-test/
+rake test[amc.cw-ngv.com]
+rake test[amc.cw-ngv.com] TESTS="Basic Call - Mainline" TRANSPORT=tcp
+vim scripts/Basic_Call_-_Mainline_-_TCP_-_endpoint_26812_errors.log
+rake test[amc.cw-ngv.com] TESTS="Basic Call - Mainline" TRANSPORT=tcp
+git status
+git diff lib/live-test.rb
+:q
+git checkout -- lib/live-test.rb
+git statsu
+git status
+git diff
+git add -p
+git commit -m "Perform NAT-aware REGISTER"
+git status
+rake test[amc.cw-ngv.com] TESTS="Basic Call - Mainline" TRANSPORT=tcp
+vim scripts/Basic_Call_-_Mainline_-_TCP_-_endpoint_31858_errors.log
+vim scripts/Basic_Call_-_Mainline_-_TCP_-_endpoint.xml.err 
+rake test[amc.cw-ngv.com] TESTS="Basic Call - Mainline" TRANSPORT=tcp
+rake test[amc.cw-ngv.com]
+rake test[amc.cw-ngv.com] TESTS="Basic Call - Mainline" TRANSPORT=tcp
+rake test[amc.cw-ngv.com] TESTS="Call Barring*" TRANSPORT=tcp
+rake test[amc.cw-ngv.com] TESTS="Call Barring*" TRANSPORT=tcp PSTN=true
+rake test[amc.cw-ngv.com] TESTS="Call Barring*" TRANSPORT=tcp,udp PSTN=true
+aÏJ#ÏJaÏJ#Ï
+rake test[amc.cw-ngv.com] PSTN=true
+Jcd ../chef/
+cd ../chef/
+ls
+vim environments/amc.rb 
+knife environment show staging
+knife environment show staging --format json
+git stuats
+git status
+git diff
+git status
+git fetch -p
+git statu
+git status
+git diff plugins/knife/dns-records.rb
+git diff cookbooks/clearwater/metadata.rb
+git checkout  -- plugins/knife/dns-records.rb
+git merge --ff-only
+git status
+git branch fix-template-home
+vim environments/template.rb 
+git add environments/template.rb
+git commit -m "Don't use /home/ubuntu in template"
+git push
+git checkout fix-template-home 
+git merge master
+git checkout  master 
+git reset --hard HEAD^
+git push -f
+git checkout fix-template-home 
+git push
+vim ../../.chef/knife.rb 
+ruby server.rb 
+vim ralf.md 
+cd ../../sprout/sprout
+ls
+git branch
+vim main.cpp
+make
+vim stack.cpp 
+vim main.cpp
+vim stack.cpp 
+vim ../include/stack.h 
+make
+vim stack.cpp 
+make
+grep "bono." *
+vim stateful_proxy.cpp
+vim stack.cpp 
+vim stateful_proxy.cpp
+make
+vim stack.cpp 
+make
+vim stateful_proxy.cpp
+make
+vim ../debian/sprout.init.d 
+vim ../debian/bono.init.d 
+vim ../debian/sprout.init.d 
+git status
+git diff
+git add -p ..
+git diff --staged 
+git add -p ..
+git diff --staged 
+make
+git diff
+git diff --sta
+git diff --staged 
+git diff main.cpp
+git status
+git reset HEAD ../include/stack.h
+git add -d main.cpp
+git add -p main.cpp
+git commit -m "Add the --bono-cluster argument"
+git status
+git add -p ..
+git diff --staged 
+git commit -m "Route the bono cluster into the stack"
+git status
+git add .. -p
+git status
+git reset HEAD stack.cpp
+git status
+git add -p ..
+git commit -m "Use the newly defined bono cluster as our Path"
+git status
+git add .. -p
+git commit -m "init.d update to supply the bono-cluster"
+git add .. -p
+git commit -m "Also do the same for sprout-cluster"
+make clean
+make -j 2
+make test
+vim ut/stack_test.cpp 
+make test
+git push
+vim stateful_proxy.cpp 
+git commit -m "Be more specific about SBC roles"
+git diff
+git add ut/stack_test.cpp
+git commit -m "UT fix"
+git commit -m "Be more specific about SBC roles" -a
+git status
+git push
+git fetch -p
+git merge master
+git merge origin/master
+git mergetool
+vim stateful_proxy.cpp 
+git mergetool -t p4merge
+vim stateful_proxy.cpp 
+git status
+git add stateful_proxy.cpp
+git submodule update
+cd ..
+git submodule update
+git commit
+git push
+vim sprout/stateful_proxy.cpp 
+git commit --amend 
+git commit --amend -a
+git push -f 
+vim sprout/stateful_proxy.cpp 
+make
+cd sprout
+make
+make clean
+make
+cd ..
+git submodule update --nit
+git submodule update --init
+cd sprout
+make clean all -j2
+git status
+cd ../
+ls
+vim mk/sas-client.mk 
+make sas-client
+vim mk/sas-client.mk 
+cd sprout
+make
+make clean all -j 2
+vim ../mk/pjsip.mk 
+mmake pjsip 
+cd ..
+mmake pjsip 
+make pjsip 
+cd modules/pjsip/
+make clean
+rm /home/ubuntu/src/sprout/modules/pjsip/pjlib/build/.pjlib-x86_64-unknown-linux-gnu.depend
+make clean
+rm /home/ubuntu/src/sprout/modules/pjsip/pjmedia/build/.pjmedia-x86_64-unknown-linux-gnu.depend
+make clean
+make
+cd ..
+make clean
+cd ..
+maek pjsip
+make pjsip
+make clean
+make -j 2
+a
+git status
+git add sprout/stateful_proxy.cpp
+git commit -m "Fix up potential NPE in failure arm" -a
+git push
+git status
+git checkout master 
+git merge
+git fetch -p
+git merge
+git status
+git submodule update
+cd sprout
+vim stateful_proxy.cpp +401
+vim ../include/stateful_proxy.h 
+vim stateful_proxy.cpp +401
+git diff
+vim stateful_proxy.cpp +401
+make
+cd ..
+make deb-only
+cd sprout
+make
+cd ..
+make deb-only
+vim sprout/pjutils.cpp 
+cd sprout
+make
+cd ..
+make deb-oly
+make deb-only
+git diff
+vim sprout/pjutils.cpp 
+vim include/pjutils.h 
+vim sprout/pjutils.cpp 
+cd ps
+cd sprout
+make
+cd ..
+make deb-only
+git status
+rm q1
+rm q1.rb 
+ls
+git diff
+git commit -m "Correctly populate the 'orig'parameter" -a
+git push
+git config --get push.default 
+git branch
+git branch -a
+git graph
+git branch -a --merged 
+git status
+git checkout dev
+git status
+git rm -r modules/sas-client/
+rm -r modules/sas-client/
+git status
+git fetch -p
+git merge
+git submodule update --init
+git status
+git branch 
+git branch --merged 
+git branch -d dev_new_homestead_api handle-not-being-edge-proxy master 
+git branch
+git checkout further-proxying-support 
+git push
+git config --list
+git config --list --global 
+git config --global push.default current
+git push
+cd sprout
+make test
+make test -j2
+make run_test JUSTTEST=StatefulEdgeProxyTest.TestEdgeFirstHop
+make debug JUSTTEST=StatefulEdgeProxyTest.TestEdgeFirstHop
+vim ut/stateful_proxy_test.cpp 
+make debug JUSTTEST=StatefulEdgeProxyTest.TestEdgeFirstHop
+vim ut/stateful_proxy_test.cpp 
+make debug JUSTTEST=StatefulEdgeProxyTest.TestEdgeFirstHop
+make debug JUSTTEST=StatefulEdgeProxyTest.TestEdgeFirstHop NOISY=T
+make run_test
+git status
+git commit -m "Remove dodgy test" ut/stateful_proxy_test.cpp
+git status
+git push
+vim ut/stateful_proxy_test.cpp
+grep StatefulEdgeProxyTest *
+grep StatefulEdgeProxyTest ut/*
+vim ut/stateful_proxy_test.cpp
+vim pjutils.cpp 
+cd ..
+make deb-only
+git status
+git add sprout/registrar.cpp
+git commit -m "Use domain name as service route"
+git push
+git submodule update
+git status
+git diff
+git add -p
+n
+git commit -m "Better comments"
+git status
+git add .
+git status
+git commit -m "Refactor target to Target and target_list to TargetList"
+git push
+git fetch -p
+git merge master
+git merge origin/master
+git config --global merge.conflictstyle diff3
+git merge --abort
+git merge origin/master
+vim sprout/stateful_proxy.cpp
+git submodule update
+git checkout dev
+git merge
+git branch -d further-proxying-support 
+git pull origin dev --no-ff 
+git fetch -p
+git merge
+git branch -d further-proxying-support 
+git branch
+vim sprout/stateful_proxy.cpp 
+:q
+cd sprout
+make
+cd ../../ellis/
+git fetch -p
+git branch
+git checkout dev 
+git merge
+git branch -d extend-api 
+git branch -d relative-builds 
+git branch -d tidy-up-after-hs-failure 
+find . -name "*conf"
+vim ellis.monit 
+git checkout -b change-ellis-ports
+git submodule update 
+vim ellis.monit 
+git status
+git add ellis.monit
+git commit -m "Correct monit configuration"
+git push
+cd ../chef/
+knife deployment resize -E amc --subscribers 500000
+knife deployment delete -E amc
+knife deployment delete -E amc2
+vim pjutils.cpp 
+vim ../include/pjutils.h 
+grep orig *
+grep originating *
+grep -n originating *
+vim -r stateful_proxy.cpp 
+vim -R stateful_proxy.cpp 
+vim stateful_proxy.cpp 
+vim ut/stateful_proxy_test.cpp 
+vim stateful_proxy.cpp 
+vim ut/stateful_proxy_test.cpp 
+vim stateful_proxy.cpp 
+grep SERVI *
+vim registrar.cpp 
+make
+grep target *
+grep "struct target" *
+vim ../include/stateful_proxy.h 
+make
+vim stateful_proxy.cpp +2756
+grep "struct target" ../include/*
+vim ../include/aschain.h 
+make
+vim ../include/stateful_proxy.h 
+make
+vim ../include/stateful_proxy.h +178
+make
+vim stateful_proxy.cpp 
+make
+make -k j
+make -k -j2
+make
+vim stateful_proxy.cpp +2710
+make
+vim aschain.cpp 
+make
+grep target_list *
+grep "::tar" *
+git status
+git submodule update
+git status
+git diff
+vim registrar.cpp 
+vim pjutils.cpp 
+grep handle_dou *
+vim stateful_proxy.cpp 
+vim ../include/stateful_proxy.h 
+git status
+make
+vim /home/ubuntu/src/sprout/include/stateful_proxy.h +205
+make
+git stuats
+git status
+git add ../include/stateful_proxy.h stateful_proxy.cpp
+git commit
+make run_Test
+make run_test
+vim stateful_proxy_test.cpp:1362 +3
+vim ut/stateful_proxy_test.cpp:1362 +3
+vim ut/stateful_proxy_test.cpp +1362
+make run_test
+vim ut/aschain_test.cpp +180
+make run_test
+aÏV#ÏVaÏV#Ï
+Va#a#a
+a#a#a
+aÏV#ÏVaÏV#Ï
+vim ut/registrar_test.cpp 
+make run_test
+git commit -m "Fix up UTs"
+git commit -m "Fix up UTs" -a
+git push
+vim stateful_proxy.cpp 
+make
+make vg
+make test
+make vg_raw
+make vg_raw ONLYTEST=StatefulProxyTestBase
+vim Makefile 
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest* vg_raw
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeaders* 
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeaders* vg_raw
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeaders* debug
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeadersBonoFirst vg_raw
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeadersBonoFirstOut vg_raw
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeadersBonoFirstIn vg_raw
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeadersBonoFirstIn 
+make EXTRA_TEST_ARGS=--gtest_filter=StatefulEdgeProxyTest.TestMainlineHeadersBonoFirstIn vg_raw
+make vg_raw
+git stuats
+git status
+git add stateful_proxy.cpp
+git checkout -b further-proxying-support 07cb414a570c861f031847ebb03b36220a3bea4e
+git status
+git commit -m "Fix up leaks"
+git push
+git checkout dev 
+git fetch -p
+git merge
+tmux attach
+vim sprout/pjutils.cpp 
+vim sprout/stateful_proxy.cpp 
+git add .
+git status
+git commit -m "Better upstream routing logic"
+git push
+cd src/sprout/
+git fetch -p
+git branch -r
+git branch -r | wc -l
+git status
+git merge
+git submodule update --init
+git checkout -b fix-pstn-inbound
+vim sprout/stateful_proxy.cpp 
+cd sprout
+make
+cd sprout
+vim stateful_proxy.cpp 
+cd sprout
+make
+vim stateful_proxy.cpp 
+make
+vim stateful_proxy.cpp 
+make
+make test
+cd ..
+cd sprout
+make clean
+make test
+make test NOISY=T
+git status
+git stash
+make test
+git stash pop
+make test NOISY=T
+cd ../
+git fetch -p
+git merge
+git checkout mdev
+git checkout dev
+git merge
+git branch -d fix-pstn-inbound 
+git branch -d further-proxying-support 
+git branch -d imsbench-interop 
+git branch -d hydrogen 
+git branch -D hydrogen 
+git status
+git branch
+git branch -r
+git diff origin/use-req-uri-over-path...origin/master
+git diff origin/master...origin/use-req-uri-over-path
+git push origin :use-req-uri-over-path
+git branch -r
+git diff origin/master...origin/longer-timeouts 
+git push origin :longer-timeouts
+cd ..
+ls
+rm *.build *.changes
+ls
+rm -r joker/
+y
+ls
+rm mike-cluster.py 
+ls
+rm -r libphonenumber/
+rm -rf libphonenumber/
+sudo rm -rf libphonenumber/
+ls
+rm -rf sipp-3.3/
+ls
+rm ruby-coding-standards.*
+ls
+cd crest/
+git fetch -p
+git brnach
+git branch
+git status
+git checkout dev
+git merge
+git branch
+git branch --no-merged 
+git branch -d dev_new_homestead_api dont-dupe-SP-node
+git status
+git submodule update
+git status
+git brnach -r
+git branch -r
+git branch -r --no-merged 
+cd ../sprout/
+git branch -r --no-merged 
+cd ../ellis/
+git branch -r --no-merged 
+git banch
+git branch
+git checkout dev
+git status
+git fetch
+git fetch -p
+git merge
+git status
+git submodule update
+git branch -r
+git branch -r --no-merged 
+git branch -r --merged
+git push origin :fix-ie
+git push origin :fix_jenkins
+git push origin :integration-testing
+git branch
+git branch -d change-ellis-ports 
+git status
+git branch -a
+cd ../
+rm -rf clearwater-infinispan/
+cd clearwater-live-test/
+git fetch -p
+git stuat
+git status
+git diff
+git checkout -- lib/test-definition.rb
+git status
+git checkout dev
+git checkout master
+git merge
+bundle
+git stauts
+git status
+git branch
+git branch --no-merged 
+git branch -d 32
+git branch -d 32-bit-support 
+git branch -d better-nat-address-lookups 
+git branch -d perimeta-support 
+git diff perimeta-support 
+git diff ...perimeta-support 
+git checkout perimeta-support 
+git stauts
+git status
+git graph --all
+git rebase master
+git graph --all
+git branch -r --no-merged 
+git branch -r --merged 
+git push origin :quaffify
+git status
+bundle
+rake test[cw-ngv.com]
+git push
+rake test[cw-ngv.com] PSTN=true LIVENUMBER=0114420836253451
+rake test[cw-ngv.com] PSTN=true LIVENUMBER=011442083623451 TESTS="Live Call*"
+sudo vim /usr/share/mibs/netsnmp/UCD-SNMP-MIB 
+tmux
+ls
+cd src
+ls
+cd chronos
+ls
+cd src
+ls
+cd main
+ls
+vi main.cpp
+vi timer_store.cpp 
+exit
+vim lib/chef/formatters/error_descriptor.rb 
+git status
+git checkout -b handle-missing-error-messge
+#git commit -m "Handle a section without a text me
+git diff
+git commit -a
+git push
+cd ../ch
+cd ../chronos/
+ls
+ls ..
+mkdir -p src/main
+mkdir -p src/test
+mkdir doc
+ls
+vim src/main/timer_wheel.cpp
+vim src/main/timer.cpp
+vim src/include/timer_wheel.h
+mv src/main/timer_wheel.cpp src/main/timer_store.cpp
+mv src/include/timer_wheel.h src/include/timer_store.h 
+vim src/include/timer_
+vim src/include/timer_store.h 
+make
+git submodule 
+git submodule --help
+git submodule add git@github.com/Metaswitch/build-infra.git build-infra
+git submodule add ssh://git@github.com/Metaswitch/build-infra.git build-infra
+git submodule add ssh://git@github.com/Metaswitch/clearwater-build-infra.git build-infra
+vim build-infra/cw-deb.mk 
+git submodule remove build-infra
+git submodule status build-infra
+git submodule deinit build-infra
+git diff 
+git status
+git submodule deinit -f build-infra
+git rm -rf build-infra
+vim .gitmodules 
+git rm -f .gitmodules 
+git status
+vim Makefile
+cp ../sprout/mk/platform.mk .
+vim platform.mk 
+vim Makefile
+make
+vim Makefile
+make
+vim Makefile
+make
+mkdir -p /home/ubuntu/src/chronos/build/obj/chronos/src/main
+make
+mkdir -p /home/ubuntu/src/chronos/build/obj/chronos_test/src/main
+make
+mkdir mk
+cp ../sprout/mk/ mk/
+make
+vim Makefile 
+make
+vim platform.mk 
+vim mk/linux.mk 
+make clean
+vim src/main/timer_store.cpp
+make clean
+make
+vim platform.mk 
+vim Makefile 
+make
+vim platform.mk 
+make
+vim Makefile 
+make
+vim src/main/timer.cpp 
+vim src/include/timer.h
+make
+vim src/include/timer.h
+make
+vim src/include/timer_store.h 
+make
+vim src/include/timer.h
+vim src/maon/timer.h
+vim src/main/timer.h
+vim src/main/timer.cpp 
+make
+vim src/main/timer_store.cpp 
+vim src/include/timer_store.h 
+vim src/include/timer.h 
+make
+vim src/main/timer
+vim src/main/timer.cpp 
+make
+vim src/main/timer.cpp 
+vim src/include/timer.h 
+vim src/main/timer_store.cpp 
+vim src/include/timer_store.h 
+make
+vim src/include/timer_store.h 
+make
+vim src/main/timer_store.cpp 
+make
+vim src/main/timer_store.cpp 
+makr
+make
+vim src/include/timer_store.h 
+make
+vim src/main/timer_store.cpp 
+make
+vim src/main/timer_store.cpp 
+make
+vim src/main/timer_store.cpp 
+make
+vim src/main/timer_store.cpp 
+make
+vim src/main/main.cpp
+make
+ls
+build/bin/chronos 
+echo $?
+vim src/main/timer_store.cpp 
+vim src/main/timer.cpp 
+vim src/main/timer_store.cpp 
+vim src/include/timer_store.h 
+vim src/main/timer.cpp 
+build/bin/chronos 
+valgrind build/bin/chronos
+valgrind build/bin/chronos --leak-check=full
+valgrind --leak-check=full build/bin/chronos
+gdb build/bin/chronos 
+valgrind --leak-check=full build/bin/chronos
+gdb build/bin/chronos 
+build/bin/chronos 
+valgrind --leak-check=full build/bin/chronos
+build/bin/chronos 
+la
+ls
+ls build/obj/chronos/src/main/
+build/bin/chronos 
+make clean
+build/bin/chronos 
+make
+build/bin/chronos 
+valgrind --leak-check=full build/bin/chronos
+build/bin/chronos 
+ls /var/crash/
+cat /var/crash/_usr_lib_valgrind_memcheck-amd64-linux.1000.crash 
+apport-unpack /var/crash/_usr_lib_valgrind_memcheck-amd64-linux.1000.crash 
+git status
+vim Makefile 
+git add Makefile mk/
+mv platform.mk mk/
+vim Makefile 
+make clean
+make
+git add mk
+git status
+git add Makefile 
+git commit -m "Make infrastructure"
+git remote -v
+vim .gitignore
+git status
+git add .gitignore 
+git commit -m "Add a .gitignore"
+git add src/include/timer.h src/main/timer.cpp 
+git commit -m "Timer structure"
+git status
+git add src/include/timer_store.h src/main/timer_store.cpp
+git commit -m "First bash at timer store, some TODOs inline, needs testing"
+git ls-files
+git ls-files | xargs wc -l
+git status
+mkdir tmp
+apport-unpack /var/crash/_usr_lib_valgrind_memcheck-amd64-linux.1000.crash tmp
+ls tmp/
+cd tmp/
+cd ..
+gdb build/bin/chronos tmp/CoreDump 
+valgrind --vgdb=yes --vgdb-error=0 --leak-check=full build/bin/chronos
+vim src/main/timer_store.cpp 
+vim src/include/timer_store.h 
+vim src/main/timer_store.cpp 
+vim src/main/main.cpp 
+vim src/main/timer_store.cpp 
+build/bin/chronos 
+gdb build/bin/chronos 
+valgrind build/bin/chronos 
+valgrind -v build/bin/chronos 
+git status
+git add src/include/timer_store.h src/main/timer_store.cpp
+git commit -m "More efficient API for get_next_timers()"
+git add src/main/main.cpp
+git commit -m "Initial tests (need formalizing)"
+git status
+ls tmp
+rm -r tmp/
+ls
+git stauts
+git status
+git remote add origin ssh://git@bitbucket.org/metaswitch/chronos.git
+git push -u origin --all
+git status
+make
+vim Makefile 
+make
+[A
+make
+make debug
+vim Makefile 
+make clean
+make
+la ../sprout/build
+la ../sprout/build/bin/
+la ../sprout/build/obj/
+cat ../sprout/.gitignore 
+vim src/main/main.cpp 
+make
+pry
+cd ../chronos/
+mkdir src/include
+cd ../sprout/
+vim Make
+vim Makefile 
+vim mk/sprout.mk 
+vim mk/platform.mk 
+cd ../chronos/
+vim platform.mk 
+vim ../sprout/Makefile 
+vim src/main/timer
+vim src/main/timer.cpp 
+make
+vim Makefile 
+make
+vim platform.mk 
+make
+vim src/include/timer_store.h 
+vim src/include/timer.h 
+vim src/main/timer.cpp 
+vim src/include/timer_store.h 
+vim src/include/timer.h 
+vim src/include/timer_store.h 
+vim src/main/timer.cpp 
+vim src/include/timer_store.h 
+vim src/main/timer.cpp 
+vim src/include/timer.h 
+vim src/main/timer.cpp 
+vim src/include/timer_store.h 
+vim src/main/main.cpp 
+vim src/include/timer_store.h 
+vim src/main/main.cpp 
+gdb build/bin/chronos 
+cd ../sprout/
+git fetch
+git merge
+git submodule update --init
+cd scripts/stats
+ls
+bundle
+vim lib/cw_stat_collector.rb 
+bin/cw_stat bono-3.vz.cw-ngv.com connected_clients
+bin/cw_stat bono-3.vz.cw-ngv.com connected_client
+bin/cw_stat bono-3.vz.cw-ngv.com client_count
+bin/cw_stat bono-3.vz.cw-ngv.com:6666 client_count
+bin/cw_stat bono-2.vz.cw-ngv.com:6666 client_count
+bin/cw_stat bono-1.vz.cw-ngv.com:6666 client_count
+cd ../stats-c/
+ls
+vim cw_stat.cpp 
+g++ -o cw_stat cw_stat.cpp -lzmq
+ls
+./cw_stat 
+./cw_stat bono-1.cw-ngv.com:6666 client_count
+./cw_stat bono-1.cw-ngv.com client_count
+./cw_stat bono-1.cw-ngv.com latency_us
+./cw_stat bono-3.cw-ngv.com latency_us
+./cw_stat bono-3.cw-ngv.com:6666 latency_us
+./cw_stat bono-3.cw-ngv.com latency_us
+netstat -planut | grep 6666
+./cw_stat bono-3.cw-ngv.com latency_us
+./cw_stat bono-1.cw-ngv.com latency_us
+./cw_stat bono-2.cw-ngv.com latency_us
+./cw_stat bono-3.cw-ngv.com latency_us
+./cw_stat bono-4.cw-ngv.com latency_us
+./cw_stat bono-5.cw-ngv.com latency_us
+./cw_stat bono-3.vz.cw-ngv.com latency_us
+./cw_stat sprout-1.vz.cw-ngv.com latency_us
+cd ../../..
+cd sprout/
+vim sprout/zmq_lvc.cpp 
+cd scripts/stats-c/
+./cw_stat bono-4.cw-ngv.com latency_us
+./cw_stat bono-4.vz.cw-ngv.com latency_us
+./cw_stat bono-4.vz.cw-ngv.com latency_us -s
+cd ../stats
+bin/cw_stat bono-4.vz.cw-ngv.com latency_us -s
+vim lib/cw_stat_collector.rb 
+bin/cw_stat bono-4.vz.cw-ngv.com latency_us -s
+bin/cw_stat bono-4.vz.cw-ngv.com latency_us
+bin/cw_stat bono-4.vz.cw-ngv.com latency_us -s
+cd ../..
+vim sprout/zmq_lvc.cpp 
+cd ..
+git init ralf
+cd ralf
+go
+sudo aptitude show golang-go 
+wget https://godeb.s3.amazonaws.com/godeb-amd64.tar.gz
+ls
+tar xzf godeb-amd64.tar.gz 
+ls
+rm godeb-amd64.tar.gz 
+./godeb list
+./godeb install 1.1.2
+go 
+go version
+go build
+go env
+go tool
+mkdir src pkg bin
+ls
+rm go_1.1.2-godeb1_amd64.deb 
+ls
+go get godeb
+rm godeb
+ls
+rm -r pkg
+ls
+mkdir src/main
+vim src/main/server.go
+ls ~/.vim/bundle/
+git clone git@github.com:jnwhiteh/vim-golang.git ~/.vim/bundle/vim-golang
+ls ~/.vim/bundle/
+vim src/main/server.go
+ls
+mv src/main src/ralf/
+cd src/ralf/
+ls
+mkdir server
+mkdir main
+mv server.go server
+ls
+vim server/server.go 
+vim main/main.go
+go build
+go build ralf
+export GOPATH=/home/ubuntu/src/ralf
+go build ralf
+go build ralf/main
+vim main/main.go
+go build ralf/main
+ls
+find .
+mv server core
+ls
+vim main/main.go 
+ls
+go build ralf/main
+vim core/server.go 
+vim core/pingHandler.go
+go build ralf/main
+vim core/server.go 
+go build ralf/main
+vim core/pingHandler.go
+go build ralf/main
+vim core/pingHandler.go
+go build ralf/main
+vim core/pingHandler.go
+go build ralf/main
+vim core/pingHandler.go
+go build ralf/main
+vim core/pingHandler.go
+go build ralf/main
+vim core/pingHandler.go
+go build ralf/main
+vim core/server.go 
+go build ralf/main
+vim core/server.go 
+go build ralf/main
+vim core/server.go 
+go build ralf/main
+vim core/server.go 
+vim core/pingHandler.go
+go build ralf/main
+vim core/server.go 
+go build ralf/main
+vim main/main.go 
+go build ralf/main
+vim main/main.go 
+go build ralf/main
+go install ralf/main
+go run ralf/main
+ls
+../../bin/main 
+cd ../..
+ls
+go build ralf/main
+bin/main
+vim src/ralf/main/main.go 
+go build ralf/main
+vim src/ralf/main/main.go 
+go build ralf/main
+bin/main
+sudo bin/main
+go build ralf/main
+sudo bin/main
+go build ralf/main
+vim src/ralf/main/main.go 
+ls
+./main 
+sudo ./main 
+netstat -planut | grep 80
+sudo netstat -planut | grep 80
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+go build ralf/main
+./main
+vim src/ralf/core/server.go 
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/core/session_handler.go
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+rm src/ralf/core/pingHandler.go 
+vim src/ralf/core/event.go
+vim src/ralf/core/server.go 
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/core/session_handler.go
+vim src/ralf/main/main.go 
+vim src/ralf/core/server.go 
+vim src/ralf/core/event.go
+vim src/ralf/core/server.go 
+vim src/ralf/core/event.go
+git status
+vim readme.md
+vim src/ralf/core/session_handler.go
+export GOPATH=`pwd`
+curl -v localhost/ping
+curl -v localhost:8110/ping
+curl -v localhost:8110/pong
+gorun
+curl -v localhost:8110/ping
+curl -v localhost:8110/call-id/123@sip.com
+curl -POST -v localhost:8110/call-id/123@sip.com
+curl --POST -v localhost:8110/call-id/123@sip.com
+curl -x POST -v localhost:8110/call-id/123@sip.com
+curl -X POST -v localhost:8110/call-id/123@sip.com
+man curl
+curl -X POST -v localhost:8110/call-id/123@sip.com --data-binary "{ "peers": [ "10.0.0.1", "10.0.0.2" ] }"
+curl -X POST -v localhost:8110/call-id/123@sip.com --data-binary '{ "peers": [ "10.0.0.1", "10.0.0.2" ] }'
+curl -X POST -v localhost:8110/call-id/123@sip.com/events --data-binary '{ "peers": [ "10.0.0.1", "10.0.0.2" ] }'
+curl -X POST -v localhost:8110/call-id/123@sip.com --data-binary '{ "peers": [ "10.0.0.1", "10.0.0.2" ] }' --header 'Content-Type: application/json'
+curl -X POST -v localhost:8110/call-id/123@sip.com --data-binary '{ "peers": { ecf: [ "10.0.0.1", "10.0.0.2" ], ccf: [ "12.0.0.1", "12.0.0.2" ] } }' --header 'Content-Type: application/json'
+curl -X POST -v localhost:8110/call-id/123@sip.com --data-binary '{ "peers": { "ecf": [ "10.0.0.1", "10.0.0.2" ], "ccf": [ "12.0.0.1", "12.0.0.2" ] } }' --header 'Content-Type: application/json'
+go get godeb
+go get launchpad.net/godeb
+sudo aptitude install bazaar
+sudo aptitude install bzr
+ls
+sudo aptitude install bazaar
+go get launchpad.net/godeb
+mv src/ralf/main/main.go src/ralf/main/ralf.go
+git status
+godeb
+sudo updatedb
+locate godeb
+bin/godeb 
+bin/godeb remove
+go
+rm -rf src/launchpad.net
+rm -rf pkg/linux_amd64/launchpad.net/
+rm -rf bin/godeb 
+wget localhost:8110
+wget localhost:8110/ping
+cat ping
+rm ping
+curl localhost:8110/ping
+curl -v localhost:8110/ping
+curl -v localhost:8110/piong
+curl -v localhost:8110/pong
+go run ralf/main
+go run src/ralf/main/main.go 
+export GOPATH=`pwd`
+go run src/ralf/main/main.go 
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+go build ralf/main
+./main
+cd src
+git init chronos
+cd ch
+cd chronos/
+ls
+git status
+vim readme.md
+git add readme.md 
+git commit -m "Readme"
+cd ../
+ls
+ls ch
+ls chef/
+git clone git@github.com:bossmc/chef.git chef-upstream
+cd chef-upstream/
+ls
+vim lib/chef/formatters/error_descriptor.rb 
+tmux
+ls
+tmux attach
+cd src
+ls
+cd ralf
+ls
+rm main 
+git status
+git add readme.md 
+git commit -m "Readme"
+git status
+ls bin
+vim bin/.gitignore
+git statis
+git add bin/.gitignore 
+git add bin/.gitignore -f
+git status
+cp bin/.gitignore pkg/
+git add pkg/.gitignore -f
+git status
+git commit -m "Set up folder structure"
+git status
+find src
+rm -r src/github.com
+rm -fr src/github.com
+find src
+git add src/ralf/core/event.go 
+git add src/ralf/core/server.go 
+git commit -m "Controller component"
+git add src/ralf/core/session_handler.go 
+git commit -m "First version of session handler"
+git add src/ralf/main/ralf.go 
+git commit -m "Main function"
+git status
+make
+git remote -v
+git remote add origin ssh://git@bitbucket.org/metaswitch/ralf.git
+git push -u origin --all
+ls
+cd src/
+ls
+cd chronos
+ls
+cd . /etc/bash_completion
+. /etc/bash_completion
+vim src/include/timer_handler.h 
+vim src/include/timer_store.h 
+vim src/main/timer_store.cpp 
+vim src/main/timer.cpp 
+vim src/include/timer_handler.h 
+cd src/chronos/
+ls
+git fetch
+git merge
+make clean
+make
+vim src/main/timer_handler.cpp
+ls
+vim src/main/timer_handler.cpp
+make
+vim src/include/timer_handler.h
+make
+vim src/include/timer_handler.h
+make
+vim src/include/timer_handler.h
+make
+vim src/include/timer_handler.h
+make
+vim src/include/timer_handler.h
+make
+vim src/include/timer_handl
+vim src/main/timer_handler.cpp
+vim src/include/timer.h 
+vim src/main/timer_handler.cpp
+cd ../chef
+git fetch -p
+git merge
+git branch
+git status
+git branch -d fix-template-home 
+git checkout bono-cluster-dns 
+git branch -d fix-template-home 
+git checkout master 
+git merge
+git branch -d fix-template-home 
+git branch -d bono-cluster-dns 
+git status
+pry
+vim src/include/replicator.h 
+vim src/main/replicator.cpp 
+vim src/include/controller.h 
+curl http://localhost:7253/ping
+curl http://localhost:7253/ping -v
+curl http://localhost:7253/pong -v
+curl http://localhost:7253/timers -v
+curl http://localhost:7253/timers/123 -v
+curl http://localhost:7253/timers -v
+curl http://localhost:7253/timers/123 -v
+curl http://localhost:7253/timers/ -v
+curl http://localhost:7253/timers/1 -v
+curl http://localhost:7253/timers/ -v
+curl http://localhost:7253/timers -v
+curl http://localhost:7253/timers/ -v
+curl -X PUT http://localhost:7253/timers/ -v
+which nice
+man nice
+curl -X PUT http://localhost:7253/timers/ -v
+curl -X POST http://localhost:7253/timers/ -v
+wget "https://rapidjson.googlecode.com/files/rapidjson-0.11.zip" 
+unzip -l rapidjson-0.11.zip 
+unzip rapidjson-0.11.zip 
+rm rapidjson-0.11.zip 
+cd rapidjson/
+ls
+cd ..
+mkdir src/include/rapidjson
+mv rapidjson/include/rapidjson src/include/
+ls src/include/rapidjson/
+rm -r rapidjson/
+ls
+curl -X POST http://localhost:7253/timers/ -v
+man curl
+curl -X POST http://localhost:7253/timers/ -v --data '{}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing"}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": [], "callback": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": [], "callback": [], "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {}, "callback": [], "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": "hello"}, "callback": [], "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": "hello", "repeat-for": "hello"}, "callback": [], "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": "hello"}, "callback": [], "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": [], "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": []}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {}}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":[]}}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":[], "opaque": []}}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": []}}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": []}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replicas":[]}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replicas": ""}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replicas": []}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replicas": [ 123 ]}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replicas": [ "10.1.1.2" ]}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replication_factor": ""}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replication-factor": ""}}'
+curl -X POST http://localhost:7253/timers/ -v --data '{"timing": {"interval": 100, "repeat-for": 200}, "callback": {"http": {"uri":"localhost", "opaque": "stuff"}}, "reliability": {"replication-factor": 123}}'
+history
+history -a
