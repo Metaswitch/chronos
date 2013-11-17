@@ -27,7 +27,7 @@ TimerHandler::TimerHandler(TimerStore* store,
                           (void*)this);
   if (rc < 0)
   {
-    // LOG_FATAL("Failed to start timer handling thread: %s", strerror(errno)"
+    printf("Failed to start timer handling thread: %s", strerror(errno));
     exit(2);
   }
 }
@@ -84,12 +84,14 @@ void TimerHandler::run() {
       {
         // Failed to get the current time.  According to `man 3 clock_gettime` this
         // cannot occur.  If it does, it's fatal.
-        // LOG_FATAL("Failed to get system time: %s", strerror(errno));
+        printf("Failed to get system time: %s", strerror(errno));
         exit(2);
       }
 
       unsigned long long current_timestamp = current_time.tv_sec * 1000;
       current_timestamp += current_time.tv_nsec / 1000000;
+      printf("Preparing to pop at %llu\n", timer->next_pop_time());
+      printf("Current time %llu\n", current_timestamp);
       if (timer->next_pop_time() <= current_timestamp)
       {
         pop(next_timers);
@@ -105,7 +107,7 @@ void TimerHandler::run() {
           rc = pthread_cond_timedwait(&_cond_var, &_mutex, &next_pop);
           if (rc < 0 && rc != ETIMEDOUT)
           {
-            // LOG_FATAL("Failed to wait for condition variable: %s", strerror(errno));
+            printf("Failed to wait for condition variable: %s", strerror(errno));
             exit(2);
           }
         }
@@ -113,6 +115,7 @@ void TimerHandler::run() {
         if (_nearest_new_timer > timer->next_pop_time())
         {
           // The timers we're holding are not the next to pop, swap them out.
+          printf("Fetching newer timers\n");
           _store->add_timers(next_timers);
           _store->get_next_timers(next_timers);
         }
