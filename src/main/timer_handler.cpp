@@ -1,4 +1,5 @@
 #include <time.h>
+#include <cstring>
 
 #include "timer_handler.h"
 
