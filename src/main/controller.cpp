@@ -1,10 +1,18 @@
 #include "controller.h"
 #include "timer.h"
 
-#include <regex>
+#include "murmur/MurmurHash3.h"
 
-Controller::Controller()
+#include <regex>
+#include <boost/tokenizer.hpp>
+
+Controller::Controller(Replicator* replicator,
+                       TimerHandler* handler) :
+                       _replicator(replicator),
+                       _handler(handler)
 {
+  _cluster.push_back("localhost");
+  _cluster.push_back("localhost");
 }
 
 Controller::~Controller()
@@ -50,6 +58,7 @@ void Controller::handle_request(struct evhttp_request* req)
   
   std::smatch matches;
   TimerID timer_id;
+  std::vector<std::string> replicas;
   if ((path == "/timers") || (path == "/timers/"))
   {
     if (method != EVHTTP_REQ_POST)
@@ -58,8 +67,9 @@ void Controller::handle_request(struct evhttp_request* req)
       return;
     }
     timer_id = Timer::generate_timer_id();
+    // Leave replica list empty until we know the replication-factor.
   }
-  else if (std::regex_match(path, matches, std::regex("/timers/([1-9][0-9]*)")))
+  else if (std::regex_match(path, matches, std::regex("/timers/([1-9][0-9]*)-(.*)")))
   {
     if ((method != EVHTTP_REQ_PUT) && (method != EVHTTP_REQ_DELETE))
     {
@@ -67,6 +77,12 @@ void Controller::handle_request(struct evhttp_request* req)
       return;
     }
     timer_id = std::stoul(matches[1]);
+    boost::char_separator<char> sep("-");
+    boost::tokenizer<boost::char_separator<char>> tokens(std::string(matches[1]), sep);
+    for (const auto& replica : tokens)
+    {
+      replicas.push_back(std::string(replica));
+    }
   }
   else
   {
@@ -86,7 +102,7 @@ void Controller::handle_request(struct evhttp_request* req)
   {
     std::string body = get_req_body(req);
     std::string error_str;
-    timer = Timer::from_json(timer_id, body, error_str);
+    timer = Timer::from_json(timer_id, replicas, body, error_str);
     if (!timer)
     {
       send_error(req, HTTP_BADREQUEST, error_str.c_str());
@@ -94,14 +110,27 @@ void Controller::handle_request(struct evhttp_request* req)
     }
   }
 
+  // If the timer has no replicas set up yet, calculate them now.
+  if (timer->replicas.empty())
+  {
+    calculate_replicas(timer);
+  }
+
   // Now we have a valid timer object, reply to the HTTP request.
   evhttp_add_header(evhttp_request_get_output_headers(req),
                     "Location", timer->url("localhost").c_str());
   evhttp_send_reply(req, 200, "OK", NULL);
 
-  // If the timer has no replicas set up yet, calculate them now.
+  // Replicate the timer to the other replicas if this is a client request
+  // _replicator->replicate(timer);
 
-  
+  // If the timer belongs to the local node, store it.
+  // TODO Use real local address.
+  if (timer->is_local("localhost"))
+  {
+    _handler->add_timer(timer);
+    timer = NULL;
+  }
 }
 
 void Controller::controller_cb(struct evhttp_request* req, void* controller)
@@ -140,4 +169,15 @@ std::string Controller::get_req_body(struct evhttp_request* req)
     }
   }
   return rc;
+}
+
+void Controller::calculate_replicas(Timer* timer)
+{
+  uint32_t hash;
+  MurmurHash3_x86_32(&timer->id, sizeof(TimerID), 0x0, &hash);
+  unsigned int primary_replica_idx = hash % _cluster.size();
+  for (unsigned int ii = 0; ii < timer->replication_factor && ii < _cluster.size(); ii++)
+  {
+    timer->replicas.push_back(_cluster[primary_replica_idx + ii]);
+  }
 }

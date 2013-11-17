@@ -16,6 +16,9 @@ HTTPCallback::~HTTPCallback()
   curl_easy_cleanup(_curl);
 }
 
+// Perform the callback by sending the supplied body to the callback URL.
+//
+// Also specify the sequence number in the headers to allow duplicate detection/handling.
 bool HTTPCallback::perform(std::string url, std::string encoded_body, unsigned int sequence_number)
 {
   std::string decoded_body = base64_decode(encoded_body);

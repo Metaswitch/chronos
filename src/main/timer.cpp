@@ -48,6 +48,10 @@ std::string Timer::url(std::string host)
 {
   std::stringstream ss;
   ss << "http://" << host << "/timers/" << id;
+  for (auto it = replicas.begin(); it != replicas.end(); it++)
+  {
+    ss << "-" << (*it);
+  }
   return ss.str();
 }
 
@@ -80,9 +84,20 @@ std::string Timer::to_json()
   return ss.str();
 }
 
+bool Timer::is_local(std::string host)
+{
+  return (std::find(replicas.begin(), replicas.end(), host) != replicas.end());
+}
+
 uint32_t Timer::deployment_id = 0;
 uint32_t Timer::instance_id = 0;
 
+// Generate a timer that should be unique across the (possibly geo-redundant) cluster.
+// The idea is to use a combination of deployment id, instance id, timestamp and 
+// an incrementing sequence number.
+//
+// The ID returned to the client will also contain a
+// list of replicas, but this doesn't add much uniqueness.
 TimerID Timer::generate_timer_id()
 {
   struct timespec ts;
@@ -154,7 +169,13 @@ Timer* Timer::create_tombstone(TimerID id)
     JSON_PARSE_ERROR(("Couldn't find '" ELEM "' in '" NODE_NAME "'"));        \
 }
 
-Timer* Timer::from_json(TimerID id, std::string json, std::string& error)
+// Create a Timer object from the JSON representation. 
+//
+// @param id - The unique identity for the timer (see generate_timer_id() above).
+// @param replicas - The previously calculated list of replicas for this timer (may be blank for a new timer).
+// @param json - The JSON representation of the timer.
+// @param error - This will be populated wiht a descriptive error string if required.
+Timer* Timer::from_json(TimerID id, std::vector<std::string> replicas, std::string json, std::string& error)
 {
   Timer* timer = new Timer(id);
   rapidjson::Document doc;
@@ -233,31 +254,25 @@ Timer* Timer::from_json(TimerID id, std::string json, std::string& error)
   
   JSON_ASSERT_OBJECT(reliability, "reliability");
 
-  if (reliability.HasMember("replicas"))
+  if (replicas.empty())
   {
-    rapidjson::Value& replicas = reliability["replicas"];
-    JSON_ASSERT_ARRAY(replicas, "replicas");
-    if (replicas.Size() == 0)
+    if (reliability.HasMember("replication-factor"))
     {
-      JSON_PARSE_ERROR(("If replicas are specified, there must be at least one"));
+      rapidjson::Value& replication_factor = reliability["replication-factor"];
+      JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
+      timer->replication_factor = replication_factor.GetInt();
     }
-    for (auto it = replicas.Begin(); it != replicas.End(); it++)
+    else
     {
-      JSON_ASSERT_STRING(*it, "replica address");
-      timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+      // Default replication factor is 2.
+      timer->replication_factor = 2;
     }
-    timer->replication_factor = replicas.Size();
-  }
-  else if (reliability.HasMember("replication-factor"))
-  {
-    rapidjson::Value& replication_factor = reliability["replication-factor"];
-    JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
-    timer->replication_factor = replication_factor.GetInt();
-    // The controller will allocate replicas for us
+
+    // The controller will allocate replicas for us based on the replication factor.
   }
   else
   {
-    JSON_PARSE_ERROR(("The reliability node must contains one of 'replicas' or 'replication-factor'"));
+    timer->replicas = replicas;
   }
   
   return timer;

@@ -31,6 +31,9 @@ public:
   // Convert this timer to JSON to be sent to replicas
   std::string to_json();
 
+  // Check if the timer is owned by the specified node.
+  bool is_local(std::string);
+
   // Member variables
   TimerID id;
   unsigned int start_time;
@@ -45,7 +48,7 @@ public:
   // Class functions
   static TimerID generate_timer_id();
   static Timer* create_tombstone(TimerID);
-  static Timer* from_json(TimerID, std::string, std::string&);
+  static Timer* from_json(TimerID, std::vector<std::string>, std::string, std::string&);
 
   // Class variables
   static uint32_t deployment_id;

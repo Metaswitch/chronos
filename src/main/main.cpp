@@ -31,7 +31,7 @@ int main(int argc, char** argv)
   {
     Timer* timer = default_timer(1);
     timer->start_time = 123456789;
-    assert(timer->url("localhost") == "http://localhost/timers/1");
+    assert(timer->url("localhost") == "http://localhost/timers/1-10.0.0.1");
     assert(timer->to_json() == "{\"timing\":{\"start-at\":\"123456789\",\"sequence-number\":\"0\",\"interval\":\"100\",\"repeat-for\":\"100\"},\"callback\":{\"http\":{\"uri\":\"localhost:80/callback\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":{\"replicas\":[\"10.0.0.1\"]}}");
     delete timer;
   }
@@ -91,7 +91,12 @@ int main(int argc, char** argv)
 
   delete store;
 
-  Controller* controller = new Controller();
+  //TimerStore *store = new TimerStore();
+  store = new TimerStore();
+  Replicator* rep = new Replicator();
+  HTTPCallback* callback = new HTTPCallback();
+  TimerHandler* handler = new TimerHandler(store, rep, callback);
+  Controller* controller = new Controller(rep, handler);
   struct event_base* base;
   struct evhttp* http;
 
