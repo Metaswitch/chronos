@@ -5,7 +5,7 @@
 #include <boost/format.hpp>
 
 Timer::Timer(TimerID id,
-             unsigned int start_time,
+             unsigned long long start_time,
              unsigned int interval,
              unsigned int repeat_for,
              unsigned int sequence_number,
@@ -29,7 +29,7 @@ Timer::~Timer()
 }
 
 // Returns the next pop time in ms.
-unsigned int Timer::next_pop_time()
+unsigned long long Timer::next_pop_time()
 {
   // TODO add replication skew
   return start_time + (sequence_number * interval);
@@ -38,7 +38,7 @@ unsigned int Timer::next_pop_time()
 // Construct a timespec describing the next pop time.
 void Timer::next_pop_time(struct timespec& ts)
 {
-  unsigned int pop_time = next_pop_time();
+  unsigned long long pop_time = next_pop_time();
   ts.tv_sec = pop_time / 1000;
   ts.tv_nsec = (pop_time % 1000) * 1000;
 }

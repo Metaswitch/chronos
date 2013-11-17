@@ -10,7 +10,7 @@ class Timer
 {
 public:
   Timer(TimerID,
-        unsigned int = 0,
+        unsigned long long = 0,
         unsigned int = 0,
         unsigned int = 0,
         unsigned int = 0,
@@ -20,7 +20,7 @@ public:
   ~Timer();
 
   // Returns the next time to pop in ms after epoch
-  unsigned int next_pop_time();
+  unsigned long long next_pop_time();
 
   // Returns the next time to pop in ns after epoch in a timespec
   void next_pop_time(struct timespec&);
@@ -36,7 +36,7 @@ public:
 
   // Member variables
   TimerID id;
-  unsigned int start_time;
+  unsigned long long start_time;
   unsigned int interval;
   unsigned int repeat_for;
   unsigned int sequence_number;

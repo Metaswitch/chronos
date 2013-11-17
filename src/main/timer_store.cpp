@@ -176,8 +176,8 @@ void TimerStore::refill_s_buckets()
 std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
 {
   // Calculate how long till the timer will pop.
-  unsigned int next_pop_timestamp = t->start_time + (t->sequence_number * t->interval);
-  unsigned int time_to_next_pop;
+  unsigned long long next_pop_timestamp = t->next_pop_time();
+  unsigned long long time_to_next_pop;
   if (next_pop_timestamp < _current_second)
   {
     // Timer should have already popped.  Best we can do is put it in the very first
