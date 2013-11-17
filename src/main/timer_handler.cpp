@@ -62,9 +62,9 @@ void TimerHandler::run() {
   std::unordered_set<Timer*>::iterator sample_timer;
   struct timespec current_time;
 
-  _store->get_next_timers(next_timers);
-
   pthread_mutex_lock(&_mutex);
+
+  _store->get_next_timers(next_timers);
 
   while (!_terminate)
   {
@@ -87,18 +87,21 @@ void TimerHandler::run() {
         exit(2);
       }
 
-      if (timer->next_pop_time() <= (current_time.tv_sec * 1000) + (current_time.tv_nsec / 1000))
+      unsigned long long current_timestamp = current_time.tv_sec * 1000;
+      current_timestamp += current_time.tv_nsec / 1000000;
+      if (timer->next_pop_time() <= current_timestamp)
       {
         pop(next_timers);
         _store->get_next_timers(next_timers);
       }
       else
       {
-        while ((_nearest_new_timer >= timer->next_pop_time()) && (rc != ETIMEDOUT))
+        rc = 0;
+        while ((_nearest_new_timer <= timer->next_pop_time()) && (rc != ETIMEDOUT))
         {
           struct timespec next_pop;
           timer->next_pop_time(next_pop);
-          int rc = pthread_cond_timedwait(&_cond_var, &_mutex, &next_pop);
+          rc = pthread_cond_timedwait(&_cond_var, &_mutex, &next_pop);
           if (rc < 0 && rc != ETIMEDOUT)
           {
             // LOG_FATAL("Failed to wait for condition variable: %s", strerror(errno));
@@ -106,7 +109,7 @@ void TimerHandler::run() {
           }
         }
 
-        if (_nearest_new_timer < timer->next_pop_time())
+        if (_nearest_new_timer > timer->next_pop_time())
         {
           // The timers we're holding are not the next to pop, swap them out.
           _store->add_timers(next_timers);
@@ -137,7 +140,7 @@ void TimerHandler::pop(std::unordered_set<Timer*>& timers)
   {
     pop(*it);
   }
-  timers.empty();
+  timers.clear();
 }
 
 // Pop a specific timer, if required pass the timer on to the replication layer to
@@ -150,15 +153,23 @@ void TimerHandler::pop(Timer* timer)
   if (success)
   {
     timer->sequence_number++;
-    if (timer->sequence_number * timer->interval <= timer->repeat_for)
+    if ((timer->sequence_number + 1) * timer->interval <= timer->repeat_for)
     {
-      _replicator->replicate(timer);
+      _store->add_timer(timer);
+      // _replicator->replicate(timer);
     }
     else
     {
+      // TODO Create a tombstone and replicate it.
       delete timer;
     }
   }
+  else
+  {
+    printf("WARN: Failed to process callback for %u\n", timer->id);
+    delete timer;
+  }
+}
 
 void TimerHandler::signal_new_timer(unsigned int pop_time)
 {

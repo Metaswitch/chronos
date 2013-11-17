@@ -32,7 +32,7 @@ Timer::~Timer()
 unsigned long long Timer::next_pop_time()
 {
   // TODO add replication skew
-  return start_time + (sequence_number * interval);
+  return start_time + ((sequence_number + 1) * interval);
 }
 
 // Construct a timespec describing the next pop time.
@@ -40,7 +40,7 @@ void Timer::next_pop_time(struct timespec& ts)
 {
   unsigned long long pop_time = next_pop_time();
   ts.tv_sec = pop_time / 1000;
-  ts.tv_nsec = (pop_time % 1000) * 1000;
+  ts.tv_nsec = (pop_time % 1000) * 1000000;
 }
 
 // Create the timer's URL from a given hostname.

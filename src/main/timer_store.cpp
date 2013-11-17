@@ -12,7 +12,7 @@ TimerStore::TimerStore() : _current_ms(0),
     perror("Failed to get system time - timer service cannot run: ");
     exit(-1);
   }
-  _current_second = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000);
+  _current_second = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
 TimerStore::~TimerStore()
@@ -137,17 +137,13 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 // current 10ms bucket index.
 void TimerStore::refill_ms_buckets()
 {
-  if (_current_s == NUM_SECOND_BUCKETS)
+  if (_current_s >= NUM_SECOND_BUCKETS)
   {
-    distribute_s_bucket(_current_s++);
-    _current_second += 1000;
-    _current_ms = 0;
-    return;
+    refill_s_buckets();
   }
 
-  refill_s_buckets();
-
   distribute_s_bucket(_current_s++);
+  _current_second += 1000;
   _current_ms = 0;
 }
 
@@ -190,7 +186,7 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
     time_to_next_pop = next_pop_timestamp - _current_second;
   }
 
-  // Now find the bucket for the timer and drop it in.
+  // Now find the bucket for the timer.
   if (time_to_next_pop < 1000)
   {
     return &_ten_ms_buckets[time_to_next_pop / 10];

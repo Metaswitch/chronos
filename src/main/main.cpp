@@ -16,7 +16,7 @@ Timer* default_timer(TimerID id)
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
   return new Timer(id,
-                   (ts.tv_sec * 1000) + (ts.tv_nsec / 1000),
+                   (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000),
                    100,
                    100,
                    0,
