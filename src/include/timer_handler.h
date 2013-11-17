@@ -12,12 +12,13 @@ class TimerHandler
 public:
   TimerHandler(TimerStore*, Replicator*, Callback*);
   ~TimerHandler();
-  void signal_new_timer(unsigned int);
+  void add_timer(Timer*);
   void run();
 
 private:
   void pop(std::unordered_set<Timer*>&);
   void pop(Timer*);
+  void signal_new_timer(unsigned int);
 
   TimerStore* _store;
   Replicator* _replicator;

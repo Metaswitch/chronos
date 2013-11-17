@@ -49,14 +49,11 @@ TimerHandler::~TimerHandler()
   delete _callback;
 }
 
-void TimerHandler::signal_new_timer(unsigned int pop_time)
+void TimerHandler::add_timer(Timer* timer)
 {
   pthread_mutex_lock(&_mutex);
-  if (_nearest_new_timer >= pop_time)
-  {
-    _nearest_new_timer = pop_time;
-    pthread_cond_signal(&_cond_var);
-  }
+  _store->add_timer(timer);
+  signal_new_timer(timer->next_pop_time());
   pthread_mutex_unlock(&_mutex);
 }
 
@@ -128,6 +125,10 @@ void TimerHandler::run() {
   pthread_mutex_unlock(&_mutex);
 }
 
+/*****************************************************************************/
+/* PRIVATE FUNCTIONS                                                         */
+/*****************************************************************************/
+
 // Used to pop a set of timers, this function takes ownership of the timers and
 // thus empties the passed in set.
 void TimerHandler::pop(std::unordered_set<Timer*>& timers)
@@ -158,4 +159,13 @@ void TimerHandler::pop(Timer* timer)
       delete timer;
     }
   }
+
+void TimerHandler::signal_new_timer(unsigned int pop_time)
+{
+  if (_nearest_new_timer < pop_time)
+  {
+    _nearest_new_timer = pop_time;
+    pthread_cond_signal(&_cond_var);
+  }
 }
+
