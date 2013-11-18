@@ -59,15 +59,15 @@ std::string Timer::url(std::string host)
 std::string Timer::to_json()
 {
   std::stringstream ss;
-  ss << "{\"timing\":{\"start-at\":\""
+  ss << "{\"timing\":{\"start-time\":"
      << start_time
-     << "\",\"sequence-number\":\""
+     << ",\"sequence-number\":"
      << sequence_number
-     << "\",\"interval\":\""
+     << ",\"interval\":"
      << interval
-     << "\",\"repeat-for\":\""
+     << ",\"repeat-for\":"
      << repeat_for
-     << "\"},\"callback\":{\"http\":{\"uri\":\""
+     << "},\"callback\":{\"http\":{\"uri\":\""
      << callback_url
      << "\",\"opaque\":\""
      << callback_body
@@ -272,6 +272,7 @@ Timer* Timer::from_json(TimerID id, std::vector<std::string> replicas, std::stri
   }
   else
   {
+    timer->replication_factor = replicas.size();
     timer->replicas = replicas;
   }
   
