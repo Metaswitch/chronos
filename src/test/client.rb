@@ -1,7 +1,7 @@
 require "net/http"
 require "json"
 
-timer = { timing: { interval: 1000, "repeat-for" => 1000 },
+timer = { timing: { interval: 1000, "repeat-for" => 5000 },
           callback: { http: { uri: "localhost:1234/callback", opaque: "" } },
           reliability: { "replication-factor" => 1 } }
 
