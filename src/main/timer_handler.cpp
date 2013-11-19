@@ -90,8 +90,6 @@ void TimerHandler::run() {
 
       unsigned long long current_timestamp = current_time.tv_sec * 1000;
       current_timestamp += current_time.tv_nsec / 1000000;
-      printf("Preparing to pop at %llu\n", timer->next_pop_time());
-      printf("Current time %llu\n", current_timestamp);
       if (timer->next_pop_time() <= current_timestamp)
       {
         pop(next_timers);
@@ -115,7 +113,6 @@ void TimerHandler::run() {
         if (_nearest_new_timer > timer->next_pop_time())
         {
           // The timers we're holding are not the next to pop, swap them out.
-          printf("Fetching newer timers\n");
           _store->add_timers(next_timers);
           _store->get_next_timers(next_timers);
         }

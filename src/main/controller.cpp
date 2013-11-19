@@ -17,6 +17,7 @@ Controller::Controller(Replicator* replicator,
 
 Controller::~Controller()
 {
+  _cluster.clear();
 }
 
 void Controller::handle_request(struct evhttp_request* req)
@@ -41,7 +42,7 @@ void Controller::handle_request(struct evhttp_request* req)
   }
 
   size_t path_len;
-  const char* path_str = evhttp_uridecode(encoded_path, 0, &path_len);
+  char* path_str = evhttp_uridecode(encoded_path, 0, &path_len);
   if (!path_str)
   {
     send_error(req, HTTP_BADREQUEST, "Requested path is unparseable");
@@ -49,6 +50,13 @@ void Controller::handle_request(struct evhttp_request* req)
   }
 
   std::string path(path_str, path_len);
+
+  // At this point, we're done with the URI and can free the C objects (we'll use
+  // the string from now on).
+  free(path_str);
+  path_str = NULL;
+  evhttp_uri_free(decoded);
+  decoded = NULL;
 
   // Also need to check the user has supplied a valid method:
   //

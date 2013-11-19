@@ -24,10 +24,15 @@ bool HTTPCallback::perform(std::string url, std::string encoded_body, unsigned i
   std::string decoded_body = base64_decode(encoded_body);
   curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(_curl, CURLOPT_READDATA, &decoded_body);
+  
+  // Include the sequence number header.
   struct curl_slist* headers = NULL;
-  headers = curl_slist_append(headers, (std::string("X-Sequence-Number: ") + std::to_string(sequence_number)).c_str());
+  headers = curl_slist_append(headers, (std::string("X-Sequence-Number: ") +
+                                        std::to_string(sequence_number)).c_str());
+  curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode curl_rc = curl_easy_perform(_curl);
+  curl_slist_free_all(headers);
   if (curl_rc == CURLE_OK)
   {
     // Successful callback
