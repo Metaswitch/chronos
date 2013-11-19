@@ -148,12 +148,12 @@ void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 // reset the timer for another pop, otherwise destroy the timer record.
 void TimerHandler::pop(Timer* timer)
 {
+  timer->sequence_number++;
   bool success = _callback->perform(timer->callback_url,
                                     timer->callback_body,
                                     timer->sequence_number);
   if (success)
   {
-    timer->sequence_number++;
     if ((timer->sequence_number + 1) * timer->interval <= timer->repeat_for)
     {
       _store->add_timer(timer);
