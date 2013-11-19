@@ -25,6 +25,9 @@ public:
   // Get the next bucket of timers to pop.
   void get_next_timers(std::unordered_set<Timer*>&);
 
+  // Give the UT test fixture access to our member variables
+  friend class TestTimerStore;
+
 private:
 
   // A table of all known timers

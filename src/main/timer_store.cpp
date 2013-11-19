@@ -38,6 +38,28 @@ TimerStore::~TimerStore()
 // delete it at any time).
 void TimerStore::add_timer(Timer* t)
 {
+  // First check if this timer already exists.
+  auto map_it = _timer_lookup_table.find(t->id);
+  if (map_it != _timer_lookup_table.end())
+  {
+    Timer* existing = map_it->second;
+
+    // Compare timers for precedence, start-time then sequence-number.
+    if ((t->start_time < existing->start_time) ||
+        ((t->start_time == existing->start_time) &&
+         (t->sequence_number < existing->sequence_number)))
+    {
+      // Existing timer is more recent.
+      delete t;
+      return;
+    }
+    else
+    {
+      // Existing timer is older
+      delete_timer(t->id);
+    }
+  }
+
   std::unordered_set<Timer*>* bucket = find_bucket_from_timer(t);
   if (bucket)
   {
@@ -76,17 +98,25 @@ void TimerStore::delete_timer(TimerID id)
   if (it != _timer_lookup_table.end())
   {
     // The timer is still present in the store, delete it.
-    std::unordered_set<Timer*>* bucket = find_bucket_from_timer(it->second);
+    Timer* timer = it->second;
+    std::unordered_set<Timer*>* bucket = find_bucket_from_timer(timer);
     if (bucket)
     {
-      bucket->erase(it->second);
+      bucket->erase(timer);
     }
     else
     {
-      // TODO The timer is in the heap... work out how to delete it.  Might
-      // require removing it from the vector and calling `make_heap()` to reorder
-      // the vector.
+      std::vector<Timer*>::iterator heap_it;
+      heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
+      if (heap_it != _extra_heap.end())
+      {
+        // Timer is in heap, remove it.
+        _extra_heap.erase(heap_it, heap_it + 1);
+        std::make_heap(_extra_heap.begin(), _extra_heap.end());
+      }
     }
+    _timer_lookup_table.erase(id);
+    delete timer;
   }
 }
 
@@ -107,7 +137,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
   // The store is not empty, find the first set that will pop.
   while (_ten_ms_buckets[_current_ms].empty())
   {
-    if (_current_ms >= 100)
+    if (_current_ms >= 99)
     {
       refill_ms_buckets();
     }
@@ -137,14 +167,17 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 // current 10ms bucket index.
 void TimerStore::refill_ms_buckets()
 {
-  if (_current_s >= NUM_SECOND_BUCKETS)
+  if (_current_s >= (NUM_SECOND_BUCKETS - 1))
   {
     refill_s_buckets();
   }
 
-  distribute_s_bucket(_current_s++);
-  _current_second += 1000;
+  // Update timing records, at this point, time extends by 1 second.
   _current_ms = 0;
+  _current_second += 1000;
+
+  // Distribute the next second bucket into the ms buckets.
+  distribute_s_bucket(_current_s++);
 }
 
 // Moves timers from a given second bucket into the appropriate 10ms bucket.
@@ -152,16 +185,52 @@ void TimerStore::distribute_s_bucket(unsigned int index)
 {
   for (auto it = _s_buckets[index].begin(); it != _s_buckets[index].end(); it++)
   {
-    //TODO move to correct 10ms bucket, rather than the first one.
-    _ten_ms_buckets[0].insert(*it);
+    std::unordered_set<Timer*>* bucket = find_bucket_from_timer(*it);
+    bucket->insert(*it);
   }
+  _s_buckets[index].clear();
 }
 
 // Moves timers from the extra heap to the seconds buckets and resets the current
 // seconds bucket index.
 void TimerStore::refill_s_buckets()
 {
-  // TODO Currently a no-op.
+  // Update timing records, refill_ms_buckets has already moved the local timerstamp
+  // forward by one second.
+  _current_s = 0;
+
+  if (!_extra_heap.empty())
+  {
+    std::pop_heap(_extra_heap.begin(), _extra_heap.end());
+    Timer* timer = _extra_heap.back();
+
+    while ((timer != NULL) &&
+           (timer->next_pop_time() - _current_second) < 3600 * 1000)
+    {
+      // Remove timer from heap
+      _extra_heap.pop_back();
+
+      std::unordered_set<Timer*>* bucket = find_bucket_from_timer(timer);
+      bucket->insert(timer);
+
+      if (!_extra_heap.empty())
+      {
+        std::pop_heap(_extra_heap.begin(), _extra_heap.end());
+        timer = _extra_heap.back();
+      }
+      else
+      {
+        timer = NULL;
+      }
+    }
+
+    // Push the timer back into the heap.
+    if (!_extra_heap.empty())
+    {
+      std::push_heap(_extra_heap.begin(), _extra_heap.end());
+    }
+  }
+
   _current_s = 0;
 }
 
@@ -193,7 +262,7 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
   }
   else if (time_to_next_pop < 1000 * NUM_SECOND_BUCKETS)
   {
-    return &_s_buckets[time_to_next_pop / 1000];
+    return &_s_buckets[(time_to_next_pop / 1000) - 1];
   }
 
   return NULL;
