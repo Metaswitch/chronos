@@ -15,8 +15,6 @@ public:
   std::string protocol() { return "http"; };
   bool perform(std::string, std::string, unsigned int);
 
-  static size_t string_write(void*, size_t, size_t, void*);
-
 private:
   CURL* _curl;
 };
