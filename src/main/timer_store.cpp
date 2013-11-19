@@ -56,6 +56,12 @@ void TimerStore::add_timer(Timer* t)
     else
     {
       // Existing timer is older
+      if (t->is_tombstone())
+      {
+        // Learn the interval so that this tombstone lasts long enough to catch errors.
+        t->interval = existing->interval;
+        t->repeat_for = existing->interval;
+      }
       delete_timer(t->id);
     }
   }

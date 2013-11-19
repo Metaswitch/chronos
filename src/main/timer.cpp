@@ -89,6 +89,18 @@ bool Timer::is_local(std::string host)
   return (std::find(replicas.begin(), replicas.end(), host) != replicas.end());
 }
 
+bool Timer::is_tombstone()
+{
+  return ((callback_url == "") && (callback_body == ""));
+}
+
+void Timer::become_tombstone()
+{
+  callback_url = "";
+  callback_body = "";
+  repeat_for = interval * (sequence_number + 1);
+}
+
 uint32_t Timer::deployment_id = 0;
 uint32_t Timer::instance_id = 0;
 
@@ -133,9 +145,16 @@ TimerID Timer::generate_timer_id()
   return rc;
 }
 
+// Created tombstones from delete operations are given
+// default expires of 10 seconds, if they're found to be
+// deleting an existing tombstone, they'll use that timer's
+// interval as an expiry.
 Timer* Timer::create_tombstone(TimerID id)
 {
-  return new Timer(true, id);
+  Timer* tombstone = new Timer(id);
+  tombstone->interval = 10 * 1000;
+  tombstone->repeat_for = 10 * 1000;
+  return tombstone;
 }
 
 #define JSON_PARSE_ERROR(STR) {                                               \

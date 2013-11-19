@@ -160,3 +160,20 @@ TEST_F(TimerTest, IsLocal)
   EXPECT_TRUE(t1->is_local("10.0.0.1"));
   EXPECT_FALSE(t1->is_local("10.0.0.2"));
 }
+
+TEST_F(TimerTest, IsTombstone)
+{
+  EXPECT_FALSE(t1->is_tombstone());
+  Timer* t2 = Timer::create_tombstone(100);
+  EXPECT_TRUE(t2->is_tombstone());
+  delete t2;
+}
+
+TEST_F(TimerTest, BecomeTombstone)
+{
+  t1->become_tombstone();
+  EXPECT_TRUE(t1->is_tombstone());
+  EXPECT_EQ(1000000, t1->start_time);
+  EXPECT_EQ(100, t1->interval);
+  EXPECT_EQ(100, t1->repeat_for);
+}

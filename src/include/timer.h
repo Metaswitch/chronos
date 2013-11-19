@@ -34,6 +34,12 @@ public:
   // Check if the timer is owned by the specified node.
   bool is_local(std::string);
 
+  // Check if a timer is a tombstone record.
+  bool is_tombstone();
+
+  // Convert this timer to it's own tombstone.
+  void become_tombstone();
+
   // Member variables
   TimerID id;
   unsigned long long start_time;
