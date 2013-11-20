@@ -13,7 +13,7 @@ public:
   Replicator();
   ~Replicator();
 
-  void replicate(Timer*);
+  virtual void replicate(Timer*);
 
   static void cleanup_curl(CURLM* curl);
   static size_t string_write(void*, size_t, size_t, void*);
