@@ -10,7 +10,7 @@ TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp)
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
 TARGET_EXTRA_OBJS_TEST :=
 INCLUDE_DIR := ${ROOT}/src/include
-CPPFLAGS := -pedantic -g -I${INCLUDE_DIR} -std=c++0x `curl-config --cflags`
+CPPFLAGS := -pedantic -g -I${INCLUDE_DIR} -std=c++0x `curl-config --cflags` -Werror
 CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/
 LDFLAGS := -lrt -lpthread `curl-config --libs` -levent
