@@ -27,6 +27,10 @@ protected:
 
     // Timer 3 will pop strictly after 1 hour
     timers[2]->interval = (3600 * 1000) + 300;
+
+    // Create an out of the blue tombstone for timer one.
+    tombstone = Timer::create_tombstone(1);
+    tombstone->start_time = timers[0]->start_time + 50;
   }
 
   // Since the Timer store owns timers after they've been added, the tests,
@@ -48,6 +52,7 @@ protected:
   // Variables under test.
   TimerStore* ts;
   Timer* timers[3];
+  Timer* tombstone;
 };
 
 /*****************************************************************************/
@@ -79,6 +84,7 @@ TEST_F(TestTimerStore, AddTimerTest)
 
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, AddTimersTest)
@@ -117,6 +123,7 @@ TEST_F(TestTimerStore, AddTimersTest)
   EXPECT_TRUE(_extra_heap().empty());
 
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, AddLongTimerTest)
@@ -136,6 +143,7 @@ TEST_F(TestTimerStore, AddLongTimerTest)
 
   delete timers[0];
   delete timers[1];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, NearGetNextTimersTest)
@@ -151,6 +159,7 @@ TEST_F(TestTimerStore, NearGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, MidGetNextTimersTest)
@@ -166,6 +175,7 @@ TEST_F(TestTimerStore, MidGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, LongGetNextTimersTest)
@@ -181,6 +191,7 @@ TEST_F(TestTimerStore, LongGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, MultiMixedGetNextTimersTest)
@@ -204,6 +215,7 @@ TEST_F(TestTimerStore, MultiMixedGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, MultiNearGetNextTimersTest)
@@ -230,6 +242,7 @@ TEST_F(TestTimerStore, MultiNearGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, ClashingMultiMidGetNextTimersTest)
@@ -257,6 +270,7 @@ TEST_F(TestTimerStore, ClashingMultiMidGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
@@ -283,6 +297,7 @@ TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, MultiLongGetTimersTest)
@@ -311,6 +326,7 @@ TEST_F(TestTimerStore, MultiLongGetTimersTest)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, ReallyLongTimer)
@@ -329,9 +345,9 @@ TEST_F(TestTimerStore, ReallyLongTimer)
   delete timers[0];
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
-// The following tests will need updating for tombstone function.
 TEST_F(TestTimerStore, DeleteNearTimer)
 {
   ts->add_timer(timers[0]);
@@ -341,6 +357,7 @@ TEST_F(TestTimerStore, DeleteNearTimer)
   EXPECT_TRUE(next_timers.empty());
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, DeleteMidTimer)
@@ -352,6 +369,7 @@ TEST_F(TestTimerStore, DeleteMidTimer)
   EXPECT_TRUE(next_timers.empty());
   delete timers[0];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, DeleteLongTimer)
@@ -363,6 +381,7 @@ TEST_F(TestTimerStore, DeleteLongTimer)
   EXPECT_TRUE(next_timers.empty());
   delete timers[0];
   delete timers[1];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, UpdateTimer)
@@ -387,6 +406,7 @@ TEST_F(TestTimerStore, UpdateTimer)
   // Timer one was deleted when it was overwritten
   delete timers[1];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, DontUpdateTimerAge)
@@ -411,6 +431,7 @@ TEST_F(TestTimerStore, DontUpdateTimerAge)
   // Timer two was deleted when it failed to overwrite timer one
   delete timers[0];
   delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, DontUpdateTimerSeqNo)
@@ -435,4 +456,39 @@ TEST_F(TestTimerStore, DontUpdateTimerSeqNo)
   // Timer two was deleted when it failed to overwrite timer one
   delete timers[0];
   delete timers[2];
+  delete tombstone;
 }
+
+TEST_F(TestTimerStore, AddTombstone)
+{
+  ts->add_timer(tombstone);
+
+  std::unordered_set<Timer*> next_timers;
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(1, next_timers.size());
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
+TEST_F(TestTimerStore, OverwriteWithTombstone)
+{
+  ts->add_timer(timers[0]);
+  ts->add_timer(tombstone);
+
+  std::unordered_set<Timer*> next_timers;
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size());
+
+  Timer* extracted = *next_timers.begin();
+  EXPECT_TRUE(extracted->is_tombstone());
+  EXPECT_EQ(100, extracted->interval);
+  EXPECT_EQ(100, extracted->repeat_for);
+
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
