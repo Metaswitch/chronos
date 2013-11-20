@@ -11,7 +11,7 @@ class Replicator
 {
 public:
   Replicator();
-  ~Replicator();
+  virtual ~Replicator();
 
   virtual void replicate(Timer*);
 
