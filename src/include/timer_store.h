@@ -13,7 +13,7 @@ class TimerStore
 {
 public:
   TimerStore();
-  ~TimerStore();
+  virtual ~TimerStore();
 
   // Add a timer to the store.
   virtual void add_timer(Timer *);
