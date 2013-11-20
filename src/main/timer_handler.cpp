@@ -16,10 +16,15 @@ TimerHandler::TimerHandler(TimerStore* store,
                            _replicator(replicator),
                            _callback(callback),
                            _terminate(false),
-                           _nearest_new_timer(0)
+                           _nearest_new_timer(-1)
 {
   pthread_mutex_init(&_mutex, NULL);
-  pthread_cond_init(&_cond_var, NULL);
+
+#ifdef UNITTEST
+  _cond = new MockPThreadCondVar(&_mutex);
+#else
+  _cond = new CondVar(&_mutex);
+#endif
 
   int rc = pthread_create(&_handler_thread,
                           NULL,
@@ -38,12 +43,14 @@ TimerHandler::~TimerHandler()
   {
     pthread_mutex_lock(&_mutex);
     _terminate = true;
-    pthread_cond_signal(&_cond_var);
+    _cond->signal();
     pthread_mutex_unlock(&_mutex);
     pthread_join(_handler_thread, NULL);
   }
 
-  pthread_cond_destroy(&_cond_var);
+  delete _cond;
+  _cond = NULL;
+
   pthread_mutex_destroy(&_mutex);
 
   delete _replicator;
@@ -71,7 +78,7 @@ void TimerHandler::run() {
   {
     if (next_timers.empty())
     {
-      pthread_cond_wait(&_cond_var, &_mutex);
+      _cond->wait();
       _store->get_next_timers(next_timers);
     }
     else
@@ -102,7 +109,7 @@ void TimerHandler::run() {
         {
           struct timespec next_pop;
           timer->next_pop_time(next_pop);
-          rc = pthread_cond_timedwait(&_cond_var, &_mutex, &next_pop);
+          rc = _cond->timedwait(&next_pop);
           if (rc < 0 && rc != ETIMEDOUT)
           {
             printf("Failed to wait for condition variable: %s", strerror(errno));
@@ -157,7 +164,7 @@ void TimerHandler::pop(Timer* timer)
     if ((timer->sequence_number + 1) * timer->interval <= timer->repeat_for)
     {
       _store->add_timer(timer);
-      // _replicator->replicate(timer);
+      //_replicator->replicate(timer);
     }
     else
     {
@@ -174,10 +181,10 @@ void TimerHandler::pop(Timer* timer)
 
 void TimerHandler::signal_new_timer(unsigned int pop_time)
 {
-  if (_nearest_new_timer < pop_time)
+  if (_nearest_new_timer > pop_time)
   {
     _nearest_new_timer = pop_time;
-    pthread_cond_signal(&_cond_var);
+    _cond->signal();
   }
 }
 

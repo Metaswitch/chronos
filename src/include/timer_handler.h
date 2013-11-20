@@ -3,6 +3,12 @@
 
 #include <pthread.h>
 
+#ifdef UNITTEST
+#include "pthread_cond_var_helper.h"
+#else
+#include "cond_var.h"
+#endif
+
 #include "timer_store.h"
 #include "replicator.h"
 #include "callback.h"
@@ -14,6 +20,8 @@ public:
   ~TimerHandler();
   void add_timer(Timer*);
   void run();
+
+  friend class TestTimerHandler;
 
 private:
   void pop(std::unordered_set<Timer*>&);
@@ -28,7 +36,12 @@ private:
   volatile bool _terminate;
   volatile unsigned int _nearest_new_timer;
   pthread_mutex_t _mutex;
-  pthread_cond_t _cond_var;
+
+#ifdef UNITTEST
+  MockPThreadCondVar* _cond;
+#else
+  CondVar* _cond;
+#endif
 
   static void* timer_handler_entry_func(void *);
 };
