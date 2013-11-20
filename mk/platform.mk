@@ -122,6 +122,7 @@ ${OBJ_DIR}/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_BUILD) $(TARGET_ARCH) -c -o $@ $<
 
 ${OBJ_DIR_TEST}/%.o: %.cpp
+	-rm $(patsubst %o, %gcno, $@)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) $(TARGET_ARCH) -c -o $@ $<
 
 ${OBJ_DIR_TEST}/%.o: $(UT_DIR)/%.cpp
