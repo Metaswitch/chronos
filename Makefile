@@ -36,7 +36,7 @@ coverage: build_test
 	-rm ${OBJ_DIR_TEST}/src/main/*.gcda 2> /dev/null
 	@mkdir -p gcov
 	${TARGET_BIN_TEST}
-	gcov-4.6 -o ${OBJ_DIR_TEST}/src/main/ ${OBJ_DIR_TEST}/src/main/*.o > gcov/synopsis
+	gcov -o ${OBJ_DIR_TEST}/src/main/ ${OBJ_DIR_TEST}/src/main/*.o > gcov/synopsis
 	@for gcov in *.gcov;                                                         \
 	do                                                                           \
 	  source=$$(basename $$gcov .gcov);                                          \
