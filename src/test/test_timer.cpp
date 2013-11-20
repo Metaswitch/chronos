@@ -11,12 +11,15 @@ class TimerTest : public ::testing::Test
 protected:
   virtual void SetUp()
   {
+    std::vector<std::string> replicas;
+    replicas.push_back("10.0.0.1");
+    replicas.push_back("10.0.0.2");
     t1 = new Timer(1,
                    1000000,
                    100,
                    200,
                    0,
-                   std::vector<std::string>(1, "10.0.0.1"),
+                   replicas,
                    "http://localhost:80/callback",
                    "stuff stuff stuff");
   }
@@ -128,7 +131,7 @@ TEST_F(TimerTest, NextPopTime)
 
 TEST_F(TimerTest, URL)
 {
-  EXPECT_EQ("http://hostname/timers/1-10.0.0.1", t1->url("hostname"));
+  EXPECT_EQ("http://hostname/timers/1-10.0.0.1-10.0.0.2", t1->url("hostname"));
 }
 
 TEST_F(TimerTest, ToJSON)
@@ -140,7 +143,10 @@ TEST_F(TimerTest, ToJSON)
 
   // Note that we have to supply the correct replicas here as they're ignored
   // by the JSON parser.  Also use a new ID for sanity.
-  Timer* t2 = Timer::from_json(2, std::vector<std::string>(1, "10.0.0.1"), json, err);
+  std::vector<std::string> replicas;
+  replicas.push_back("10.0.0.1");
+  replicas.push_back("10.0.0.2");
+  Timer* t2 = Timer::from_json(2, replicas, json, err);
   EXPECT_EQ(err, "");
   ASSERT_NE((void*)NULL, t2);
 
@@ -148,8 +154,8 @@ TEST_F(TimerTest, ToJSON)
   EXPECT_EQ(1000000, t2->start_time) << json;
   EXPECT_EQ(100, t2->interval) << json;
   EXPECT_EQ(200, t2->repeat_for) << json;
-  EXPECT_EQ(1, t2->replication_factor) << json;
-  EXPECT_EQ(std::vector<std::string>(1, "10.0.0.1"), t2->replicas) << json;
+  EXPECT_EQ(2, t2->replication_factor) << json;
+  EXPECT_EQ(replicas, t2->replicas) << json;
   EXPECT_EQ("http://localhost:80/callback", t2->callback_url) << json;
   EXPECT_EQ("stuff stuff stuff", t2->callback_body) << json;
   delete t2;
@@ -158,7 +164,7 @@ TEST_F(TimerTest, ToJSON)
 TEST_F(TimerTest, IsLocal)
 {
   EXPECT_TRUE(t1->is_local("10.0.0.1"));
-  EXPECT_FALSE(t1->is_local("10.0.0.2"));
+  EXPECT_FALSE(t1->is_local("20.0.0.1"));
 }
 
 TEST_F(TimerTest, IsTombstone)
