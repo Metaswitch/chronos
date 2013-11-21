@@ -105,7 +105,9 @@ void TimerHandler::run() {
       else
       {
         rc = 0;
-        while ((_nearest_new_timer <= timer->next_pop_time()) && (rc != ETIMEDOUT))
+        while ((!_terminate) && 
+               (_nearest_new_timer <= timer->next_pop_time()) &&
+               (rc != ETIMEDOUT))
         {
           struct timespec next_pop;
           timer->next_pop_time(next_pop);
