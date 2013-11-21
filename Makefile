@@ -16,7 +16,7 @@ CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/tes
 LDFLAGS := -lrt -lpthread `curl-config --libs` -levent
 LDFLAGS_BUILD :=
 LDFLAGS_TEST := -lgtest -lgmock
-EXTRA_CLEANS :=
+EXTRA_CLEANS := gcov
 
 .PHONY: default
 default: build

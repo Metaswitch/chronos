@@ -108,7 +108,7 @@ clean:
 	rm -f ${TARGET_BIN}
 	rm -f ${TARGET_OBJS}
 	rm -f ${TARGET_OBJS_TEST}
-	rm -f ${EXTRA_CLEANS}
+	rm -rf ${EXTRA_CLEANS}
 	rm -f $(DEPS)
 
 
