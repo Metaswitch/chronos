@@ -40,6 +40,9 @@ public:
   // Convert this timer to it's own tombstone.
   void become_tombstone();
 
+  // Calculate/Guess at the replicas for this timer (using the replica hash if present)
+  void calculate_replicas(uint64_t);
+
   // Member variables
   TimerID id;
   unsigned long long start_time;
@@ -53,8 +56,8 @@ public:
 
   // Class functions
   static TimerID generate_timer_id();
-  static Timer* create_tombstone(TimerID);
-  static Timer* from_json(TimerID, std::vector<std::string>, std::string, std::string&);
+  static Timer* create_tombstone(TimerID, uint64_t);
+  static Timer* from_json(TimerID, uint64_t, std::string, std::string&, bool&);
 
   // Class variables
   static uint32_t deployment_id;

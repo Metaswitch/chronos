@@ -23,7 +23,6 @@ public:
 private:
   Replicator* _replicator;
   TimerHandler* _handler;
-  std::vector<std::string> _cluster;
 
   void send_error(struct evhttp_request*, int, const char*);
   std::string get_req_body(struct evhttp_request*);

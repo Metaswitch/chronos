@@ -101,6 +101,20 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
+// TODO
+void Timer::calculate_replicas(uint64_t replica_hash)
+{
+  if (replica_hash)
+  {
+    // Compare the hash to all the known replicas looking for matches.
+  }
+  else
+  {
+    // Pick replication-factor replicas from the cluster, using a hash of the ID
+    // to balance the choices.
+  }
+}
+
 uint32_t Timer::deployment_id = 0;
 uint32_t Timer::instance_id = 0;
 
@@ -149,11 +163,12 @@ TimerID Timer::generate_timer_id()
 // default expires of 10 seconds, if they're found to be
 // deleting an existing tombstone, they'll use that timer's
 // interval as an expiry.
-Timer* Timer::create_tombstone(TimerID id)
+Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
   Timer* tombstone = new Timer(id);
   tombstone->interval = 10 * 1000;
   tombstone->repeat_for = 10 * 1000;
+  tombstone->calculate_replicas(replica_hash);
   return tombstone;
 }
 
@@ -191,10 +206,11 @@ Timer* Timer::create_tombstone(TimerID id)
 // Create a Timer object from the JSON representation. 
 //
 // @param id - The unique identity for the timer (see generate_timer_id() above).
-// @param replicas - The previously calculated list of replicas for this timer (may be blank for a new timer).
+// @param replica_hash - The replica has extracted from the timer URL (or 0 for new timer).
 // @param json - The JSON representation of the timer.
 // @param error - This will be populated wiht a descriptive error string if required.
-Timer* Timer::from_json(TimerID id, std::vector<std::string> replicas, std::string json, std::string& error)
+// @param replicated - This will be set to true if this is a replica of a timer.
+Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std::string& error, bool& replicated)
 {
   Timer* timer = new Timer(id);
   rapidjson::Document doc;
@@ -273,7 +289,23 @@ Timer* Timer::from_json(TimerID id, std::vector<std::string> replicas, std::stri
   
   JSON_ASSERT_OBJECT(reliability, "reliability");
 
-  if (replicas.empty())
+  if (reliability.HasMember("replicas"))
+  {
+    rapidjson::Value& replicas = reliability["replicas"];
+    JSON_ASSERT_ARRAY(replicas, "replicas");
+
+    timer->replication_factor = replicas.Size();
+    for (auto it = replicas.Begin(); it != replicas.End(); it++)
+    {
+      JSON_ASSERT_STRING(*it, "replica address");
+      timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+    }
+
+    // The request had replicas specified, must be a replication request and we'll
+    // trust the given replicas.
+    replicated = true;
+  }
+  else
   {
     if (reliability.HasMember("replication-factor"))
     {
@@ -286,13 +318,11 @@ Timer* Timer::from_json(TimerID id, std::vector<std::string> replicas, std::stri
       // Default replication factor is 2.
       timer->replication_factor = 2;
     }
-
-    // The controller will allocate replicas for us based on the replication factor.
-  }
-  else
-  {
-    timer->replication_factor = replicas.size();
-    timer->replicas = replicas;
+  
+    // The replicas were not specified in the request, must be a client-initiated
+    // request.  Pick replicas, using the replica_hash if we have one.
+    replicated = false;
+    timer->calculate_replicas(replica_hash);
   }
   
   return timer;
