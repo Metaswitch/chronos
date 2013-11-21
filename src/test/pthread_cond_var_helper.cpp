@@ -1,10 +1,10 @@
 #include "pthread_cond_var_helper.h"
 
+#include <gtest/gtest.h>
 #include <cassert>
 #include <errno.h>
 
 MockPThreadCondVar::MockPThreadCondVar(pthread_mutex_t* mutex) : _state(SIGNALED),
-                                                                 _signaled(false),
                                                                  _mutex(mutex)
 {
   pthread_cond_init(&_cond, NULL);
@@ -60,7 +60,6 @@ int MockPThreadCondVar::timedwait(struct timespec* ts)
 
 int MockPThreadCondVar::signal()
 {
-  _signaled = true;
   _state = SIGNALED;
   pthread_cond_signal(&_cond);
   return 0;
@@ -69,14 +68,6 @@ int MockPThreadCondVar::signal()
 /*****************************************************************************/
 /* Test control functions.                                                   */
 /*****************************************************************************/
-
-// Consumes a signal from the SUT.
-bool MockPThreadCondVar::check_signaled()
-{
-  bool rc = _signaled;
-  _signaled = false;
-  return rc;
-}
 
 void MockPThreadCondVar::block_till_waiting()
 {
@@ -92,10 +83,37 @@ void MockPThreadCondVar::block_till_waiting()
 void MockPThreadCondVar::block_till_signaled()
 {
   lock();
-  while (!check_signaled())
+  while (_state != SIGNALED)
   {
     pthread_cond_wait(&_cond, _mutex);
   }
+  unlock();
+}
+
+void MockPThreadCondVar::check_timeout(const struct timespec& ts)
+{
+  lock();
+  EXPECT_EQ(TIMED_WAIT, _state);
+  EXPECT_EQ(ts.tv_sec, _timeout.tv_sec);
+  EXPECT_EQ(ts.tv_nsec, _timeout.tv_nsec);
+  unlock();
+}
+
+void MockPThreadCondVar::signal_wake()
+{
+  lock();
+  EXPECT_EQ(TIMED_WAIT, _state);
+  _state = SIGNALED;
+  pthread_cond_signal(&_cond);
+  unlock();
+}
+
+void MockPThreadCondVar::signal_timeout()
+{
+  lock();
+  EXPECT_EQ(TIMED_WAIT, _state);
+  _state = TIMEDOUT;
+  pthread_cond_signal(&_cond);
   unlock();
 }
 

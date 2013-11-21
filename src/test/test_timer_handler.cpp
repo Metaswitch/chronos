@@ -301,3 +301,81 @@ TEST_F(TestTimerHandler, AddSoonerTimer)
   delete timer1;
   delete timer2;
 }
+
+TEST_F(TestTimerHandler, LeakTest)
+{
+  Timer* timer = default_timer(1);
+  std::unordered_set<Timer*> timers;
+  timers.insert(timer);
+
+  // Make sure that the final call to get_next_timers actually returns some.  This
+  // test should still pass valgrind's checking without leaking the timer.
+  EXPECT_CALL(*_store, get_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(timers));
+
+  _th = new TimerHandler(_store, _replicator, _callback);
+  _cond()->block_till_waiting();
+}
+
+TEST_F(TestTimerHandler, FutureTimerLeakTest)
+{
+  Timer* timer = default_timer(1);
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000) + 100;
+  
+  std::unordered_set<Timer*> timers;
+  timers.insert(timer);
+
+  // Since this timer won't pop, and we're exiting from the 'have timers in hand' branch of
+  // the core loop, we'll not hit the store again.
+  EXPECT_CALL(*_store, get_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(timers));
+
+  _th = new TimerHandler(_store, _replicator, _callback);
+  _cond()->block_till_waiting();
+  _cond()->signal_wake();
+  _cond()->block_till_waiting();
+}
+
+TEST_F(TestTimerHandler, FutureTimerPop)
+{
+  Timer* timer = default_timer(1);
+  timer->interval = 100;
+  timer->repeat_for = 100;
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % 1000000);
+  timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  
+  std::unordered_set<Timer*> timers;
+  timers.insert(timer);
+
+  // After the timer pops, we'd expect to get a call back to get the next set of timers.
+  // Then the standard one more check during termination.
+  EXPECT_CALL(*_store, get_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(timers)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+  EXPECT_CALL(*_callback, perform(_, _, _)).WillOnce(Return(true));
+
+  _th = new TimerHandler(_store, _replicator, _callback);
+  _cond()->block_till_waiting();
+  usleep(100 * 1000);
+
+  // The handler should sleep for 100ms (timer interval)
+  if (ts.tv_nsec < 900 * 1000 * 1000)
+  {
+    ts.tv_nsec += 100 * 1000 * 1000;
+  }
+  else
+  {
+    ts.tv_nsec -= 900 * 1000 * 1000;
+    ts.tv_sec += 1;
+  }
+
+  _cond()->check_timeout(ts);
+  _cond()->signal_timeout();
+  _cond()->block_till_waiting();
+}

@@ -20,6 +20,7 @@ public:
   bool check_signaled();
   void block_till_waiting();
   void block_till_signaled();
+  void check_timeout(const struct timespec&);
   void lock();
   void unlock();
   void signal_wake();
