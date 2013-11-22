@@ -1,8 +1,11 @@
 #include "timer.h"
+#include "globals.h"
+#include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
 
 #include <sstream>
 #include <boost/format.hpp>
+#include <map>
 
 Timer::Timer(TimerID id,
              unsigned long long start_time,
@@ -107,11 +110,35 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   if (replica_hash)
   {
     // Compare the hash to all the known replicas looking for matches.
+    std::map<std::string, uint64_t> cluster_hashes;
+    __globals.get_cluster_hashes(cluster_hashes);
+    for (auto it = cluster_hashes.begin();
+         it != cluster_hashes.end();
+         it++)
+    {
+      if ((replica_hash & it->second) == it->second)
+      {
+        // This is probably a replica.
+        replication_factor++;
+        replicas.push_back(it->first);
+      }
+    }
   }
   else
   {
     // Pick replication-factor replicas from the cluster, using a hash of the ID
     // to balance the choices.
+    uint32_t hash;
+    MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
+    std::vector<std::string> cluster;
+    __globals.get_cluster_addresses(cluster);
+    unsigned int first_replica = hash % cluster.size();
+    for (unsigned int ii = 0;
+         ii < replication_factor && ii < cluster.size();
+         ii++)
+    {
+      replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
+    }
   }
 }
 

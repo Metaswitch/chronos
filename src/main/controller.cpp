@@ -170,17 +170,3 @@ std::string Controller::get_req_body(struct evhttp_request* req)
   }
   return rc;
 }
-
-void Controller::calculate_replicas(Timer* timer)
-{
-  uint32_t hash;
-  MurmurHash3_x86_32(&timer->id, sizeof(TimerID), 0x0, &hash);
-  std::vector<std::string> cluster = __globals.get_cluster_addresses();
-  unsigned int first_replica = hash % cluster.size();
-  for (unsigned int ii = 0;
-       ii < timer->replication_factor && ii < cluster.size();
-       ii++)
-  {
-    timer->replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
-  }
-}

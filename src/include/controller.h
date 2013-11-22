@@ -26,7 +26,6 @@ private:
 
   void send_error(struct evhttp_request*, int, const char*);
   std::string get_req_body(struct evhttp_request*);
-  void calculate_replicas(Timer*);
 };
 
 #endif
