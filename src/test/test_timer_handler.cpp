@@ -69,6 +69,8 @@ TEST_F(TestTimerHandler, PopOneTimer)
   EXPECT_CALL(*_callback, perform(timer->callback_url, timer->callback_body, 1)).
                           WillOnce(Return(true));
 
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(1);
+
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(1);
 
   _th = new TimerHandler(_store, _replicator, _callback);
@@ -92,6 +94,9 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer->callback_url, timer->callback_body, 2)).
                           WillOnce(Return(true));
+
+  EXPECT_CALL(*_replicator, replicate(timer)).Times(1);
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(1);
 
   EXPECT_CALL(*_store, add_timer(_)).Times(1);
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(1);
@@ -117,6 +122,8 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 1)).
                           WillOnce(Return(true));
+
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(2);
   
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
@@ -143,6 +150,8 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 1)).
                           WillOnce(Return(true));
+
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(2);
 
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
@@ -177,6 +186,10 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 2)).
                           WillOnce(Return(true));
+
+  EXPECT_CALL(*_replicator, replicate(timer1)).Times(1);
+  EXPECT_CALL(*_replicator, replicate(timer2)).Times(1);
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(2);
 
   EXPECT_CALL(*_store, add_timer(timer1)).Times(1);
   EXPECT_CALL(*_store, add_timer(timer2)).Times(1);
@@ -225,6 +238,8 @@ TEST_F(TestTimerHandler, EmptyStore)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 1)).
                           WillOnce(Return(true));
+
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(2);
 
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
@@ -371,6 +386,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_callback, perform(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(1);
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(1);
 
   _th = new TimerHandler(_store, _replicator, _callback);

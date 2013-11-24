@@ -175,7 +175,7 @@ void TimerHandler::pop(Timer* timer)
       timer->become_tombstone();
     }
     _store->add_timer(timer);
-    // _replicator->replicate(timer);
+    _replicator->replicate(timer);
   }
   else
   {

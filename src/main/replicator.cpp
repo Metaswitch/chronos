@@ -1,4 +1,5 @@
 #include "replicator.h"
+#include "globals.h"
 
 #include <cstring>
 
@@ -21,9 +22,16 @@ Replicator::~Replicator()
 void Replicator::replicate(Timer* timer)
 {
   CURL* curl = get_curl_handle();
+  std::string localhost;
+  __globals.get_local_ip(localhost);
 
   for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
   {
+    if (*it == localhost)
+    {
+      continue;
+    }
+
     // TODO This should use cURL's multi-mode to parallelize requests.
     
     // Need to make copy of the body since sending is destructive.
