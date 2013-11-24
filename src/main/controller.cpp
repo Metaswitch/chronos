@@ -125,8 +125,9 @@ void Controller::handle_request(struct evhttp_request* req)
   }
 
   // If the timer belongs to the local node, store it.
-  // TODO Use real local address.
-  if (timer->is_local("localhost"))
+  std::string localhost;
+  __globals.get_local_ip(localhost);
+  if (timer->is_local(localhost))
   {
     _handler->add_timer(timer);
     timer = NULL;
