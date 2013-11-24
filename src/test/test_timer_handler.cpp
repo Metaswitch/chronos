@@ -40,6 +40,8 @@ protected:
   TimerHandler* _th;
 };
 
+MATCHER(IsTombstone, "is a tombstone") { return arg->is_tombstone(); }
+
 /*****************************************************************************/
 /* Instance function tests                                                   */
 /*****************************************************************************/
@@ -67,6 +69,8 @@ TEST_F(TestTimerHandler, PopOneTimer)
   EXPECT_CALL(*_callback, perform(timer->callback_url, timer->callback_body, 1)).
                           WillOnce(Return(true));
 
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(1);
+
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
 }
@@ -90,6 +94,7 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
                           WillOnce(Return(true));
 
   EXPECT_CALL(*_store, add_timer(_)).Times(1);
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(1);
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
@@ -112,6 +117,8 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 1)).
                           WillOnce(Return(true));
+  
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
@@ -136,6 +143,8 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
                           WillOnce(Return(true));
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 1)).
                           WillOnce(Return(true));
+
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
@@ -171,6 +180,7 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
 
   EXPECT_CALL(*_store, add_timer(timer1)).Times(1);
   EXPECT_CALL(*_store, add_timer(timer2)).Times(1);
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
@@ -216,10 +226,12 @@ TEST_F(TestTimerHandler, EmptyStore)
   EXPECT_CALL(*_callback, perform(timer2->callback_url, timer2->callback_body, 1)).
                           WillOnce(Return(true));
 
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
+
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
 
-  // The first timer has been handled, but the store's now emtpy.  Pretend the store
+  // The first timer has been handled, but the store's now empty.  Pretend the store
   // gained a timer and signal the handler thread.
   _cond()->signal();
   _cond()->block_till_waiting();
@@ -359,6 +371,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_callback, perform(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(1);
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();

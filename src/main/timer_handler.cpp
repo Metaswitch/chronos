@@ -157,23 +157,25 @@ void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 // reset the timer for another pop, otherwise destroy the timer record.
 void TimerHandler::pop(Timer* timer)
 {
+  // Tombstones are reaped when they pop.
+  if (timer->is_tombstone())
+  {
+    delete timer;
+    return;
+  }
+
   timer->sequence_number++;
   bool success = _callback->perform(timer->callback_url,
                                     timer->callback_body,
                                     timer->sequence_number);
   if (success)
   {
-    if ((timer->sequence_number + 1) * timer->interval <= timer->repeat_for)
+    if ((timer->sequence_number + 1) * timer->interval > timer->repeat_for)
     {
-      // TODO replicate the message
-      _store->add_timer(timer);
-      //_replicator->replicate(timer);
+      timer->become_tombstone();
     }
-    else
-    {
-      // TODO Create a tombstone and replicate it.
-      delete timer;
-    }
+    _store->add_timer(timer);
+    // _replicator->replicate(timer);
   }
   else
   {
