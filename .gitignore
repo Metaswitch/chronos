@@ -1,7 +1,5 @@
 *~
 /build/
 /gcov/
-*.o
-*.d
 *.swp
 tags
