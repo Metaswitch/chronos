@@ -1,0 +1,7 @@
+/changelog
+/chronos/
+/chronos-dbg/
+/*.debhelper.log
+/*.substvars
+/debhelper.log
+/files

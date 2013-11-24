@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+export DH_OPTIONS
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	dh_auto_build -- -j 5
+
+override_dh_auto_test:
+	dh_auto_test -- -j 5
+
+override_dh_auto_install:
+	# No-op
+ 
+override_dh_installinit:
+	dh_installinit --no-start -u"defaults 70 30"
+
+override_dh_strip:
+	dh_strip -pchronos --dbg-package=chronos-dbg

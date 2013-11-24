@@ -23,6 +23,12 @@ default: build
 
 include ${ROOT}/mk/platform.mk
 
+DEB_COMPONENT := chronos
+DEB_MAJOR_VERSION := 1.0
+DEB_NAMES := chronos chronos-dbg
+
+include build-infra/cw-deb.mk
+
 .PHONY: test
 test: build_test
 	${TARGET_BIN_TEST}
