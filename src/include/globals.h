@@ -36,6 +36,7 @@ public:
   GLOBAL(cluster_hashes, std::map<std::string, uint64_t>);
   GLOBAL(cluster_addresses, std::vector<std::string>);
 
+public:
   void lock() { pthread_rwlock_wrlock(&_lock); }
   void unlock() { pthread_rwlock_unlock(&_lock); }
 
