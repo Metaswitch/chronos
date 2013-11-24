@@ -34,8 +34,18 @@ Timer::~Timer()
 // Returns the next pop time in ms.
 unsigned long long Timer::next_pop_time()
 {
-  // TODO add replication skew
-  return start_time + ((sequence_number + 1) * interval);
+  std::string localhost;
+  int replica_index = 0;
+  __globals.get_local_ip(localhost);
+  for (auto it = replicas.begin(); it != replicas.end(); it++, replica_index++)
+  {
+    if (*it == localhost)
+    {
+      break;
+    }
+  }
+
+  return start_time + ((sequence_number + 1) * interval) + (replica_index * 2 * 1000);
 }
 
 // Construct a timespec describing the next pop time.
