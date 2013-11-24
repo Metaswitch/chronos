@@ -1,0 +1,5 @@
+check process chronos with pidfile /var/run/chronos.pid
+  start program = "/etc/init.d/chronos start"
+  stop program = "/etc/init.d/chronos stop"
+  if failed host localhost port 7253 type tcp
+    protocol http and request "/ping" then restart
