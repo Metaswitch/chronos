@@ -165,6 +165,7 @@ void TimerHandler::pop(Timer* timer)
   {
     if ((timer->sequence_number + 1) * timer->interval <= timer->repeat_for)
     {
+      // TODO replicate the message
       _store->add_timer(timer);
       //_replicator->replicate(timer);
     }
