@@ -104,7 +104,6 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
-// TODO
 void Timer::calculate_replicas(uint64_t replica_hash)
 {
   if (replica_hash)
@@ -112,6 +111,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     // Compare the hash to all the known replicas looking for matches.
     std::map<std::string, uint64_t> cluster_hashes;
     __globals.get_cluster_hashes(cluster_hashes);
+    replication_factor = 0;
     for (auto it = cluster_hashes.begin();
          it != cluster_hashes.end();
          it++)
@@ -320,6 +320,11 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   {
     rapidjson::Value& replicas = reliability["replicas"];
     JSON_ASSERT_ARRAY(replicas, "replicas");
+
+    if (replicas.Size() == 0)
+    {
+      JSON_PARSE_ERROR("If replicas is specified it must be non-empty");
+    }
 
     timer->replication_factor = replicas.Size();
     for (auto it = replicas.Begin(); it != replicas.End(); it++)

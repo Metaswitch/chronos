@@ -29,7 +29,7 @@ protected:
     timers[2]->interval = (3600 * 1000) + 300;
 
     // Create an out of the blue tombstone for timer one.
-    tombstone = Timer::create_tombstone(1);
+    tombstone = Timer::create_tombstone(1, 0);
     tombstone->start_time = timers[0]->start_time + 50;
   }
 
