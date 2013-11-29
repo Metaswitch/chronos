@@ -55,6 +55,8 @@ void Controller::handle_request(struct evhttp_request* req)
   evhttp_uri_free(decoded);
   decoded = NULL;
 
+  std::cout << "Request: " << path << std::endl;
+
   // Also need to check the user has supplied a valid method:
   //
   //  * POST to the collection
@@ -112,6 +114,8 @@ void Controller::handle_request(struct evhttp_request* req)
       return;
     }
   }
+
+  std::cout << "Sending 200 OK response" << std::endl;
 
   // Now we have a valid timer object, reply to the HTTP request.
   evhttp_add_header(evhttp_request_get_output_headers(req),

@@ -1,5 +1,6 @@
 #include <time.h>
 #include <cstring>
+#include <iostream>
 
 #include "timer_handler.h"
 
@@ -59,6 +60,7 @@ TimerHandler::~TimerHandler()
 
 void TimerHandler::add_timer(Timer* timer)
 {
+  std::cout << "Adding timer: " << timer->id << std::endl;
   pthread_mutex_lock(&_mutex);
   _store->add_timer(timer);
   signal_new_timer(timer->next_pop_time());
