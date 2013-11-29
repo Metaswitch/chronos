@@ -5,6 +5,7 @@
 #include "callback.h"
 #include "http_callback.h"
 #include "controller.h"
+#include "globals.h"
 
 #include <iostream>
 #include <cassert>
@@ -15,6 +16,9 @@ int main(int argc, char** argv)
 {
   // Initialize cURL before creating threads
   curl_global_init(CURL_GLOBAL_DEFAULT);
+
+  // Initialize the global configuration.
+  __globals.update_config();
 
   // Create components
   TimerStore *store = new TimerStore();
@@ -47,7 +51,11 @@ int main(int argc, char** argv)
   evhttp_set_gencb(http, Controller::controller_cb, controller);
 
   // Bind to the correct port
-  evhttp_bind_socket(http, "0.0.0.0", 7253);
+  std::string bind_address;
+  int bind_port;
+  __globals.get_bind_address(bind_address);
+  __globals.get_bind_port(bind_port);
+  evhttp_bind_socket(http, bind_address.c_str(), bind_port);
 
   // Start the reactor, this blocks the current thread
   event_base_dispatch(base);

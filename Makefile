@@ -13,7 +13,7 @@ INCLUDE_DIR := ${ROOT}/src/include
 CPPFLAGS := -pedantic -g -I${INCLUDE_DIR} -std=c++0x `curl-config --cflags` -Werror
 CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/
-LDFLAGS := -lrt -lpthread `curl-config --libs` -levent
+LDFLAGS := -lrt -lpthread `curl-config --libs` -levent -lboost_program_options
 LDFLAGS_BUILD :=
 LDFLAGS_TEST := -lgtest -lgmock
 EXTRA_CLEANS := gcov

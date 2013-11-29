@@ -26,7 +26,7 @@ protected:
                    "stuff stuff stuff");
     __globals.lock();
     std::string localhost = "10.0.0.1";
-    __globals.set_local_ip(localhost);
+    __globals.set_cluster_local_ip(localhost);
     std::vector<std::string> cluster_addresses;
     cluster_addresses.push_back("10.0.0.1");
     cluster_addresses.push_back("10.0.0.2");

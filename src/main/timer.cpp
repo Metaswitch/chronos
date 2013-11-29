@@ -36,7 +36,7 @@ unsigned long long Timer::next_pop_time()
 {
   std::string localhost;
   int replica_index = 0;
-  __globals.get_local_ip(localhost);
+  __globals.get_cluster_local_ip(localhost);
   for (auto it = replicas.begin(); it != replicas.end(); it++, replica_index++)
   {
     if (*it == localhost)
