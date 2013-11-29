@@ -27,6 +27,7 @@ protected:
     __globals.lock();
     std::string localhost = "10.0.0.1";
     __globals.set_cluster_local_ip(localhost);
+    __globals.set_bind_address(localhost);
     std::vector<std::string> cluster_addresses;
     cluster_addresses.push_back("10.0.0.1");
     cluster_addresses.push_back("10.0.0.2");
@@ -37,6 +38,8 @@ protected:
     cluster_hashes["10.0.0.2"] = 0x10001000001000;
     cluster_hashes["10.0.0.3"] = 0x01000100000100;
     __globals.set_cluster_hashes(cluster_hashes);
+    int bind_port = 1234;
+    __globals.set_bind_port(bind_port);
     __globals.unlock();
   }
 
@@ -185,7 +188,7 @@ TEST_F(TimerTest, NextPopTime)
 
 TEST_F(TimerTest, URL)
 {
-  EXPECT_EQ("http://hostname/timers/000000010010011000011001", t1->url("hostname"));
+  EXPECT_EQ("http://hostname:1234/timers/000000010010011000011001", t1->url("hostname"));
 }
 
 TEST_F(TimerTest, ToJSON)

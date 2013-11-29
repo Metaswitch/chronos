@@ -75,6 +75,7 @@ TEST_F(TestTimerHandler, PopOneTimer)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
+  delete timer;
 }
 
 TEST_F(TestTimerHandler, PopRepeatedTimer)
@@ -103,6 +104,7 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
+  delete timer;
 }
 
 TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
@@ -129,6 +131,8 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
+  delete timer1;
+  delete timer2;
 }
 
 TEST_F(TestTimerHandler, PopMultipleTimersSeries)
@@ -157,6 +161,8 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
+  delete timer1;
+  delete timer2;
 }
 
 TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
@@ -197,6 +203,8 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
+  delete timer1;
+  delete timer2;
 }
 
 TEST_F(TestTimerHandler, FailedCallback)
@@ -250,6 +258,8 @@ TEST_F(TestTimerHandler, EmptyStore)
   // gained a timer and signal the handler thread.
   _cond()->signal();
   _cond()->block_till_waiting();
+  delete timer1;
+  delete timer2;
 }
 
 TEST_F(TestTimerHandler, AddTimer)
@@ -270,63 +280,6 @@ TEST_F(TestTimerHandler, AddTimer)
   _cond()->block_till_waiting();
 
   delete timer;
-}
-
-TEST_F(TestTimerHandler, AddLaterTimer)
-{
-  Timer* timer1 = default_timer(1);
-  Timer* timer2 = default_timer(2);
-  timer2->interval += 100;
-
-  // When we add the first new timer, we'll poll the store for it, expect an extra
-  // call to get_next_timers().  We shouldn't expect a poll on the second add as
-  // the new timer will pop later than the one we added first.
-  EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-  EXPECT_CALL(*_store, add_timer(timer1)).Times(1);
-  EXPECT_CALL(*_store, add_timer(timer2)).Times(1);
-  _th = new TimerHandler(_store, _replicator, _callback);
-  _cond()->block_till_waiting();
-
-  _th->add_timer(timer1);
-  _cond()->block_till_waiting();
-
-  _th->add_timer(timer2);
-  _cond()->block_till_waiting();
-
-  delete timer1;
-  delete timer2;
-}
-
-TEST_F(TestTimerHandler, AddSoonerTimer)
-{
-  Timer* timer1 = default_timer(1);
-  Timer* timer2 = default_timer(2);
-  timer2->interval /= 2;
-
-  // When we add the first new timer, we'll poll the store for it, expect an extra
-  // call to get_next_timers().  Expect another poll on the second add as
-  // the new timer will pop sooner than the one we added first.
-  EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-  EXPECT_CALL(*_store, add_timer(timer1)).Times(1);
-  EXPECT_CALL(*_store, add_timer(timer2)).Times(1);
-  _th = new TimerHandler(_store, _replicator, _callback);
-  _cond()->block_till_waiting();
-
-  _th->add_timer(timer1);
-  _cond()->block_till_waiting();
-
-  _th->add_timer(timer2);
-  _cond()->block_till_waiting();
-
-  delete timer1;
-  delete timer2;
 }
 
 TEST_F(TestTimerHandler, LeakTest)
@@ -407,4 +360,5 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   _cond()->check_timeout(ts);
   _cond()->signal_timeout();
   _cond()->block_till_waiting();
+  delete timer;
 }
