@@ -65,7 +65,7 @@ void Controller::handle_request(struct evhttp_request* req)
   
   std::smatch matches;
   TimerID timer_id;
-  uint64_t replica_hash;
+  uint64_t replica_hash = 0;
   if ((path == "/timers") || (path == "/timers/"))
   {
     if (method != EVHTTP_REQ_POST)
