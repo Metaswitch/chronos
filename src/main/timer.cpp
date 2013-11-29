@@ -3,7 +3,9 @@
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
 
+#include <iostream>
 #include <sstream>
+#include <iomanip>
 #include <boost/format.hpp>
 #include <map>
 
@@ -60,11 +62,23 @@ void Timer::next_pop_time(struct timespec& ts)
 std::string Timer::url(std::string host)
 {
   std::stringstream ss;
-  ss << "http://" << host << "/timers/" << id;
+
+  int bind_port;
+  __globals.get_bind_port(bind_port);
+
+  ss << "http://" << host << ":" << bind_port << "/timers/";
+  ss << std::setfill('0') << std::setw(8) << std::hex << id;
+
+  uint64_t hash = 0;
+  std::map<std::string, uint64_t> cluster_hashes;
+  __globals.get_cluster_hashes(cluster_hashes);
   for (auto it = replicas.begin(); it != replicas.end(); it++)
   {
-    ss << "-" << (*it);
+    hash |= cluster_hashes[*it];
   }
+  ss << std::setfill('0') << std::setw(16) << std::hex << hash;
+
+
   return ss.str();
 }
 
@@ -150,6 +164,13 @@ void Timer::calculate_replicas(uint64_t replica_hash)
       replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
     }
   }
+
+  std::cout << "Replicas calculated: ";
+  for (auto it = replicas.begin(); it != replicas.end(); it++)
+  {
+    std::cout << *it;
+  }
+  std::cout << std::endl;
 }
 
 uint32_t Timer::deployment_id = 0;

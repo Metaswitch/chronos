@@ -185,7 +185,7 @@ TEST_F(TimerTest, NextPopTime)
 
 TEST_F(TimerTest, URL)
 {
-  EXPECT_EQ("http://hostname/timers/1-10.0.0.1-10.0.0.2", t1->url("hostname"));
+  EXPECT_EQ("http://hostname/timers/000000010010011000011001", t1->url("hostname"));
 }
 
 TEST_F(TimerTest, ToJSON)
