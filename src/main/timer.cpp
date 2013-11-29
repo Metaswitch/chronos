@@ -125,6 +125,9 @@ void Timer::become_tombstone()
 {
   callback_url = "";
   callback_body = "";
+
+  // Since we're not bringing the start-time forward we have to extend the
+  // repeat-for to ensure the tombstone gets added to the replica's store.
   repeat_for = interval * (sequence_number + 1);
 }
 

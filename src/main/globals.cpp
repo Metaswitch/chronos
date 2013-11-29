@@ -83,7 +83,7 @@ uint64_t Globals::generate_hash(std::string data)
     for (int jj = 0; jj < 2; jj++)
     {
       int bit = hash[jj] % 64;
-      rc |= (1 << bit);
+      rc |= ((uint64_t)1 << bit);
     }
   }
 

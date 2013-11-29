@@ -80,6 +80,8 @@ void TimerHandler::run() {
   {
     if (next_timers.empty())
     {
+      // We have no timers, the next added timer will wake us
+      _nearest_new_timer = -1;
       _cond->wait();
       _store->get_next_timers(next_timers);
     }
