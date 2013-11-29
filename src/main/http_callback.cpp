@@ -8,6 +8,7 @@ HTTPCallback::HTTPCallback()
   _curl = curl_easy_init();
 
   curl_easy_setopt(_curl, CURLOPT_POST, 1);
+  curl_easy_setopt(_curl, CURLOPT_VERBOSE, 1);
 }
 
 HTTPCallback::~HTTPCallback()
