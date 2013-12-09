@@ -9,6 +9,8 @@ Replicator::Replicator()
 
   // Tell cURL to perform a POST but to call it a PUT, this allows
   // us to easily pass a JSON body as a string.
+  //
+  // http://curl.haxx.se/mail/lib-2009-11/0001.html
   curl_easy_setopt(_curl, CURLOPT_POST, 1);
   curl_easy_setopt(_curl, CURLOPT_CUSTOMREQUEST, "PUT");
   curl_easy_setopt(_curl, CURLOPT_VERBOSE, 1);
@@ -39,7 +41,7 @@ void Replicator::replicate(Timer* timer)
     std::cout << "Replicating to :" << url << std::endl;
 
     struct curl_slist* headers = NULL;
-    headers = curl_slist_append(headers, "Content-Type: aplication/json");
+    headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, body.c_str());

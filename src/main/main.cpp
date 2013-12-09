@@ -32,14 +32,14 @@ int main(int argc, char** argv)
   // Create an event reactor.
   struct event_base* base = event_base_new();
   if (!base) {
-    fprintf(stderr, "Couldn't create an event_base: exiting\n");
+    std::cerr << "Couldn't create an event_base: exiting" << std::endl;
     return 1;
   }
 
   // Create an HTTP server instance.
   struct evhttp* http = evhttp_new(base);
   if (!http) {
-    fprintf(stderr, "couldn't create evhttp. Exiting.\n");
+    std::cerr << "Couldn't create evhttp: exiting" << std::endl;
     return 1;
   }
 

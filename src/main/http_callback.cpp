@@ -29,7 +29,7 @@ bool HTTPCallback::perform(std::string url, std::string encoded_body, unsigned i
   struct curl_slist* headers = NULL;
   headers = curl_slist_append(headers, (std::string("X-Sequence-Number: ") +
                                         std::to_string(sequence_number)).c_str());
-  headers = curl_slist_append(headers, "Content-Type: aplication/octet-stream");
+  headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
   curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode curl_rc = curl_easy_perform(_curl);

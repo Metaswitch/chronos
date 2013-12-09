@@ -9,23 +9,16 @@
 #include <boost/format.hpp>
 #include <map>
 
-Timer::Timer(TimerID id,
-             unsigned long long start_time,
-             unsigned int interval,
-             unsigned int repeat_for,
-             unsigned int sequence_number,
-             std::vector<std::string> replicas,
-             std::string callback_url,
-             std::string callback_body) :
+Timer::Timer(TimerID id) :
   id(id),
-  start_time(start_time),
-  interval(interval),
-  repeat_for(repeat_for),
-  sequence_number(sequence_number),
-  replication_factor(replicas.size()),
-  replicas(replicas),
-  callback_url(callback_url),
-  callback_body(callback_body)
+  start_time(0),
+  interval(0),
+  repeat_for(0),
+  sequence_number(0),
+  replicas(std::vector<std::string>()),
+  callback_url(""),
+  callback_body(""),
+  _replication_factor(0)
 {
 }
                    
@@ -66,6 +59,8 @@ std::string Timer::url(std::string host)
   int bind_port;
   __globals.get_bind_port(bind_port);
 
+  // Here (and below) we render the timer ID (and replica hash) as 0-padded
+  // hex strings so we can parse it back out later easily.
   ss << "http://" << host << ":" << bind_port << "/timers/";
   ss << std::setfill('0') << std::setw(8) << std::hex << id;
 
@@ -138,15 +133,18 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     // Compare the hash to all the known replicas looking for matches.
     std::map<std::string, uint64_t> cluster_hashes;
     __globals.get_cluster_hashes(cluster_hashes);
-    replication_factor = 0;
+    _replication_factor = 0;
     for (auto it = cluster_hashes.begin();
          it != cluster_hashes.end();
          it++)
     {
+      // Quickly check if this replica might be one of the replicas for the 
+      // given timer (i.e. if the replica's individual hash collides with the 
+      // bloom filter we calculated when we created the hash (see `url()`).
       if ((replica_hash & it->second) == it->second)
       {
         // This is probably a replica.
-        replication_factor++;
+        _replication_factor++;
         replicas.push_back(it->first);
       }
     }
@@ -161,7 +159,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     __globals.get_cluster_addresses(cluster);
     unsigned int first_replica = hash % cluster.size();
     for (unsigned int ii = 0;
-         ii < replication_factor && ii < cluster.size();
+         ii < _replication_factor && ii < cluster.size();
          ii++)
     {
       replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
@@ -226,6 +224,7 @@ TimerID Timer::generate_timer_id()
 // interval as an expiry.
 Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
+  // Create a tombstone record that will last for 10 seconds.
   Timer* tombstone = new Timer(id);
   tombstone->interval = 10 * 1000;
   tombstone->repeat_for = 10 * 1000;
@@ -267,9 +266,9 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // Create a Timer object from the JSON representation. 
 //
 // @param id - The unique identity for the timer (see generate_timer_id() above).
-// @param replica_hash - The replica has extracted from the timer URL (or 0 for new timer).
+// @param replica_hash - The replica hash extracted from the timer URL (or 0 for new timer).
 // @param json - The JSON representation of the timer.
-// @param error - This will be populated wiht a descriptive error string if required.
+// @param error - This will be populated with a descriptive error string if required.
 // @param replicated - This will be set to true if this is a replica of a timer.
 Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std::string& error, bool& replicated)
 {
@@ -360,7 +359,7 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
       JSON_PARSE_ERROR("If replicas is specified it must be non-empty");
     }
 
-    timer->replication_factor = replicas.Size();
+    timer->_replication_factor = replicas.Size();
     for (auto it = replicas.Begin(); it != replicas.End(); it++)
     {
       JSON_ASSERT_STRING(*it, "replica address");
@@ -377,12 +376,12 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     {
       rapidjson::Value& replication_factor = reliability["replication-factor"];
       JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
-      timer->replication_factor = replication_factor.GetInt();
+      timer->_replication_factor = replication_factor.GetInt();
     }
     else
     {
       // Default replication factor is 2.
-      timer->replication_factor = 2;
+      timer->_replication_factor = 2;
     }
   
     // The replicas were not specified in the request, must be a client-initiated

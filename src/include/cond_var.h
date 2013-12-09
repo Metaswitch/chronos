@@ -3,6 +3,11 @@
 
 #include <pthread.h>
 
+// This class wraps a condition varable and mutex together and offers a C++ interface.
+//
+// Apart from the more C++-like interface benefit, this also allows us to mock out
+// condition variables in the UT framework (see MockPThreadCondVar for the mock 
+// implementation).
 class CondVar
 {
 public:

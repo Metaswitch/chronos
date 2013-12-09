@@ -15,7 +15,7 @@ protected:
     ts = new TimerStore();
 
     // Force the current time to a known value.
-    ts->_current_second = 1000000;
+    ts->_first_bucket_timestamp = 1000000;
 
     for (int ii = 0; ii < 3; ii++)
     {
@@ -41,8 +41,6 @@ protected:
   }
 
   // Accessors into private variables.
-  unsigned long long& _current_second() { return ts->_current_second; };
-
   std::unordered_set<Timer*>& _ten_ms_buckets(int ii) { return (ts->_ten_ms_buckets[ii]); }
 
   std::unordered_set<Timer*>& _s_buckets(int ii) { return (ts->_s_buckets[ii]); }

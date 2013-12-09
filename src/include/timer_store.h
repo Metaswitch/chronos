@@ -16,11 +16,11 @@ public:
   virtual ~TimerStore();
 
   // Add a timer to the store.
-  virtual void add_timer(Timer *);
+  virtual void add_timer(Timer*);
   virtual void add_timers(std::unordered_set<Timer*>&);
 
   // Remove a timer by ID from the store.
-  virtual void delete_timer(TimerID timer_id);
+  virtual void delete_timer(TimerID);
 
   // Get the next bucket of timers to pop.
   virtual void get_next_timers(std::unordered_set<Timer*>&);
@@ -34,18 +34,18 @@ private:
   std::map<TimerID, Timer *> _timer_lookup_table;
 
   // 10ms buckets of timers (up to 1 second)
-  int _current_ms;
+  int _current_ms_bucket;
   std::unordered_set<Timer *> _ten_ms_buckets[100];
 
   // 1sec buckets of timers (up to 1 hour)
-  int _current_s;
+  int _current_s_bucket;
   std::unordered_set<Timer *> _s_buckets[NUM_SECOND_BUCKETS];
 
   // Heap of longer-lived timers (> 1hr)
   std::vector<Timer *> _extra_heap;
 
   // Current (ms) timestamp of the 0th bucket.
-  unsigned long long _current_second;
+  unsigned long long _first_bucket_timestamp;
 
   // Utility functions to replenish the buckets for each layer
   void refill_ms_buckets();

@@ -67,6 +67,12 @@ void TimerHandler::add_timer(Timer* timer)
   pthread_mutex_unlock(&_mutex);
 }
 
+// The core function in the timer handler, basic principle is to loop around repeatedly
+// retrieving timers from the store, waiting until they need to pop and popping them.
+//
+// If there are no timers in the store at all, we wait forever for one to be added (or
+// until we're terminated).  If we are woken while waiting for one set of timers to 
+// pop, check the timer store to make sure we're holding the nearest timers.
 void TimerHandler::run() {
   std::unordered_set<Timer*> next_timers;
   std::unordered_set<Timer*>::iterator sample_timer;
@@ -115,6 +121,7 @@ void TimerHandler::run() {
         {
           struct timespec next_pop;
           timer->next_pop_time(next_pop);
+          _nearest_new_timer = timer->next_pop_time();
           rc = _cond->timedwait(&next_pop);
           if (rc < 0 && rc != ETIMEDOUT)
           {
@@ -146,7 +153,7 @@ void TimerHandler::run() {
 /* PRIVATE FUNCTIONS                                                         */
 /*****************************************************************************/
 
-// Used to pop a set of timers, this function takes ownership of the timers and
+// Pop a set of timers, this function takes ownership of the timers and
 // thus empties the passed in set.
 void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 {
@@ -174,6 +181,8 @@ void TimerHandler::pop(Timer* timer)
                                     timer->sequence_number);
   if (success)
   {
+    // Check if the next pop occurs before the repeat-for interval and,
+    // if not, convert to a tombstone to indicate the timer is dead.
     if ((timer->sequence_number + 1) * timer->interval > timer->repeat_for)
     {
       timer->become_tombstone();
@@ -183,7 +192,7 @@ void TimerHandler::pop(Timer* timer)
   }
   else
   {
-    printf("WARN: Failed to process callback for %u\n", timer->id);
+    std::cout << "WARN: Failed to process callback for " << timer->id << std::endl;
     delete timer;
   }
 }

@@ -6,7 +6,7 @@
 #include "timer.h"
 
 // This class is used to replicate timers to the specified replicas, using cURL
-// to handle the HTTP construcion and sending.
+// to handle the HTTP construction and sending.
 class Replicator
 {
 public:

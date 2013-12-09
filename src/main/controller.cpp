@@ -61,6 +61,7 @@ void Controller::handle_request(struct evhttp_request* req)
   //
   //  * POST to the collection
   //  * PUT to a specific ID
+  //  * DELETE to a specific ID
   evhttp_cmd_type method = evhttp_request_get_command(req);
   
   std::smatch matches;

@@ -9,15 +9,11 @@ typedef unsigned int TimerID;
 class Timer
 {
 public:
-  Timer(TimerID,
-        unsigned long long = 0,
-        unsigned int = 0,
-        unsigned int = 0,
-        unsigned int = 0,
-        std::vector<std::string> = std::vector<std::string>(),
-        std::string = "",
-        std::string = "");
+  Timer(TimerID);
   ~Timer();
+
+  // For testing purposes.
+  friend class TestTimer;
 
   // Returns the next time to pop in ms after epoch
   unsigned long long next_pop_time();
@@ -37,24 +33,28 @@ public:
   // Check if a timer is a tombstone record.
   bool is_tombstone();
 
-  // Convert this timer to it's own tombstone.
+  // Convert this timer to its own tombstone.
   void become_tombstone();
 
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
 
-  // Member variables
+  // Member variables (mostly public since this is pretty much a struct with utility
+  // functions, rather than a full-blown object).
   TimerID id;
   unsigned long long start_time;
   unsigned int interval;
   unsigned int repeat_for;
   unsigned int sequence_number;
-  unsigned int replication_factor;
   std::vector<std::string> replicas;
   std::string callback_url;
   std::string callback_body;
 
+private:
+  unsigned int _replication_factor;
+
   // Class functions
+public:
   static TimerID generate_timer_id();
   static Timer* create_tombstone(TimerID, uint64_t);
   static Timer* from_json(TimerID, uint64_t, std::string, std::string&, bool&);
