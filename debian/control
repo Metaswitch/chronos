@@ -1,0 +1,19 @@
+Source: chronos
+Section: network
+Priority: optional
+Maintainer: Project Clearwater Maintainers <maintainers@projectclearwater.org>
+Build-Depends: debhelper (>= 8.0.0), devscripts, build-essential, libboost-dev
+Standards-Version: 3.9.2
+Homepage: http://bitbucket.com/Metaswitch/chronos
+
+Package: chronos
+Architecture: any
+Depends: 
+Description: Distributed, redundant network timer service.
+
+Package: chronos-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: chronos (= ${binary:Version}), gdb
+Description: Debugging symbold for Chronos.
