@@ -90,11 +90,11 @@ DEPS := $(patsubst %.o, %.depends, $(patsubst %.so, %.depends, ${TARGET_OBJS} ${
 
 # Build the production binary.
 .PHONY: build
-build: ${BIN_DIR} ${OBJ_DIR} ${TARGET_BIN}
+build: ${TARGET_BIN}
 
 # Buld the test binary.
 .PHONY: build_test
-build_test: ${BIN_DIR} ${OBJ_DIR} ${OBJ_DIR_TEST} ${TEST_OUT_DIR} ${TARGET_BIN_TEST}
+build_test: ${TARGET_BIN_TEST}
 
 # Install the production binary.
 .PHONY: install
@@ -119,37 +119,27 @@ ${TARGET_BIN_TEST}: ${TARGET_OBJS_TEST}
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) -o $@ $^ $(LDFLAGS) $(LDFLAGS_TEST) $(TARGET_ARCH) $(LOADLIBES) $(LDLIBS)
 
 ${OBJ_DIR}/%.o: %.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_BUILD) $(TARGET_ARCH) -c -o $@ $<
 
 ${OBJ_DIR_TEST}/%.o: %.cpp
+	@mkdir -p $(@D)
 	-rm $(patsubst %o, %gcno, $@)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) $(TARGET_ARCH) -c -o $@ $<
 
 ${OBJ_DIR_TEST}/%.o: $(UT_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) $(TARGET_ARCH) -c -o $@ $<
 
-${OBJ_DIR}/%.depends: %.cpp | ${OBJ_DIR}
-	@echo $@
+${OBJ_DIR}/%.depends: %.cpp
+	@mkdir -p $(@D)
 	@$(CXX) -M -MQ ${OBJ_DIR}/$*.o -MQ $@ $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_BUILD) $(TARGET_ARCH) -c -o $@ $<
 
-${OBJ_DIR_TEST}/%.depends: %.cpp | ${OBJ_DIR_TEST}
-	@echo $@
+${OBJ_DIR_TEST}/%.depends: %.cpp
+	@mkdir -p $(@D)
 	@$(CXX) -M -MQ ${OBJ_DIR_TEST}/$*.o -MQ $@ $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) $(TARGET_ARCH) -c -o $@ $<
 
-${OBJ_DIR_TEST}/%.depends: $(UT_DIR)/%.cpp | ${OBJ_DIR_TEST}
-	@echo $@
+${OBJ_DIR_TEST}/%.depends: $(UT_DIR)/%.cpp
+	@mkdir -p $(@D)
 	@$(CXX) -M -MQ ${OBJ_DIR_TEST}/$*.o -MQ $@ $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) $(TARGET_ARCH) -c -o $@ $<
-
-${OBJ_DIR}:
-	mkdir -p ${OBJ_DIR}
-
-${OBJ_DIR_TEST}:
-	mkdir -p ${OBJ_DIR_TEST}
-
-${BIN_DIR}:
-	mkdir -p ${BIN_DIR}
-
-$(TEST_OUT_DIR):
-	mkdir -p $(TEST_OUT_DIR)
 
 -include $(DEPS)
