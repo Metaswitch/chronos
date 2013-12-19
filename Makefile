@@ -31,6 +31,9 @@ DEB_NAMES := chronos chronos-dbg
 
 include build-infra/cw-deb.mk
 
+.PHONY: deb
+deb: deb-only
+
 .PHONY: test
 test: build_test
 	${TARGET_BIN_TEST}
