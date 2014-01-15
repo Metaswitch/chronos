@@ -2,12 +2,14 @@
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
+#include "unique.h"
 
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <boost/format.hpp>
 #include <map>
+#include <atomic>
 
 Timer::Timer(TimerID id) :
   id(id),
@@ -185,37 +187,8 @@ uint32_t Timer::instance_id = 0;
 // list of replicas, but this doesn't add much uniqueness.
 TimerID Timer::generate_timer_id()
 {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-
-  static const uint32_t instance_id_bits = 5;
-  static const uint32_t deployment_id_bits = 5;
-  static const uint32_t sequence_bits = 12;
-
-  static const uint32_t instance_id_shift = sequence_bits;
-  static const uint32_t deployment_id_shift = instance_id_shift + instance_id_bits;
-  static const uint32_t timestamp_shift = deployment_id_shift + deployment_id_bits;
-
-  static const uint32_t sequence_mask = 0xFFFFFFFF ^ (0xFFFFFFFF << sequence_bits);
-  static uint32_t sequence_number = 0;
-  static uint32_t last_timestamp = 0;
-
-  uint32_t timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
-  if (timestamp == last_timestamp)
-  {
-    sequence_number++;
-  }
-  else
-  {
-    sequence_number = 0;
-    last_timestamp = timestamp;
-  }
-  
-  uint32_t rc = (timestamp << timestamp_shift) | 
-                (Timer::deployment_id << deployment_id_shift) |
-                (Timer::instance_id << instance_id_shift) |
-                (sequence_number & sequence_mask);
-  return rc;
+  return (TimerID)Utils::generate_unique_integer(Timer::deployment_id,
+                                                 Timer::instance_id);
 }
 
 // Created tombstones from delete operations are given

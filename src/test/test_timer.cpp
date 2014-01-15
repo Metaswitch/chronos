@@ -166,15 +166,55 @@ TEST_F(TestTimer, FromJSONTests)
   delete timer;
 }
 
+// Utility thread function to test thread-safeness of the unique generation
+// algorithm.
+void* generate_ids(void* arg)
+{
+  std::vector<TimerID>* output = (std::vector<TimerID>*)arg;
+  for (int ii = 0; ii < 1000; ii++)
+  {
+    TimerID t = Timer::generate_timer_id();
+    output->push_back(t);
+  }
+
+  std::sort(output->begin(), output->end());
+
+  return NULL;
+}
+
 TEST_F(TestTimer, GenerateTimerIDTests)
 {
-  TimerID id1 = Timer::generate_timer_id();
-  TimerID id2 = Timer::generate_timer_id();
-  TimerID id3 = Timer::generate_timer_id();
+  const int concurrency = 50;
+  
+  pthread_t thread_ids[concurrency];
+  std::vector<TimerID> ids[concurrency];
+  std::vector<TimerID> all_ids;
 
-  EXPECT_NE(id1, id2);
-  EXPECT_NE(id2, id3);
-  EXPECT_NE(id1, id3);
+  // Generate multiple (sorted) arrays of IDs in multiple threads.
+  for (int ii = 0; ii < concurrency; ii++)
+  {
+    ASSERT_EQ(0, pthread_create(&thread_ids[ii], NULL, generate_ids, &ids[ii]));
+  }
+
+  // Wait for the threads to finish.
+  for (int ii = 0; ii < concurrency; ii++)
+  {
+    ASSERT_EQ(0, pthread_join(thread_ids[ii], NULL));
+  }
+
+  // Merge all the (sorted) ID lists together.
+  for (int ii = 0; ii < concurrency; ii++)
+  {
+    int midpoint = all_ids.size();
+    all_ids.insert(all_ids.end(), ids[ii].begin(), ids[ii].end());
+    std::inplace_merge(all_ids.begin(), all_ids.begin() + midpoint, all_ids.end());
+  }
+
+  // Assert that no pairs are equal.
+  for(int ii = 1; ii < concurrency * 1000; ii++)
+  {
+    EXPECT_NE(all_ids[ii], all_ids[ii-1]);
+  }
 }
 
 /*****************************************************************************/

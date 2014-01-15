@@ -8,10 +8,10 @@ TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := src/main/main.cpp
 TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp)
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
-TARGET_SOURCES += log.cpp logger.cpp
+TARGET_SOURCES += log.cpp logger.cpp unique.cpp
 TARGET_EXTRA_OBJS_TEST :=
 INCLUDE_DIR := ${ROOT}/src/include
-CPPFLAGS := -pedantic -g -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -std=c++0x `curl-config --cflags` -Werror
+CPPFLAGS := -pedantic -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -std=c++0x `curl-config --cflags` -Werror
 CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/
 LDFLAGS := -lrt -lpthread `curl-config --libs` -levent -lboost_program_options
@@ -40,7 +40,7 @@ test: build_test
 
 .PHONY: valgrind
 valgrind: build_test
-	valgrind --leak-check=full $(TARGET_BIN_TEST)
+	valgrind --leak-check=full --show-reachable=yes --suppressions=/usr/lib/valgrind/debian.supp -v $(TARGET_BIN_TEST)
 
 .PHONY: coverage
 coverage: build_test

@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-typedef unsigned int TimerID;
+typedef uint64_t TimerID;
 
 class Timer
 {
