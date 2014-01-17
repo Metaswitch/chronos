@@ -2,7 +2,7 @@
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
-#include "unique.h"
+#include "utils.h"
 
 #include <iostream>
 #include <sstream>
