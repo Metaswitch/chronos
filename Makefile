@@ -40,7 +40,7 @@ test: build_test
 
 .PHONY: valgrind
 valgrind: build_test
-	valgrind --leak-check=full --show-reachable=yes --suppressions=/usr/lib/valgrind/debian.supp -v $(TARGET_BIN_TEST)
+	valgrind --leak-check=full $(TARGET_BIN_TEST)
 
 .PHONY: coverage
 coverage: build_test
