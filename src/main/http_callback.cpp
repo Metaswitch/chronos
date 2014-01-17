@@ -1,5 +1,4 @@
 #include "http_callback.h"
-#include "base64.h"
 
 #include <cstring>
 
@@ -19,11 +18,10 @@ HTTPCallback::~HTTPCallback()
 // Perform the callback by sending the supplied body to the callback URL.
 //
 // Also specify the sequence number in the headers to allow duplicate detection/handling.
-bool HTTPCallback::perform(std::string url, std::string encoded_body, unsigned int sequence_number)
+bool HTTPCallback::perform(std::string url, std::string body, unsigned int sequence_number)
 {
-  std::string decoded_body = base64_decode(encoded_body);
   curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, decoded_body.c_str());
+  curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, body.c_str());
   
   // Include the sequence number header.
   struct curl_slist* headers = NULL;
