@@ -17,7 +17,6 @@ CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/tes
 LDFLAGS := -lrt -lpthread `curl-config --libs` -levent -lboost_program_options
 LDFLAGS_BUILD :=
 LDFLAGS_TEST := -lgtest -lgmock
-EXTRA_CLEANS := gcov
 VPATH := ${ROOT}/modules/cpp-common/src
 
 .PHONY: default
@@ -28,6 +27,7 @@ include ${ROOT}/mk/platform.mk
 DEB_COMPONENT := chronos
 DEB_MAJOR_VERSION := 1.0
 DEB_NAMES := chronos chronos-dbg
+EXTRA_CLEANS := ${ROOT}/gcov ${OBJ_DIR_TEST}/chronos.memcheck
 
 include build-infra/cw-deb.mk
 
@@ -38,9 +38,14 @@ deb: deb-only
 test: build_test
 	${TARGET_BIN_TEST}
 
-.PHONY: valgrind
+VG_OPTS := --leak-check=full --gen-suppressions=all
+${OBJ_DIR_TEST}/chronos.memcheck: build_test
+	valgrind ${VG_OPTS} --xml=yes --xml-file=${OBJ_DIR_TEST}/chronos.memcheck $(TARGET_BIN_TEST)
+
+.PHONY: valgrind valgrind_xml
+valgrind_xml: ${OBJ_DIR_TEST}/chronos.memcheck
 valgrind: build_test
-	valgrind --leak-check=full $(TARGET_BIN_TEST)
+	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
 
 .PHONY: coverage
 coverage: build_test
