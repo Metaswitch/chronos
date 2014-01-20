@@ -11,7 +11,7 @@
 
 # Author: Andy Caldwell <andrew.caldwell@metaswitch.com>
 
-PATH=/sbin:/usr/sbin:/usr/bin
+PATH=/sbin:/usr/sbin:/usr/bin:/bin
 DESC="Chronos network timer service"
 NAME=chronos
 EXECNAME=chronos
@@ -28,7 +28,7 @@ DAEMON=/usr/bin/chronos
 . /lib/init/vars.sh
 
 # Load LSB functions
-. /lib/lsb/init-functions.sh
+. /lib/lsb/init-functions
 
 do_start()
 {
