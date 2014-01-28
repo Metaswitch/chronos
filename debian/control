@@ -8,7 +8,7 @@ Homepage: http://bitbucket.com/Metaswitch/chronos
 
 Package: chronos
 Architecture: any
-Depends: 
+Depends: libboost-program-options1.46.1
 Description: Distributed, redundant network timer service.
 
 Package: chronos-dbg
