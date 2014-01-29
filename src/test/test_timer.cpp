@@ -142,7 +142,7 @@ TEST_F(TestTimer, FromJSONTests)
   EXPECT_EQ(2, get_replication_factor(timer));
   EXPECT_EQ(2, timer->replicas.size());
   delete timer;
-  
+
   // If you do specify a replication-factor, use that.
   timer = Timer::from_json(1, 0, custom_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
@@ -195,7 +195,7 @@ void* generate_ids(void* arg)
 TEST_F(TestTimer, GenerateTimerIDTests)
 {
   const int concurrency = 50;
-  
+
   pthread_t thread_ids[concurrency];
   std::vector<TimerID> ids[concurrency];
   std::vector<TimerID> all_ids;
@@ -250,24 +250,38 @@ TEST_F(TestTimer, ToJSON)
 {
   // Test this by rendering as JSON, then parsing back to a timer
   // and comparing.
-  std::string json = t1->to_json();
+
+  // We need to use a new timer here, because the values we use in
+  // testing (100ms and 200ms) are too short to be specified on the
+  // JSON interface (which counts in seconds).
+  Timer* t2 = new Timer(1);
+  t2->start_time = 1000000;
+  t2->interval = 1000;
+  t2->repeat_for = 2000;
+  t2->sequence_number = 0;
+  t2->replicas = t1->replicas;
+  t2->callback_url = "http://localhost:80/callback";
+  t2->callback_body = "stuff stuff stuff";
+
+  std::string json = t2->to_json();
   std::string err;
   bool replicated;
 
-  Timer* t2 = Timer::from_json(2, 0, json, err, replicated);
+  Timer* t3 = Timer::from_json(2, 0, json, err, replicated);
   EXPECT_EQ(err, "");
   EXPECT_TRUE(replicated);
   ASSERT_NE((void*)NULL, t2);
 
-  EXPECT_EQ(2, t2->id) << json;
-  EXPECT_EQ(1000000, t2->start_time) << json;
-  EXPECT_EQ(100, t2->interval) << json;
-  EXPECT_EQ(200, t2->repeat_for) << json;
-  EXPECT_EQ(2, get_replication_factor(t2)) << json;
-  EXPECT_EQ(t1->replicas, t2->replicas) << json;
-  EXPECT_EQ("http://localhost:80/callback", t2->callback_url) << json;
-  EXPECT_EQ("stuff stuff stuff", t2->callback_body) << json;
+  EXPECT_EQ(2, t3->id) << json;
+  EXPECT_EQ(1000000, t3->start_time) << json;
+  EXPECT_EQ(t2->interval, t3->interval) << json;
+  EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
+  EXPECT_EQ(2, get_replication_factor(t3)) << json;
+  EXPECT_EQ(t1->replicas, t3->replicas) << json;
+  EXPECT_EQ("http://localhost:80/callback", t3->callback_url) << json;
+  EXPECT_EQ("stuff stuff stuff", t3->callback_body) << json;
   delete t2;
+  delete t3;
 }
 
 TEST_F(TestTimer, IsLocal)

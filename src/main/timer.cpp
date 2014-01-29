@@ -23,7 +23,7 @@ Timer::Timer(TimerID id) :
   _replication_factor(0)
 {
 }
-                   
+
 Timer::~Timer()
 {
 }
@@ -88,9 +88,9 @@ std::string Timer::to_json()
      << ",\"sequence-number\":"
      << sequence_number
      << ",\"interval\":"
-     << interval
+     << interval / 1000
      << ",\"repeat-for\":"
-     << repeat_for
+     << repeat_for / 1000
      << "},\"callback\":{\"http\":{\"uri\":\""
      << callback_url
      << "\",\"opaque\":\""
@@ -140,8 +140,8 @@ void Timer::calculate_replicas(uint64_t replica_hash)
          it != cluster_hashes.end();
          it++)
     {
-      // Quickly check if this replica might be one of the replicas for the 
-      // given timer (i.e. if the replica's individual hash collides with the 
+      // Quickly check if this replica might be one of the replicas for the
+      // given timer (i.e. if the replica's individual hash collides with the
       // bloom filter we calculated when we created the hash (see `url()`).
       if ((replica_hash & it->second) == it->second)
       {
@@ -180,7 +180,7 @@ uint32_t Timer::deployment_id = 0;
 uint32_t Timer::instance_id = 0;
 
 // Generate a timer that should be unique across the (possibly geo-redundant) cluster.
-// The idea is to use a combination of deployment id, instance id, timestamp and 
+// The idea is to use a combination of deployment id, instance id, timestamp and
 // an incrementing sequence number.
 //
 // The ID returned to the client will also contain a
@@ -236,7 +236,7 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
     JSON_PARSE_ERROR(("Couldn't find '" ELEM "' in '" NODE_NAME "'"));        \
 }
 
-// Create a Timer object from the JSON representation. 
+// Create a Timer object from the JSON representation.
 //
 // @param id - The unique identity for the timer (see generate_timer_id() above).
 // @param replica_hash - The replica hash extracted from the timer URL (or 0 for new timer).
@@ -260,11 +260,11 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
 
   // Parse out the timing block
   rapidjson::Value& timing = doc["timing"];
-  
+
   JSON_ASSERT_OBJECT(timing, "timing");
   JSON_ASSERT_CONTAINS(timing, "timing", "interval");
   JSON_ASSERT_CONTAINS(timing, "timing", "repeat-for");
-  
+
   rapidjson::Value& interval = timing["interval"];
   rapidjson::Value& repeat_for = timing["repeat-for"];
 
@@ -284,8 +284,8 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   }
 
-  timer->interval = interval.GetInt();
-  timer->repeat_for = repeat_for.GetInt();
+  timer->interval = interval.GetInt() * 1000;
+  timer->repeat_for = repeat_for.GetInt() * 1000;
 
   if (timing.HasMember("sequence-number"))
   {
@@ -317,7 +317,7 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
 
   // Parse out the 'reliability' block
   rapidjson::Value& reliability = doc["reliability"];
-  
+
   if (doc.HasMember("reliability"))
   {
     JSON_ASSERT_OBJECT(reliability, "reliability");
@@ -373,6 +373,6 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     // from another cluster node.
     replicated = true;
   }
-  
+
   return timer;
 }
