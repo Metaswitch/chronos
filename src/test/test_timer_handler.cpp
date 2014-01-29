@@ -3,6 +3,7 @@
 #include "mock_timer_store.h"
 #include "mock_callback.h"
 #include "mock_replicator.h"
+#include "base.h"
 
 #include "timer_handler.h"
 
@@ -14,11 +15,12 @@ using namespace ::testing;
 /* Test fixture                                                              */
 /*****************************************************************************/
 
-class TestTimerHandler : public ::testing::Test
+class TestTimerHandler : public Base
 {
 protected:
   void SetUp()
   {
+    Base::SetUp();
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
@@ -29,6 +31,8 @@ protected:
     delete _th;
     delete _store;
     // Replicator/Callback are deleted by the timer handler.
+    
+    Base::TearDown();
   }
 
   // Accessor functions into the timer handler's private variables

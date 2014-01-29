@@ -18,7 +18,8 @@ int main(int argc, char** argv)
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
   // Initialize the global configuration.
-  __globals.update_config();
+  __globals = new Globals();
+  __globals->update_config();
 
   // Create components
   TimerStore *store = new TimerStore();
@@ -53,13 +54,18 @@ int main(int argc, char** argv)
   // Bind to the correct port
   std::string bind_address;
   int bind_port;
-  __globals.get_bind_address(bind_address);
-  __globals.get_bind_port(bind_port);
+  __globals->get_bind_address(bind_address);
+  __globals->get_bind_port(bind_port);
   evhttp_bind_socket(http, bind_address.c_str(), bind_port);
 
   // Start the reactor, this blocks the current thread
   event_base_dispatch(base);
 
+  // Event loop is completed, terminate.
+  //
+  // After this point nothing will use __globals so it's safe to delete
+  // it here.
+  delete __globals; __globals = NULL;
   curl_global_cleanup();
 
   return 0;

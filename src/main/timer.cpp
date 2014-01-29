@@ -33,7 +33,7 @@ unsigned long long Timer::next_pop_time()
 {
   std::string localhost;
   int replica_index = 0;
-  __globals.get_cluster_local_ip(localhost);
+  __globals->get_cluster_local_ip(localhost);
   for (auto it = replicas.begin(); it != replicas.end(); it++, replica_index++)
   {
     if (*it == localhost)
@@ -59,7 +59,7 @@ std::string Timer::url(std::string host)
   std::stringstream ss;
 
   int bind_port;
-  __globals.get_bind_port(bind_port);
+  __globals->get_bind_port(bind_port);
 
   // Here (and below) we render the timer ID (and replica hash) as 0-padded
   // hex strings so we can parse it back out later easily.
@@ -68,7 +68,7 @@ std::string Timer::url(std::string host)
 
   uint64_t hash = 0;
   std::map<std::string, uint64_t> cluster_hashes;
-  __globals.get_cluster_hashes(cluster_hashes);
+  __globals->get_cluster_hashes(cluster_hashes);
   for (auto it = replicas.begin(); it != replicas.end(); it++)
   {
     hash |= cluster_hashes[*it];
@@ -134,7 +134,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   {
     // Compare the hash to all the known replicas looking for matches.
     std::map<std::string, uint64_t> cluster_hashes;
-    __globals.get_cluster_hashes(cluster_hashes);
+    __globals->get_cluster_hashes(cluster_hashes);
     _replication_factor = 0;
     for (auto it = cluster_hashes.begin();
          it != cluster_hashes.end();
@@ -158,7 +158,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     uint32_t hash;
     MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
     std::vector<std::string> cluster;
-    __globals.get_cluster_addresses(cluster);
+    __globals->get_cluster_addresses(cluster);
     unsigned int first_replica = hash % cluster.size();
     for (unsigned int ii = 0;
          ii < _replication_factor && ii < cluster.size();

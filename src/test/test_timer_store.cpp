@@ -1,5 +1,6 @@
 #include "timer_store.h"
 #include "timer_helper.h"
+#include "base.h"
 
 #include <gtest/gtest.h>
 
@@ -7,11 +8,13 @@
 /* Test fixture                                                              */
 /*****************************************************************************/
 
-class TestTimerStore : public ::testing::Test
+class TestTimerStore : public Base
 {
 protected:
   virtual void SetUp()
   {
+    Base::SetUp();
+
     ts = new TimerStore();
 
     // Force the current time to a known value.
@@ -38,6 +41,7 @@ protected:
   virtual void TearDown()
   {
     delete ts;
+    Base::TearDown();
   }
 
   // Accessors into private variables.

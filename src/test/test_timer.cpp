@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "globals.h"
+#include "base.h"
 
 #include <gtest/gtest.h>
 #include <map>
@@ -8,11 +9,12 @@
 /* Test fixture                                                              */
 /*****************************************************************************/
 
-class TestTimer : public ::testing::Test
+class TestTimer : public Base
 {
 protected:
   virtual void SetUp()
   {
+    Base::SetUp();
     std::vector<std::string> replicas;
     replicas.push_back("10.0.0.1");
     replicas.push_back("10.0.0.2");
@@ -24,30 +26,12 @@ protected:
     t1->replicas = replicas;
     t1->callback_url = "http://localhost:80/callback";
     t1->callback_body = "stuff stuff stuff";
-
-    // Set up globals to something sensible
-    __globals.lock();
-    std::string localhost = "10.0.0.1";
-    __globals.set_cluster_local_ip(localhost);
-    __globals.set_bind_address(localhost);
-    std::vector<std::string> cluster_addresses;
-    cluster_addresses.push_back("10.0.0.1");
-    cluster_addresses.push_back("10.0.0.2");
-    cluster_addresses.push_back("10.0.0.3");
-    __globals.set_cluster_addresses(cluster_addresses);
-    std::map<std::string, uint64_t> cluster_hashes;
-    cluster_hashes["10.0.0.1"] = 0x00010000010001;
-    cluster_hashes["10.0.0.2"] = 0x10001000001000;
-    cluster_hashes["10.0.0.3"] = 0x01000100000100;
-    __globals.set_cluster_hashes(cluster_hashes);
-    int bind_port = 9999;
-    __globals.set_bind_port(bind_port);
-    __globals.unlock();
   }
 
   virtual void TearDown()
   {
     delete t1;
+    Base::TearDown();
   }
 
   // Helper function to access timer private variables

@@ -25,7 +25,7 @@ Replicator::~Replicator()
 void Replicator::replicate(Timer* timer)
 {
   std::string localhost;
-  __globals.get_cluster_local_ip(localhost);
+  __globals->get_cluster_local_ip(localhost);
 
   for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
   {
