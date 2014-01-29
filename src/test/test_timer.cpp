@@ -102,8 +102,11 @@ TEST_F(TestTimer, FromJSONTests)
   failing_test_data.push_back(
       "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [] }}");
 
+  // Reliability can be ignored by the client to use default replication.
+  std::string default_repl_factor = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}";
+
   // Reliability can be specified as empty by the client to use default replication.
-  std::string default_repl_factor = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}}";
+  std::string default_repl_factor2 = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}}";
 
   // Or you can pass a custom replication factor.
   std::string custom_repl_factor = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
@@ -126,6 +129,13 @@ TEST_F(TestTimer, FromJSONTests)
 
   // If you don't specify a replication-factor, use 2.
   timer = Timer::from_json(1, 0, default_repl_factor, err, replicated);
+  EXPECT_NE((void*)NULL, timer);
+  EXPECT_EQ("", err);
+  EXPECT_FALSE(replicated);
+  EXPECT_EQ(2, get_replication_factor(timer));
+  EXPECT_EQ(2, timer->replicas.size());
+  delete timer;
+  timer = Timer::from_json(1, 0, default_repl_factor2, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
