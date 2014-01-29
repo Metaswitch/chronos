@@ -3,6 +3,7 @@
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
 #include "utils.h"
+#include "log.h"
 
 #include <iostream>
 #include <sstream>
@@ -168,12 +169,11 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     }
   }
 
-  std::cout << "Replicas calculated: ";
+  LOG_DEBUG("Replicas calculated:");
   for (auto it = replicas.begin(); it != replicas.end(); it++)
   {
-    std::cout << *it;
+    LOG_DEBUG(" - %s", it->c_str());
   }
-  std::cout << std::endl;
 }
 
 uint32_t Timer::deployment_id = 0;
