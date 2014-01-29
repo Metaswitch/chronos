@@ -257,8 +257,6 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     JSON_PARSE_ERROR(("Couldn't find the 'timing' node in the JSON"));
   if (!doc.HasMember("callback"))
     JSON_PARSE_ERROR(("Couldn't find the 'callback' node in the JSON"));
-  if (!doc.HasMember("reliability"))
-    JSON_PARSE_ERROR(("Couldn't find the 'reliability' node in the JSON"));
 
   // Parse out the timing block
   rapidjson::Value& timing = doc["timing"];
@@ -320,47 +318,60 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   // Parse out the 'reliability' block
   rapidjson::Value& reliability = doc["reliability"];
   
-  JSON_ASSERT_OBJECT(reliability, "reliability");
-
-  if (reliability.HasMember("replicas"))
+  if (doc.HasMember("reliability"))
   {
-    rapidjson::Value& replicas = reliability["replicas"];
-    JSON_ASSERT_ARRAY(replicas, "replicas");
+    JSON_ASSERT_OBJECT(reliability, "reliability");
 
-    if (replicas.Size() == 0)
+    if (reliability.HasMember("replicas"))
     {
-      JSON_PARSE_ERROR("If replicas is specified it must be non-empty");
-    }
+      rapidjson::Value& replicas = reliability["replicas"];
+      JSON_ASSERT_ARRAY(replicas, "replicas");
 
-    timer->_replication_factor = replicas.Size();
-    for (auto it = replicas.Begin(); it != replicas.End(); it++)
-    {
-      JSON_ASSERT_STRING(*it, "replica address");
-      timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
-    }
+      if (replicas.Size() == 0)
+      {
+        JSON_PARSE_ERROR("If replicas is specified it must be non-empty");
+      }
 
-    // The request had replicas specified, must be a replication request and we'll
-    // trust the given replicas.
-    replicated = true;
-  }
-  else
-  {
-    if (reliability.HasMember("replication-factor"))
-    {
-      rapidjson::Value& replication_factor = reliability["replication-factor"];
-      JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
-      timer->_replication_factor = replication_factor.GetInt();
+      timer->_replication_factor = replicas.Size();
+      for (auto it = replicas.Begin(); it != replicas.End(); it++)
+      {
+        JSON_ASSERT_STRING(*it, "replica address");
+        timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+      }
     }
     else
     {
-      // Default replication factor is 2.
-      timer->_replication_factor = 2;
+      if (reliability.HasMember("replication-factor"))
+      {
+        rapidjson::Value& replication_factor = reliability["replication-factor"];
+        JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
+        timer->_replication_factor = replication_factor.GetInt();
+      }
+      else
+      {
+        // Default replication factor is 2.
+        timer->_replication_factor = 2;
+      }
     }
-  
-    // The replicas were not specified in the request, must be a client-initiated
-    // request.  Pick replicas, using the replica_hash if we have one.
+  }
+  else
+  {
+    // Default to 2 replicas
+    timer->_replication_factor = 2;
+  }
+
+  if (timer->replicas.empty())
+  {
+    // Replicas not determined above, determine them now.  Note that this implies
+    // the request is from a client, not another replica.
     replicated = false;
     timer->calculate_replicas(replica_hash);
+  }
+  else
+  {
+    // Replicas were specified in the request, must be a replication message
+    // from another cluster node.
+    replicated = true;
   }
   
   return timer;
