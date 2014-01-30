@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "timer_handler.h"
+#include "log.h"
 
 void* TimerHandler::timer_handler_entry_func(void* arg)
 {
@@ -60,7 +61,7 @@ TimerHandler::~TimerHandler()
 
 void TimerHandler::add_timer(Timer* timer)
 {
-  std::cout << "Adding timer: " << timer->id << std::endl;
+  LOG_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
   _store->add_timer(timer);
   signal_new_timer(timer->next_pop_time());
@@ -194,7 +195,7 @@ void TimerHandler::pop(Timer* timer)
   }
   else
   {
-    std::cout << "WARN: Failed to process callback for " << timer->id << std::endl;
+    LOG_WARNING("Failed to process callback for %lu", timer->id);
     delete timer;
   }
 }

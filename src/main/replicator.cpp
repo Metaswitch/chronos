@@ -25,7 +25,7 @@ Replicator::~Replicator()
 void Replicator::replicate(Timer* timer)
 {
   std::string localhost;
-  __globals.get_cluster_local_ip(localhost);
+  __globals->get_cluster_local_ip(localhost);
 
   for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
   {
@@ -35,7 +35,7 @@ void Replicator::replicate(Timer* timer)
     }
 
     std::string url = timer->url(*it);
-    std::cout << "Replicating to :" << url << std::endl;
+    LOG_DEBUG("Replicating to : %s", url.c_str());
     // TODO This should use cURL's multi-mode to parallelize requests.
     std::string body = timer->to_json();
 

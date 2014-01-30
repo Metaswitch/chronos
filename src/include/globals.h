@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <boost/program_options.hpp>
+#include "updater.h"
 
 // Defines a global variable and it's associated get and set
 // functions.  Note that, although get functions are protected
@@ -52,10 +53,11 @@ private:
   uint64_t generate_hash(std::string);
 
   pthread_rwlock_t _lock;
+  Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
   boost::program_options::variables_map _conf_map;
 };
 
-extern Globals __globals;
+extern Globals* __globals;
 
 #endif

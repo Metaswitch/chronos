@@ -1,4 +1,5 @@
 #include "timer_store.h"
+#include "log.h"
 
 #include <algorithm>
 #include <time.h>
@@ -75,8 +76,8 @@ void TimerStore::add_timer(Timer* t)
   {
     // Timer is too far in the future to be handled by the buckets, put it in the
     // extra heap.
-    // LOG_INFO("Adding timer to extra heap, consider re-building with a larger "
-    //          "NUM_SECOND_BUCKETS constant");
+    LOG_WARNING("Adding timer to extra heap, consider re-building with a larger "
+                "NUM_SECOND_BUCKETS constant");
     _extra_heap.push_back(t);
     std::push_heap(_extra_heap.begin(), _extra_heap.end());
   }
@@ -253,7 +254,7 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
   {
     // Timer should have already popped.  Best we can do is put it in the very first
     // available bucket so it gets popped as soon as possible.
-    // LOG_WARN("Modifying timer after pop time, window condition detected");
+    LOG_WARNING("Modifying timer after pop time, window condition detected");
     time_to_next_pop = 0;
   }
   else
