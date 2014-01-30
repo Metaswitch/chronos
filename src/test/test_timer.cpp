@@ -16,7 +16,8 @@ protected:
     std::vector<std::string> replicas;
     replicas.push_back("10.0.0.1");
     replicas.push_back("10.0.0.2");
-    t1 = new Timer(1);
+    TimerID id = (TimerID)UINT_MAX + 10;
+    t1 = new Timer(id);
     t1->start_time = 1000000;
     t1->interval = 100;
     t1->repeat_for = 200;
@@ -243,7 +244,7 @@ TEST_F(TestTimer, NextPopTime)
 
 TEST_F(TestTimer, URL)
 {
-  EXPECT_EQ("http://hostname:9999/timers/000000010010011000011001", t1->url("hostname"));
+  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
 }
 
 TEST_F(TestTimer, ToJSON)

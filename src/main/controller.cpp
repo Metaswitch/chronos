@@ -4,7 +4,7 @@
 
 #include "murmur/MurmurHash3.h"
 
-#include <regex>
+#include <boost/regex.hpp>
 
 Controller::Controller(Replicator* replicator,
                        TimerHandler* handler) :
@@ -24,7 +24,7 @@ void Controller::handle_request(struct evhttp_request* req)
   // /timers
   // /timers/
   // /timers/<timerid>
-  const char *uri = evhttp_request_get_uri(req);  
+  const char *uri = evhttp_request_get_uri(req);
   struct evhttp_uri* decoded = evhttp_uri_parse(uri);
   if (!decoded)
   {
@@ -63,8 +63,8 @@ void Controller::handle_request(struct evhttp_request* req)
   //  * PUT to a specific ID
   //  * DELETE to a specific ID
   evhttp_cmd_type method = evhttp_request_get_command(req);
-  
-  std::smatch matches;
+
+  boost::smatch matches;
   TimerID timer_id;
   uint64_t replica_hash = 0;
   if ((path == "/timers") || (path == "/timers/"))
@@ -76,15 +76,15 @@ void Controller::handle_request(struct evhttp_request* req)
     }
     timer_id = Timer::generate_timer_id();
   }
-  else if (std::regex_match(path, matches, std::regex("/timers/([0-9A-F]{8})([0-9A-F]{16})")))
+  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
   {
     if ((method != EVHTTP_REQ_PUT) && (method != EVHTTP_REQ_DELETE))
     {
       send_error(req, HTTP_BADMETHOD, NULL);
       return;
     }
-    timer_id = std::stoul(matches[0], NULL, 16);
-    replica_hash = std::stoull(matches[1], NULL, 16);
+    timer_id = std::stoul(matches[1].str(), NULL, 16);
+    replica_hash = std::stoull(matches[2].str(), NULL, 16);
   }
   else
   {
