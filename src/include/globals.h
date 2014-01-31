@@ -55,7 +55,6 @@ private:
   pthread_rwlock_t _lock;
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
-  boost::program_options::variables_map _conf_map;
 };
 
 extern Globals* __globals;
