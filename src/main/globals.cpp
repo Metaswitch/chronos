@@ -40,26 +40,27 @@ Globals::~Globals()
 void Globals::update_config()
 {
   std::ifstream file;
+  boost::program_options::variables_map conf_map;
+
   file.open(CONFIG_FILE);
-  _conf_map.clear();
-  po::store(po::parse_config_file(file, _desc), _conf_map);
-  po::notify(_conf_map);
+  po::store(po::parse_config_file(file, _desc), conf_map);
+  po::notify(conf_map);
   file.close();
 
   lock();
-  std::string bind_address = _conf_map["http.bind-address"].as<std::string>();
+  std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
   LOG_INFO("Bind address: %s", bind_address.c_str());
 
-  int bind_port = _conf_map["http.bind-port"].as<int>();
+  int bind_port = conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
   LOG_INFO("Bind port: %d", bind_port);
 
-  std::string cluster_local_address = _conf_map["cluster.localhost"].as<std::string>();
+  std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
   LOG_INFO("Cluster local address: %s", cluster_local_address.c_str());
   
-  std::vector<std::string> cluster_addresses = _conf_map["cluster.node"].as<std::vector<std::string>>();
+  std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
   std::map<std::string, uint64_t> cluster_hashes;
   LOG_INFO("Cluster nodes:");
