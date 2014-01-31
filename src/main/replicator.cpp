@@ -25,7 +25,7 @@ Replicator::~Replicator()
 void Replicator::replicate(Timer* timer)
 {
   std::string localhost;
-  __globals.get_cluster_local_ip(localhost);
+  __globals->get_cluster_local_ip(localhost);
 
   for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
   {
@@ -38,7 +38,7 @@ void Replicator::replicate(Timer* timer)
     std::string body = timer->to_json();
     std::string url = timer->url(*it);
 
-    std::cout << "Replicating to :" << url << std::endl;
+    LOG_DEBUG("Replicating to : %s", url.c_str());
 
     struct curl_slist* headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");

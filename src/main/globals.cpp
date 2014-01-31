@@ -1,5 +1,6 @@
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
+#include "log.h"
 
 #include <fstream>
 
@@ -7,8 +8,9 @@
 // header file to avoid infecting other compilation units' namespaces.
 namespace po = boost::program_options;
 
-// The one and only global object
-Globals __globals;
+// The one and only global object - this must be initialized at start of day and
+// terminated before main() returns.
+Globals* __globals;
 
 Globals::Globals()
 {
@@ -21,10 +23,17 @@ Globals::Globals()
     ("cluster.localhost", po::value<std::string>()->default_value("localhost"), "The address of the local host")
     ("cluster.node", po::value<std::vector<std::string>>()->multitoken(), "The addresses of a node in the cluster")
     ;
+
+#ifndef UNITTEST
+  _updater = new Updater<void, Globals>(this, std::mem_fun(&Globals::update_config));
+#endif
 }
 
 Globals::~Globals()
 {
+#ifndef UNITTEST
+  delete _updater;
+#endif
   pthread_rwlock_destroy(&_lock);
 }
 
@@ -40,30 +49,25 @@ void Globals::update_config()
   lock();
   std::string bind_address = _conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
-  std::cout << "Bind address: " << bind_address << std::endl;
+  LOG_INFO("Bind address: %s", bind_address.c_str());
 
   int bind_port = _conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
-  std::cout << "Bind port: " << bind_port << std::endl;
+  LOG_INFO("Bind port: %d", bind_port);
 
   std::string cluster_local_address = _conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
-  std::cout << "Cluster local address: " << cluster_local_address << std::endl;
+  LOG_INFO("Cluster local address: %s", cluster_local_address.c_str());
   
   std::vector<std::string> cluster_addresses = _conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
   std::map<std::string, uint64_t> cluster_hashes;
-  std::cout << "Cluster nodes: ";
+  LOG_INFO("Cluster nodes:");
   for (auto it = cluster_addresses.begin(); it != cluster_addresses.end(); it++)
   {
-    std::cout << *it;
-    if (it + 1 != cluster_addresses.end())
-    {
-      std::cout << ", ";
-    }
+    LOG_INFO(" - %s", it->c_str());
     cluster_hashes[*it] = generate_hash(*it);
   }
-  std::cout << std::endl;
   set_cluster_hashes(cluster_hashes);
   unlock();
 }

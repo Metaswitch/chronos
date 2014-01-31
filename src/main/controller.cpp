@@ -1,6 +1,7 @@
 #include "controller.h"
 #include "timer.h"
 #include "globals.h"
+#include "log.h"
 
 #include "murmur/MurmurHash3.h"
 
@@ -55,7 +56,7 @@ void Controller::handle_request(struct evhttp_request* req)
   evhttp_uri_free(decoded);
   decoded = NULL;
 
-  std::cout << "Request: " << path << std::endl;
+  LOG_DEBUG("Request: %s", path.c_str());
 
   // Also need to check the user has supplied a valid method:
   //
@@ -116,7 +117,7 @@ void Controller::handle_request(struct evhttp_request* req)
     }
   }
 
-  std::cout << "Sending 200 OK response" << std::endl;
+  LOG_DEBUG("Sending 200 OK response");
 
   // Now we have a valid timer object, reply to the HTTP request.
   evhttp_add_header(evhttp_request_get_output_headers(req),
@@ -131,7 +132,7 @@ void Controller::handle_request(struct evhttp_request* req)
 
   // If the timer belongs to the local node, store it.
   std::string localhost;
-  __globals.get_cluster_local_ip(localhost);
+  __globals->get_cluster_local_ip(localhost);
   if (timer->is_local(localhost))
   {
     _handler->add_timer(timer);
@@ -155,7 +156,7 @@ void Controller::controller_ping_cb(struct evhttp_request* req, void* controller
 
 void Controller::send_error(struct evhttp_request* req, int error, const char* reason)
 {
-  // LOG_ERROR("Rejecting request with %d %s", error, reason);
+  LOG_ERROR("Rejecting request with %d %s", error, reason);
   evhttp_send_error(req, error, reason);
 }
 
