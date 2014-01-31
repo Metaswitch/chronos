@@ -50,7 +50,7 @@ void TimerStore::add_timer(Timer* t)
         ((t->start_time == existing->start_time) &&
          (t->sequence_number < existing->sequence_number)))
     {
-      // Existing timer is more recent.
+      // Existing timer is more recent
       delete t;
       return;
     }

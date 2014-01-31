@@ -65,8 +65,7 @@ std::string Timer::url(std::string host)
   // Here (and below) we render the timer ID (and replica hash) as 0-padded
   // hex strings so we can parse it back out later easily.
   ss << "http://" << host << ":" << bind_port << "/timers/";
-  ss << std::setfill('0') << std::setw(8) << std::hex << id;
-
+  ss << std::setfill('0') << std::setw(16) << std::hex << id;
   uint64_t hash = 0;
   std::map<std::string, uint64_t> cluster_hashes;
   __globals->get_cluster_hashes(cluster_hashes);

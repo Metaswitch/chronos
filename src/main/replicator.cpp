@@ -34,11 +34,10 @@ void Replicator::replicate(Timer* timer)
       continue;
     }
 
+    std::string url = timer->url(*it);
+    LOG_DEBUG("Replicating to : %s", url.c_str());
     // TODO This should use cURL's multi-mode to parallelize requests.
     std::string body = timer->to_json();
-    std::string url = timer->url(*it);
-
-    LOG_DEBUG("Replicating to : %s", url.c_str());
 
     struct curl_slist* headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
