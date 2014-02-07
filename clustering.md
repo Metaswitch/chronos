@@ -23,6 +23,8 @@ Additional nodes are added to the cluster by adding extra "node" lines:
     node = 1.2.3.4:7253
     node = 5.6.7.8:7253
 
+Likewise, nodes can be removed simply by deleting their "node" lines.
+
 The order and form of "node" entries *must* be consistent across all the Chronos nodes in the cluster.
 
 Chronos will re-read the chronos.conf file when it receives a SIGHUP (e.g. `pkill -HUP chronos` or `service reload chronos`), and start distributing timers around the new servers immediately.
