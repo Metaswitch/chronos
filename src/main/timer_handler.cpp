@@ -63,8 +63,8 @@ void TimerHandler::add_timer(Timer* timer)
 {
   LOG_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
-  _store->add_timer(timer);
   signal_new_timer(timer->next_pop_time());
+  _store->add_timer(timer);
   pthread_mutex_unlock(&_mutex);
 }
 
@@ -72,7 +72,7 @@ void TimerHandler::add_timer(Timer* timer)
 // retrieving timers from the store, waiting until they need to pop and popping them.
 //
 // If there are no timers in the store at all, we wait forever for one to be added (or
-// until we're terminated).  If we are woken while waiting for one set of timers to 
+// until we're terminated).  If we are woken while waiting for one set of timers to
 // pop, check the timer store to make sure we're holding the nearest timers.
 void TimerHandler::run() {
   std::unordered_set<Timer*> next_timers;
@@ -116,7 +116,7 @@ void TimerHandler::run() {
       else
       {
         rc = 0;
-        while ((!_terminate) && 
+        while ((!_terminate) &&
                (_nearest_new_timer <= timer->next_pop_time()) &&
                (rc != ETIMEDOUT))
         {
@@ -188,8 +188,10 @@ void TimerHandler::pop(Timer* timer)
     {
       timer->become_tombstone();
     }
-    _store->add_timer(timer);
     _replicator->replicate(timer);
+    _store->add_timer(timer);
+    timer = NULL; // We relinquish control of the timer when we give
+                  // it to the store.
   }
   else
   {
