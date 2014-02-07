@@ -16,8 +16,7 @@ The timer service exposes a single HTTP API on port 7253 for the setting and cle
 
 To set a timer, simply `POST` the definition of the timer to the above URI.  To update an existing timer, `PUT` to the specific timer URI.  To delete a timer, `DELETE` the timer ID.
 
-The timer service is designed to be distributed across multiple nodes
-in a cluster. In this case a client may set or clear any timer on any node of the cluster, helpful for handling node failures.
+The timer service is designed to be distributed across multiple nodes in a cluster. In this case a client may set or clear any timer on any node of the cluster, helpful for handling node failures.
 
 _In future, but not in the current version, retrieving information about the configured timers may be possible through one or both of:_
 
