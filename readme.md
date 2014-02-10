@@ -1,8 +1,10 @@
 # Chronos
 
-Chronos is a distributed, redundant, reliable timer service.  Designed to be generic to allow it to be used as part of any service infrastructure.
+Chronos is a distributed, redundant, reliable timer service.  It is designed to be generic to allow it to be used as part of any service infrastructure.
 
-Chronos is designed the scale out horizontally to handle large loads on the system and also supports elastic, lossless scaling up and down of the cluster to handle extra load on the service.
+Chronos is designed to scale out horizontally to handle large loads on the system and also supports elastic, lossless scaling up and down of the cluster to handle extra load on the service.
+
+The HTTP API is described [here](api.md), and the procedure for clustering a group of Chronos nodes together is described [here](clustering.md).
 
 ## Development
 
