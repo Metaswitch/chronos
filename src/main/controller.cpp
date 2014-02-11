@@ -125,7 +125,7 @@ void Controller::handle_request(struct evhttp_request* req)
   evhttp_send_reply(req, 200, "OK", NULL);
 
   // Replicate the timer to the other replicas if this is a client request
-  if (replicated_timer)
+  if (!replicated_timer)
   {
     _replicator->replicate(timer);
   }
