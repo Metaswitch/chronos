@@ -198,6 +198,10 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
   // Create a tombstone record that will last for 10 seconds.
   Timer* tombstone = new Timer(id);
+
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  tombstone->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   tombstone->interval = 10 * 1000;
   tombstone->repeat_for = 10 * 1000;
   tombstone->calculate_replicas(replica_hash);

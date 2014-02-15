@@ -278,6 +278,7 @@ TEST_F(TestTimer, IsLocal)
 TEST_F(TestTimer, IsTombstone)
 {
   Timer* t2 = Timer::create_tombstone(100, 0);
+  EXPECT_NE(0, t2->start_time);
   EXPECT_TRUE(t2->is_tombstone());
   delete t2;
 }
