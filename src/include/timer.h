@@ -9,7 +9,7 @@ typedef uint64_t TimerID;
 class Timer
 {
 public:
-  Timer(TimerID);
+  Timer(TimerID, uint32_t interval, uint32_t repeat_for);
   ~Timer();
 
   // For testing purposes.
@@ -43,9 +43,9 @@ public:
   // functions, rather than a full-blown object).
   TimerID id;
   unsigned long long start_time;
-  unsigned int interval;
-  unsigned int repeat_for;
-  unsigned int sequence_number;
+  uint32_t interval;
+  uint32_t repeat_for;
+  uint32_t sequence_number;
   std::vector<std::string> replicas;
   std::string callback_url;
   std::string callback_body;

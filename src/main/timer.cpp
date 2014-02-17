@@ -12,10 +12,10 @@
 #include <map>
 #include <atomic>
 
-Timer::Timer(TimerID id) :
+Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   id(id),
-  interval(0),
-  repeat_for(0),
+  interval(interval),
+  repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
   callback_url(""),
@@ -199,9 +199,7 @@ TimerID Timer::generate_timer_id()
 Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
   // Create a tombstone record that will last for 10 seconds.
-  Timer* tombstone = new Timer(id);
-  tombstone->interval = 10 * 1000;
-  tombstone->repeat_for = 10 * 1000;
+  Timer* tombstone = new Timer(id, 10000, 10000);
   tombstone->calculate_replicas(replica_hash);
   return tombstone;
 }
@@ -246,7 +244,7 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // @param replicated - This will be set to true if this is a replica of a timer.
 Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std::string& error, bool& replicated)
 {
-  Timer* timer = new Timer(id);
+  Timer* timer = NULL;
   rapidjson::Document doc;
   doc.Parse<0>(json.c_str());
   if (doc.HasParseError())
@@ -272,6 +270,8 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   JSON_ASSERT_INTEGER(interval, "interval");
   JSON_ASSERT_INTEGER(repeat_for, "repeat-for");
 
+  timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for.GetInt() * 1000));
+
   if (timing.HasMember("start-time"))
   {
     // Timer JSON specifies a start-time, use that instead of now.
@@ -279,9 +279,6 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     JSON_ASSERT_INTEGER(start_time, "start-time");
     timer->start_time = start_time.GetInt();
   }
-
-  timer->interval = interval.GetInt() * 1000;
-  timer->repeat_for = repeat_for.GetInt() * 1000;
 
   if (timing.HasMember("sequence-number"))
   {
