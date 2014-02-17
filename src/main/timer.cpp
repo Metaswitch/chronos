@@ -14,7 +14,6 @@
 
 Timer::Timer(TimerID id) :
   id(id),
-  start_time(0),
   interval(0),
   repeat_for(0),
   sequence_number(0),
@@ -23,6 +22,9 @@ Timer::Timer(TimerID id) :
   callback_body(""),
   _replication_factor(0)
 {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
 Timer::~Timer()
@@ -198,10 +200,6 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
   // Create a tombstone record that will last for 10 seconds.
   Timer* tombstone = new Timer(id);
-
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  tombstone->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   tombstone->interval = 10 * 1000;
   tombstone->repeat_for = 10 * 1000;
   tombstone->calculate_replicas(replica_hash);
@@ -276,15 +274,10 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
 
   if (timing.HasMember("start-time"))
   {
+    // Timer JSON specifies a start-time, use that instead of now.
     rapidjson::Value& start_time = timing["start-time"];
     JSON_ASSERT_INTEGER(start_time, "start-time");
     timer->start_time = start_time.GetInt();
-  }
-  else
-  {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   }
 
   timer->interval = interval.GetInt() * 1000;
