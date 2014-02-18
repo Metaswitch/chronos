@@ -19,10 +19,11 @@ protected:
     replicas.push_back("10.0.0.1");
     replicas.push_back("10.0.0.2");
     TimerID id = (TimerID)UINT_MAX + 10;
-    t1 = new Timer(id);
+    uint32_t interval = 100;
+    uint32_t repeat_for = 200;
+
+    t1 = new Timer(id, interval, repeat_for);
     t1->start_time = 1000000;
-    t1->interval = 100;
-    t1->repeat_for = 200;
     t1->sequence_number = 0;
     t1->replicas = replicas;
     t1->callback_url = "http://localhost:80/callback";
@@ -239,10 +240,11 @@ TEST_F(TestTimer, ToJSON)
   // We need to use a new timer here, because the values we use in
   // testing (100ms and 200ms) are too short to be specified on the
   // JSON interface (which counts in seconds).
-  Timer* t2 = new Timer(1);
+  uint32_t interval = 1000;
+  uint32_t repeat_for = 2000;
+
+  Timer* t2 = new Timer(1, interval, repeat_for);
   t2->start_time = 1000000;
-  t2->interval = 1000;
-  t2->repeat_for = 2000;
   t2->sequence_number = 0;
   t2->replicas = t1->replicas;
   t2->callback_url = "http://localhost:80/callback";
@@ -278,6 +280,7 @@ TEST_F(TestTimer, IsLocal)
 TEST_F(TestTimer, IsTombstone)
 {
   Timer* t2 = Timer::create_tombstone(100, 0);
+  EXPECT_NE(0, t2->start_time);
   EXPECT_TRUE(t2->is_tombstone());
   delete t2;
 }
