@@ -22,6 +22,8 @@ Globals::Globals()
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost"), "The address of the local host")
     ("cluster.node", po::value<std::vector<std::string>>()->multitoken(), "The addresses of a node in the cluster")
+    ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
+    ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ;
 
 #ifndef UNITTEST
@@ -48,6 +50,11 @@ void Globals::update_config()
   file.close();
 
   lock();
+
+  // Set up logging early so we can log the other settings
+  Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
+  Log::setLoggingLevel(conf_map["logging.level"].as<int>());
+
   std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
   LOG_INFO("Bind address: %s", bind_address.c_str());
