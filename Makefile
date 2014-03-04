@@ -35,8 +35,12 @@ include build-infra/cw-deb.mk
 deb: deb-only
 
 .PHONY: test
-test: build_test
+test: ${TARGET_BIN_TEST}
 	${TARGET_BIN_TEST}
+
+.PHONY: debug
+debug: ${TARGET_BIN_TEST}
+	gdb --args ${TARGET_BIN_TEST}
 
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test
@@ -44,11 +48,11 @@ ${OBJ_DIR_TEST}/chronos.memcheck: build_test
 
 .PHONY: valgrind valgrind_xml
 valgrind_xml: ${OBJ_DIR_TEST}/chronos.memcheck
-valgrind: build_test
+valgrind: ${TARGET_BIN_TEST}
 	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
 
 .PHONY: coverage
-coverage: build_test
+coverage: ${TARGET_BIN_TEST}
 	-rm ${OBJ_DIR_TEST}/src/main/*.gcda 2> /dev/null
 	@mkdir -p gcov
 	${TARGET_BIN_TEST}
