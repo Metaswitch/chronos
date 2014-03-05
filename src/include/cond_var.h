@@ -11,7 +11,14 @@
 class CondVar
 {
 public:
-  CondVar(pthread_mutex_t* mutex) : _mutex(mutex) { pthread_cond_init(&_cond, NULL); }
+  CondVar(pthread_mutex_t* mutex) : _mutex(mutex)
+  {
+    pthread_condattr_t cond_attr;
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&_cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
+  }
   ~CondVar() { pthread_cond_destroy(&_cond); }
 
   int wait() { return pthread_cond_wait(&_cond, _mutex); }

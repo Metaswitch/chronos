@@ -8,7 +8,7 @@ TimerStore::TimerStore() : _current_ms_bucket(0),
                            _current_s_bucket(0)
 {
   struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
   {
     perror("Failed to get system time - timer service cannot run: ");
     exit(-1);

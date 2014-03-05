@@ -23,7 +23,7 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   _replication_factor(0)
 {
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  clock_gettime(CLOCK_MONOTONIC, &ts);
   start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 

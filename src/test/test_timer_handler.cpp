@@ -306,7 +306,7 @@ TEST_F(TestTimerHandler, FutureTimerLeakTest)
 {
   Timer* timer = default_timer(1);
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  clock_gettime(CLOCK_MONOTONIC, &ts);
   timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000) + 100;
   
   std::unordered_set<Timer*> timers;
@@ -329,7 +329,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   timer->interval = 100;
   timer->repeat_for = 100;
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  clock_gettime(CLOCK_MONOTONIC, &ts);
   ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % 1000000);
   timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   
