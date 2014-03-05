@@ -21,7 +21,7 @@ Globals::Globals()
     ("http.bind-address", po::value<std::string>()->default_value("0.0.0.0"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost"), "The address of the local host")
-    ("cluster.node", po::value<std::vector<std::string>>()->multitoken(), "The addresses of a node in the cluster")
+    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost"), "HOST"), "The addresses of a node in the cluster")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ;
@@ -57,23 +57,23 @@ void Globals::update_config()
 
   std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
-  LOG_INFO("Bind address: %s", bind_address.c_str());
+  LOG_STATUS("Bind address: %s", bind_address.c_str());
 
   int bind_port = conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
-  LOG_INFO("Bind port: %d", bind_port);
+  LOG_STATUS("Bind port: %d", bind_port);
 
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
-  LOG_INFO("Cluster local address: %s", cluster_local_address.c_str());
+  LOG_STATUS("Cluster local address: %s", cluster_local_address.c_str());
   
   std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
   std::map<std::string, uint64_t> cluster_hashes;
-  LOG_INFO("Cluster nodes:");
+  LOG_STATUS("Cluster nodes:");
   for (auto it = cluster_addresses.begin(); it != cluster_addresses.end(); it++)
   {
-    LOG_INFO(" - %s", it->c_str());
+    LOG_STATUS(" - %s", it->c_str());
     cluster_hashes[*it] = generate_hash(*it);
   }
   set_cluster_hashes(cluster_hashes);
