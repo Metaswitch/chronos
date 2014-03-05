@@ -98,7 +98,7 @@ void TimerHandler::run() {
       Timer* timer = *sample_timer;
       struct timespec next_pop;
       timer->next_pop_time(next_pop);
-      _nearest_new_timer = timer->next_pop_time() - 10;
+      _nearest_new_timer = timer->next_pop_time();
 
       int rc = clock_gettime(CLOCK_MONOTONIC, &current_time);
       if (rc < 0)
