@@ -4,7 +4,7 @@
 #include <cstring>
 #include <pthread.h>
 
-Replicator::Replicator() : _q()
+Replicator::Replicator() : _q(), _headers(NULL)
 {
   int thread_rc = pthread_create(&_worker_thread,
                                  NULL, 
@@ -14,12 +14,16 @@ Replicator::Replicator() : _q()
   {
     LOG_ERROR("Failed to start replicator thread: %s", strerror(thread_rc));
   }
+
+  // Set up a content type header descriptor to use for our requests.
+  _headers = curl_slist_append(_headers, "Content-Type: application/json");
 }
 
 Replicator::~Replicator()
 {
   _q.terminate();
   pthread_join(_worker_thread, NULL);
+  curl_slist_free_all(_headers);
 }
 
 /*****************************************************************************/
@@ -58,6 +62,8 @@ void Replicator::replicate(Timer* timer)
   }
 }
 
+// The replication worker thread.  This loops, receiving cURL handles off a queue
+// and managing them in parallel.
 void Replicator::run()
 {
   CURL* new_handle = NULL;
@@ -65,16 +71,26 @@ void Replicator::run()
   int active_handles = 0;
 
   while(_q.pop(new_handle, 10))
-  e
+  {
     if (new_handle != NULL)
     {
       LOG_DEBUG("Sending replication message");
       curl_multi_add_handle(multi_handle, new_handle);
+
+      // Since we added a handle to the multi handle, expect there to
+      // be an extra handle in the count.
+      active_handles++;
       new_handle = NULL;
     }
-    else
+
+    // Check for progress on any of our replication messages.  Compare
+    // active_handles on either side of this call to see if some messages
+    // are done.
+    int old_active_handles = active_handles;
+    curl_multi_perform(multi_handle, &active_handles);
+
+    if (old_active_handles != active_handles)
     {
-      curl_multi_perform(multi_handle, &active_handles);
       int outstanding_messages = 0;
       for(CURLMsg* msg = curl_multi_info_read(multi_handle, &outstanding_messages);
           msg != NULL;
@@ -89,9 +105,10 @@ void Replicator::run()
         {
           LOG_DEBUG("Replication successful");
         }
-        CURL* old_handle = msg->easy_handle;
 
-        // We're about to invalidate the data `msg` points to so NULL it now.
+        // We're about to invalidate the data `msg` points to so remember the 
+        // important bit and NULL `msg` now.
+        CURL* old_handle = msg->easy_handle;
         msg = NULL;
         curl_multi_remove_handle(multi_handle, old_handle);
         curl_easy_cleanup(old_handle);
@@ -119,16 +136,14 @@ CURL* Replicator::create_curl_handle(const std::string& url,
   // http://curl.haxx.se/mail/lib-2009-11/0001.html
   curl_easy_setopt(curl, CURLOPT_POST, 1);
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-  curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 
-  // Set up the content type (as POSTFIELDS doesn't) we'll free these in
-  // the cURL thread after the request is completed.
-  struct curl_slist* headers = NULL;
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  // Set up the content type (as POSTFIELDS doesn't)
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, _headers);
 
+  // The customized bits of this request.
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, body.length());
 
   return curl;
 }

@@ -25,6 +25,7 @@ private:
 
   eventq<CURL*> _q;
   pthread_t _worker_thread;
+  struct curl_slist* _headers;
 };
 
 #endif
