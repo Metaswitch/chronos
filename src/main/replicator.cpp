@@ -12,7 +12,7 @@ Replicator::Replicator() : _q()
                                  (void*)this);
   if (thread_rc != 0)
   {
-    LOG_ERROR("Failed to start replicator threadi: %s", strerror(thread_rc));
+    LOG_ERROR("Failed to start replicator thread: %s", strerror(thread_rc));
   }
 }
 
@@ -65,7 +65,7 @@ void Replicator::run()
   int active_handles = 0;
 
   while(_q.pop(new_handle, 10))
-  {
+  e
     if (new_handle != NULL)
     {
       LOG_DEBUG("Sending replication message");
