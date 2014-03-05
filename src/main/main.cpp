@@ -12,10 +12,28 @@
 
 #include "time.h"
 
+// Signal handler that simply dumps the stack and then crashes out.
+void exception_handler(int sig)
+{
+  // Reset the signal handlers so that another exception will cause a crash.
+  signal(SIGABRT, SIG_DFL);
+  signal(SIGSEGV, SIG_DFL);
+
+  // Log the signal, along with a backtrace.
+  LOG_BACKTRACE("Signal %d caught", sig);
+
+  // Dump a core.
+  abort();
+}
+
 int main(int argc, char** argv)
 {
   // Initialize cURL before creating threads
   curl_global_init(CURL_GLOBAL_DEFAULT);
+
+  // Set up our exception signal handler for asserts and segfaults.
+  signal(SIGABRT, exception_handler);
+  signal(SIGSEGV, exception_handler);
 
   // Initialize the global configuration.
   __globals = new Globals();
