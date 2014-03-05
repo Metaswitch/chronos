@@ -117,7 +117,8 @@ void Controller::handle_request(struct evhttp_request* req)
     }
   }
 
-  LOG_DEBUG("Sending 200 OK response");
+  LOG_DEBUG("Accepted timer definition, timer is%s a replica",
+            replicated_timer ? "" : " not");
 
   // Now we have a valid timer object, reply to the HTTP request.
   evhttp_add_header(evhttp_request_get_output_headers(req),
