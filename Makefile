@@ -25,7 +25,7 @@ default: build
 include ${ROOT}/mk/platform.mk
 
 DEB_COMPONENT := chronos
-DEB_MAJOR_VERSION := 1.0
+DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
 EXTRA_CLEANS := ${ROOT}/gcov ${OBJ_DIR_TEST}/chronos.memcheck
 
