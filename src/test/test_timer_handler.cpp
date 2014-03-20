@@ -4,6 +4,7 @@
 #include "mock_callback.h"
 #include "mock_replicator.h"
 #include "base.h"
+#include "test_interposer.hpp"
 
 #include "timer_handler.h"
 
@@ -325,13 +326,24 @@ TEST_F(TestTimerHandler, FutureTimerLeakTest)
 
 TEST_F(TestTimerHandler, FutureTimerPop)
 {
+  // There are fixed points throughout time where things must stay exactly the
+  // way they are. Whatever happens here will create its own timeline, its own
+  // reality, a temporal tipping point. The future revolves around you, here,
+  // now, so do good!
+  cwtest_completely_control_time();
+
   Timer* timer = default_timer(1);
   timer->interval = 100;
   timer->repeat_for = 100;
+  
+  // Start the timer right now.
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % 1000000);
-  timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+
+  // Since we only allocates timers on millisecond intervals, round the
+  // time down to a millisecond.
+  ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % (1000 * 1000));
   
   std::unordered_set<Timer*> timers;
   timers.insert(timer);
@@ -348,7 +360,6 @@ TEST_F(TestTimerHandler, FutureTimerPop)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
-  usleep(100 * 1000);
 
   // The handler should sleep for 100ms (timer interval)
   if (ts.tv_nsec < 900 * 1000 * 1000)
@@ -360,9 +371,15 @@ TEST_F(TestTimerHandler, FutureTimerPop)
     ts.tv_nsec -= 900 * 1000 * 1000;
     ts.tv_sec += 1;
   }
+  cwtest_advance_time_ms(100);
 
   _cond()->check_timeout(ts);
   _cond()->signal_timeout();
   _cond()->block_till_waiting();
   delete timer;
+
+  // I always will be. But times change, and so must I... we all change. When
+  // you think about it, we are all different people, all through our lives
+  // and that’s okay, that’s good!
+  cwtest_reset_time();
 }
