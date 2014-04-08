@@ -217,16 +217,6 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 /* Instance Functions                                                        */
 /*****************************************************************************/
 
-TEST_F(TestTimer, NextPopTime)
-{
-  EXPECT_EQ(1000000 + 100, t1->next_pop_time());
-
-  struct timespec ts;
-  t1->next_pop_time(ts);
-  EXPECT_EQ(1000000 / 1000, ts.tv_sec);
-  EXPECT_EQ(100 * 1000 * 1000, ts.tv_nsec);
-}
-
 TEST_F(TestTimer, URL)
 {
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
@@ -248,7 +238,7 @@ TEST_F(TestTimer, ToJSON)
   t2->sequence_number = 0;
   t2->replicas = t1->replicas;
   t2->callback_url = "http://localhost:80/callback";
-  t2->callback_body = "stuff stuff stuff";
+  t2->callback_body = "{\"stuff\": \"stuff\"}";
 
   std::string json = t2->to_json();
   std::string err;
@@ -264,9 +254,9 @@ TEST_F(TestTimer, ToJSON)
   EXPECT_EQ(t2->interval, t3->interval) << json;
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
-  EXPECT_EQ(t1->replicas, t3->replicas) << json;
+  EXPECT_EQ(t2->replicas, t3->replicas) << json;
   EXPECT_EQ("http://localhost:80/callback", t3->callback_url) << json;
-  EXPECT_EQ("stuff stuff stuff", t3->callback_body) << json;
+  EXPECT_EQ("{\"stuff\": \"stuff\"}", t3->callback_body) << json;
   delete t2;
   delete t3;
 }

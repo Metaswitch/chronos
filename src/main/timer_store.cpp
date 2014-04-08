@@ -8,7 +8,7 @@ TimerStore::TimerStore() : _current_ms_bucket(0),
                            _current_s_bucket(0)
 {
   struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
     perror("Failed to get system time - timer service cannot run: ");
     exit(-1);
@@ -211,6 +211,12 @@ void TimerStore::refill_s_buckets()
     std::pop_heap(_extra_heap.begin(), _extra_heap.end());
     Timer* timer = _extra_heap.back();
 
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    uint64_t next_pop_time = ts.tv_sec * 1000 + 1000;
+    next_pop_time += ts.tv_nsec / 1000000;
+
     while ((timer != NULL) &&
            (timer->next_pop_time() - _first_bucket_timestamp) < 3600 * 1000)
     {
@@ -248,8 +254,8 @@ void TimerStore::refill_s_buckets()
 std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
 {
   // Calculate how long till the timer will pop.
-  unsigned long long next_pop_timestamp = t->next_pop_time();
-  unsigned long long time_to_next_pop;
+  uint64_t next_pop_timestamp = t->next_pop_time();
+  uint64_t time_to_next_pop;
   if (next_pop_timestamp < _first_bucket_timestamp)
   {
     // Timer should have already popped.  Best we can do is put it in the very first

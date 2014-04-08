@@ -134,11 +134,14 @@ void Controller::handle_request(struct evhttp_request* req)
   // If the timer belongs to the local node, store it.
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
-  if (timer->is_local(localhost))
+
+  if (!timer->is_local(localhost))
   {
-    _handler->add_timer(timer);
-    timer = NULL;
+    timer = Timer::create_tombstone(timer_id, replica_hash);
   }
+
+  _handler->add_timer(timer);
+  timer = NULL;
 }
 
 void Controller::controller_cb(struct evhttp_request* req, void* controller)

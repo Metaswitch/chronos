@@ -2,6 +2,8 @@
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 #include "utils.h"
 #include "log.h"
 
@@ -23,7 +25,7 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   _replication_factor(0)
 {
   struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
+  clock_gettime(CLOCK_REALTIME, &ts);
   start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
@@ -32,11 +34,12 @@ Timer::~Timer()
 }
 
 // Returns the next pop time in ms.
-unsigned long long Timer::next_pop_time()
+uint64_t Timer::next_pop_time()
 {
   std::string localhost;
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
+
   for (auto it = replicas.begin(); it != replicas.end(); it++, replica_index++)
   {
     if (*it == localhost)
@@ -48,15 +51,6 @@ unsigned long long Timer::next_pop_time()
   return start_time + ((sequence_number + 1) * interval) + (replica_index * 2 * 1000);
 }
 
-// Construct a timespec describing the next pop time.
-void Timer::next_pop_time(struct timespec& ts)
-{
-  unsigned long long pop_time = next_pop_time();
-  ts.tv_sec = pop_time / 1000;
-  ts.tv_nsec = (pop_time % 1000) * 1000000;
-}
-
-// Create the timer's URL from a given hostname.
 std::string Timer::url(std::string host)
 {
   std::stringstream ss;
@@ -82,32 +76,66 @@ std::string Timer::url(std::string host)
 }
 
 // Render the timer as JSON to be used in an HTTP request body.
+// The JSON should take the form:
+// {
+//     "timing": {
+//         "start-time": Int64,
+//         "sequence-number": Int,
+//         "interval": Int,
+//         "repeat-for": Int
+//     },
+//     "callback": {
+//         "http": {
+//             "uri": "string",
+//             "opaque": "string"
+//         }
+//     },
+//     "reliability": {
+//         "replicas": [
+//             "string",["string"]
+//         ]
+//     }
+// }
 std::string Timer::to_json()
 {
-  std::stringstream ss;
-  ss << "{\"timing\":{\"start-time\":"
-     << start_time
-     << ",\"sequence-number\":"
-     << sequence_number
-     << ",\"interval\":"
-     << interval / 1000
-     << ",\"repeat-for\":"
-     << repeat_for / 1000
-     << "},\"callback\":{\"http\":{\"uri\":\""
-     << callback_url
-     << "\",\"opaque\":\""
-     << callback_body
-     << "\"}},\"reliability\":{\"replicas\":[";
+  rapidjson::Document doc;
+  doc.SetObject();
+
+  rapidjson::Value timing(rapidjson::kObjectType);
+  timing.AddMember("start-time", start_time, doc.GetAllocator());
+  timing.AddMember("sequence-number", sequence_number, doc.GetAllocator());
+  timing.AddMember("interval", interval/1000, doc.GetAllocator());
+  timing.AddMember("repeat-for", repeat_for/1000, doc.GetAllocator());
+
+  rapidjson::Value http(rapidjson::kObjectType);
+  http.AddMember("uri", callback_url.c_str(), doc.GetAllocator());
+  http.AddMember("opaque", callback_body.c_str(), doc.GetAllocator());
+
+  rapidjson::Value callback(rapidjson::kObjectType);
+  callback.AddMember("http", http, doc.GetAllocator());
+
+  rapidjson::Value replicas_array(rapidjson::kArrayType);
   for (auto it = replicas.begin(); it != replicas.end(); it++)
   {
-    ss << "\"" << *it << "\"";
-    if (it + 1 != replicas.end())
-    {
-      ss << ",";
-    }
+    replicas_array.PushBack((*it).c_str(), doc.GetAllocator());
   }
-  ss << "]}}";
-  return ss.str();
+
+  rapidjson::Value reliability(rapidjson::kObjectType);
+  reliability.AddMember("replicas", replicas_array, doc.GetAllocator());
+
+  // Create the document.
+  doc.AddMember("timing", timing, doc.GetAllocator());
+  doc.AddMember("callback", callback, doc.GetAllocator());
+  doc.AddMember("reliability", reliability, doc.GetAllocator());
+
+  rapidjson::StringBuffer s;
+  rapidjson::Writer<rapidjson::StringBuffer> w(s);
+  doc.Accept(w);
+  std::string body = s.GetString();
+
+  LOG_DEBUG("Built replication body: %s", body.c_str());
+
+  return body;
 }
 
 bool Timer::is_local(std::string host)
@@ -150,6 +178,35 @@ void Timer::calculate_replicas(uint64_t replica_hash)
         // This is probably a replica.
         _replication_factor++;
         replicas.push_back(it->first);
+      }
+    }
+
+    // Recreate the vector of replicas.
+    uint32_t hash;
+    MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
+
+
+    if (hash != replica_hash)
+    {
+      std::vector<std::string> cluster;
+      __globals->get_cluster_addresses(cluster);
+      unsigned int first_replica = hash % cluster.size();
+      std::vector<std::string> new_replicas;
+      for (unsigned int ii = 0;
+           ii < _replication_factor && ii < cluster.size();
+           ii++)
+      {
+        new_replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
+      }
+
+      for (unsigned int ii = 0;
+           ii < new_replicas.size();
+           ii++)
+      {
+        if (std::find(replicas.begin(), replicas.end(), new_replicas[ii]) == replicas.end())
+        {
+          replicas.push_back(new_replicas[ii]);
+        }
       }
     }
   }
@@ -220,6 +277,11 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
     JSON_PARSE_ERROR((NODE_NAME " should be an integer"));                    \
 }
 
+#define JSON_ASSERT_INTEGER_64(NODE, NODE_NAME) {                             \
+  if (!(NODE).IsInt64())                                                      \
+    JSON_PARSE_ERROR((NODE_NAME " should be an integer"));                    \
+}
+
 #define JSON_ASSERT_STRING(NODE, NODE_NAME) {                                 \
   if (!(NODE).IsString())                                                     \
     JSON_PARSE_ERROR((NODE_NAME " should be a string"));                      \
@@ -249,7 +311,7 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   doc.Parse<0>(json.c_str());
   if (doc.HasParseError())
   {
-    JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s") % doc.GetErrorOffset() % doc.GetParseError()));
+    JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s. JSON is: %s") % doc.GetErrorOffset() % doc.GetParseError() % json));
   }
 
   if (!doc.HasMember("timing"))
@@ -276,8 +338,8 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   {
     // Timer JSON specifies a start-time, use that instead of now.
     rapidjson::Value& start_time = timing["start-time"];
-    JSON_ASSERT_INTEGER(start_time, "start-time");
-    timer->start_time = start_time.GetInt();
+    JSON_ASSERT_INTEGER_64(start_time, "start-time");
+    timer->start_time = start_time.GetInt64();
   }
 
   if (timing.HasMember("sequence-number"))

@@ -32,7 +32,7 @@ protected:
     delete _th;
     delete _store;
     // Replicator/Callback are deleted by the timer handler.
-    
+
     Base::TearDown();
   }
 
@@ -131,7 +131,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
                           WillOnce(Return(true));
 
   EXPECT_CALL(*_replicator, replicate(IsTombstone())).Times(2);
-  
+
   EXPECT_CALL(*_store, add_timer(IsTombstone())).Times(2);
 
   _th = new TimerHandler(_store, _replicator, _callback);
@@ -307,9 +307,9 @@ TEST_F(TestTimerHandler, FutureTimerLeakTest)
 {
   Timer* timer = default_timer(1);
   struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
+  clock_gettime(CLOCK_REALTIME, &ts);
   timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000) + 100;
-  
+
   std::unordered_set<Timer*> timers;
   timers.insert(timer);
 
@@ -335,16 +335,16 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   Timer* timer = default_timer(1);
   timer->interval = 100;
   timer->repeat_for = 100;
-  
+
   // Start the timer right now.
   struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
+  clock_gettime(CLOCK_REALTIME, &ts);
   timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
 
   // Since we only allocates timers on millisecond intervals, round the
   // time down to a millisecond.
   ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % (1000 * 1000));
-  
+
   std::unordered_set<Timer*> timers;
   timers.insert(timer);
 
@@ -361,10 +361,10 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
 
-  // The handler should sleep for 100ms (timer interval)
+  // The handler should sleep for 10ms (sleeps for bucket size)
   if (ts.tv_nsec < 900 * 1000 * 1000)
   {
-    ts.tv_nsec += 100 * 1000 * 1000;
+    ts.tv_nsec += 10 * 1000 * 1000;
   }
   else
   {
@@ -380,6 +380,6 @@ TEST_F(TestTimerHandler, FutureTimerPop)
 
   // I always will be. But times change, and so must I... we all change. When
   // you think about it, we are all different people, all through our lives
-  // and that’s okay, that’s good!
+  // and that's okay, that's good!
   cwtest_reset_time();
 }

@@ -96,11 +96,8 @@ void TimerHandler::run() {
     {
       sample_timer = next_timers.begin();
       Timer* timer = *sample_timer;
-      struct timespec next_pop;
-      timer->next_pop_time(next_pop);
-      _nearest_new_timer = timer->next_pop_time();
 
-      int rc = clock_gettime(CLOCK_MONOTONIC, &current_time);
+      int rc = clock_gettime(CLOCK_REALTIME, &current_time);
       if (rc < 0)
       {
         // Failed to get the current time.  According to `man 3 clock_gettime` this
@@ -109,8 +106,11 @@ void TimerHandler::run() {
         exit(2);
       }
 
-      unsigned long long current_timestamp = current_time.tv_sec * 1000;
+      // Get the current time.
+      uint64_t current_timestamp = current_time.tv_sec * 1000;
       current_timestamp += current_time.tv_nsec / 1000000;
+
+      // If the next timer is due to pop, then get it. Otherwise wait for 10ms.
       if (timer->next_pop_time() <= current_timestamp)
       {
         pop(next_timers);
@@ -118,9 +118,12 @@ void TimerHandler::run() {
       }
       else
       {
+        struct timespec next_pop;
+        next_pop.tv_sec = (current_timestamp + 10) / 1000;
+        next_pop.tv_nsec = ((current_timestamp + 10) % 1000) * 1000000;
+
         rc = 0;
         while ((!_terminate) &&
-               (_nearest_new_timer <= timer->next_pop_time()) &&
                (rc != ETIMEDOUT))
         {
           rc = _cond->timedwait(&next_pop);
@@ -129,13 +132,6 @@ void TimerHandler::run() {
             printf("Failed to wait for condition variable: %s", strerror(errno));
             exit(2);
           }
-        }
-
-        if (_nearest_new_timer > timer->next_pop_time())
-        {
-          // The timers we're holding are not the next to pop, swap them out.
-          _store->add_timers(next_timers);
-          _store->get_next_timers(next_timers);
         }
       }
     }
