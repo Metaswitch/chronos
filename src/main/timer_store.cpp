@@ -7,13 +7,7 @@
 TimerStore::TimerStore() : _current_ms_bucket(0),
                            _current_s_bucket(0)
 {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
-  {
-    perror("Failed to get system time - timer service cannot run: ");
-    exit(-1);
-  }
-  _first_bucket_timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  update_first_bucket();
 }
 
 TimerStore::~TimerStore()
@@ -165,6 +159,19 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
     set.insert(*it);
   }
   _ten_ms_buckets[_current_ms_bucket].clear();
+}
+
+void TimerStore::update_first_bucket()
+{
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+  {
+    perror("Failed to get system time - timer service cannot run: ");
+    exit(-1);
+  }
+
+  _first_bucket_timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
 /*****************************************************************************/

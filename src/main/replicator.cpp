@@ -60,6 +60,20 @@ void Replicator::replicate(Timer* timer)
     CURL* curl = create_curl_handle(url, body);
     _q.push(curl);
   }
+
+  for (auto it = timer->extra_replicas.begin(); it != timer->extra_replicas.end(); it++)
+  {
+    if (*it == localhost)
+    {
+      continue;
+    }
+
+    std::string url = timer->url(*it);
+    std::string body = timer->to_json();
+
+    CURL* curl = create_curl_handle(url, body);
+    _q.push(curl);
+  }
 }
 
 // The replication worker thread.  This loops, receiving cURL handles off a queue

@@ -361,19 +361,8 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
 
-  // The handler should sleep for 10ms (sleeps for bucket size)
-  if (ts.tv_nsec < 900 * 1000 * 1000)
-  {
-    ts.tv_nsec += 10 * 1000 * 1000;
-  }
-  else
-  {
-    ts.tv_nsec -= 900 * 1000 * 1000;
-    ts.tv_sec += 1;
-  }
   cwtest_advance_time_ms(100);
 
-  _cond()->check_timeout(ts);
   _cond()->signal_timeout();
   _cond()->block_till_waiting();
   delete timer;

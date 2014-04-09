@@ -160,12 +160,13 @@ void Timer::become_tombstone()
 
 void Timer::calculate_replicas(uint64_t replica_hash)
 {
+  std::vector<std::string> hash_replicas;
   if (replica_hash)
   {
     // Compare the hash to all the known replicas looking for matches.
     std::map<std::string, uint64_t> cluster_hashes;
     __globals->get_cluster_hashes(cluster_hashes);
-    _replication_factor = 0;
+
     for (auto it = cluster_hashes.begin();
          it != cluster_hashes.end();
          it++)
@@ -176,37 +177,36 @@ void Timer::calculate_replicas(uint64_t replica_hash)
       if ((replica_hash & it->second) == it->second)
       {
         // This is probably a replica.
-        _replication_factor++;
-        replicas.push_back(it->first);
+        hash_replicas.push_back(it->first);
       }
     }
 
-    // Recreate the vector of replicas.
+    // Recreate the vector of replicas. Use the replication factor if it's set,
+    // otherwise use the size of the existing replicas.
+    _replication_factor = _replication_factor > 0 ?
+                          _replication_factor : hash_replicas.size();
     uint32_t hash;
     MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
+    std::vector<std::string> cluster;
+    __globals->get_cluster_addresses(cluster);
+    unsigned int first_replica = hash % cluster.size();
 
-
-    if (hash != replica_hash)
+    for (unsigned int ii = 0;
+         ii < _replication_factor && ii < cluster.size();
+         ii++)
     {
-      std::vector<std::string> cluster;
-      __globals->get_cluster_addresses(cluster);
-      unsigned int first_replica = hash % cluster.size();
-      std::vector<std::string> new_replicas;
-      for (unsigned int ii = 0;
-           ii < _replication_factor && ii < cluster.size();
-           ii++)
-      {
-        new_replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
-      }
+      replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
+    }
 
-      for (unsigned int ii = 0;
-           ii < new_replicas.size();
-           ii++)
+    // Finally, add any replicas that were in hash_replicas but aren't in
+    // replicas to the extra_replicas vector.
+    for (unsigned int ii = 0;
+         ii < hash_replicas.size();
+         ii++)
+    {
+      if (std::find(replicas.begin(), replicas.end(), hash_replicas[ii]) == replicas.end())
       {
-        if (std::find(replicas.begin(), replicas.end(), new_replicas[ii]) == replicas.end())
-        {
-          replicas.push_back(new_replicas[ii]);
-        }
+        extra_replicas.push_back(hash_replicas[ii]);
       }
     }
   }

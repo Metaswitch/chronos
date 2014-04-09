@@ -63,7 +63,7 @@ void TimerHandler::add_timer(Timer* timer)
 {
   LOG_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
-  signal_new_timer(timer->next_pop_time());
+  _cond->signal();
   _store->add_timer(timer);
   pthread_mutex_unlock(&_mutex);
 }
@@ -88,7 +88,7 @@ void TimerHandler::run() {
     if (next_timers.empty())
     {
       // We have no timers, the next added timer will wake us
-      _nearest_new_timer = -1;
+      LOG_DEBUG("Waiting for new timers");
       _cond->wait();
       _store->get_next_timers(next_timers);
     }
@@ -119,21 +119,28 @@ void TimerHandler::run() {
       else
       {
         struct timespec next_pop;
-        next_pop.tv_sec = (current_timestamp + 10) / 1000;
-        next_pop.tv_nsec = ((current_timestamp + 10) % 1000) * 1000000;
+        clock_gettime(CLOCK_MONOTONIC, &next_pop);
 
-        rc = 0;
-        while ((!_terminate) &&
-               (rc != ETIMEDOUT))
+        if (next_pop.tv_nsec < 990 * 1000 * 1000)
         {
-          rc = _cond->timedwait(&next_pop);
-          if (rc < 0 && rc != ETIMEDOUT)
-          {
-            printf("Failed to wait for condition variable: %s", strerror(errno));
-            exit(2);
-          }
+          next_pop.tv_nsec += 10 * 1000 * 1000;
+        }
+        else
+        {
+          next_pop.tv_nsec -= 990 * 1000 * 1000;
+          next_pop.tv_sec += 1;
+        }
+
+        rc = _cond->timedwait(&next_pop);
+
+        if (rc < 0 && rc != ETIMEDOUT)
+        {
+          printf("Failed to wait for condition variable: %s", strerror(errno));
+          exit(2);
         }
       }
+
+      _store->update_first_bucket();
     }
   }
 
@@ -195,13 +202,3 @@ void TimerHandler::pop(Timer* timer)
     delete timer;
   }
 }
-
-void TimerHandler::signal_new_timer(unsigned int pop_time)
-{
-  if (_nearest_new_timer > pop_time)
-  {
-    _nearest_new_timer = pop_time;
-    _cond->signal();
-  }
-}
-

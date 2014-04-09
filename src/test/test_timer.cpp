@@ -138,12 +138,12 @@ TEST_F(TestTimer, FromJSONTests)
   EXPECT_EQ(3, timer->replicas.size());
   delete timer;
 
-  // Regardless of replication factor, try to guess the replicas from the bloom filter if given
+  // Get the replicas from the bloom filter if given
   timer = Timer::from_json(1, 0x11011100011101, default_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(3, get_replication_factor(timer));
+  EXPECT_EQ(2, get_replication_factor(timer));
   delete timer;
 
   timer = Timer::from_json(1, 0x11011100011101, custom_repl_factor, err, replicated);
