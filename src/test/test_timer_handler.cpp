@@ -275,7 +275,6 @@ TEST_F(TestTimerHandler, AddTimer)
   // call to get_next_timers().
   EXPECT_CALL(*_store, get_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_store, add_timer(timer)).Times(1);
   _th = new TimerHandler(_store, _replicator, _callback);
@@ -316,11 +315,11 @@ TEST_F(TestTimerHandler, FutureTimerLeakTest)
   // Since this timer won't pop, and we're exiting from the 'have timers in hand' branch of
   // the core loop, we'll not hit the store again.
   EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(timers));
+                       WillOnce(SetArgReferee<0>(timers)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   _th = new TimerHandler(_store, _replicator, _callback);
-  _cond()->block_till_waiting();
-  _cond()->signal_wake();
   _cond()->block_till_waiting();
 }
 
@@ -352,6 +351,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   // Then the standard one more check during termination.
   EXPECT_CALL(*_store, get_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_callback, perform(_, _, _)).WillOnce(Return(true));

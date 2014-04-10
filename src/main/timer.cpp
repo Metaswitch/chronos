@@ -51,6 +51,7 @@ uint64_t Timer::next_pop_time()
   return start_time + ((sequence_number + 1) * interval) + (replica_index * 2 * 1000);
 }
 
+// Create the timer's URL from a given hostname
 std::string Timer::url(std::string host)
 {
   std::stringstream ss;
@@ -279,7 +280,7 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 
 #define JSON_ASSERT_INTEGER_64(NODE, NODE_NAME) {                             \
   if (!(NODE).IsInt64())                                                      \
-    JSON_PARSE_ERROR((NODE_NAME " should be an integer"));                    \
+    JSON_PARSE_ERROR((NODE_NAME " should be an 64bit integer"));              \
 }
 
 #define JSON_ASSERT_STRING(NODE, NODE_NAME) {                                 \
