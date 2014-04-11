@@ -63,7 +63,6 @@ void TimerHandler::add_timer(Timer* timer)
 {
   LOG_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
-//  _cond->signal();
   _store->add_timer(timer);
   pthread_mutex_unlock(&_mutex);
 }

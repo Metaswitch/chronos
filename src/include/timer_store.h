@@ -25,7 +25,7 @@ public:
   // Get the next bucket of timers to pop.
   virtual void get_next_timers(std::unordered_set<Timer*>&);
 
-  virtual void update_first_timestamp();
+  virtual void update_current_timestamp();
 
   // Give the UT test fixture access to our member variables
   friend class TestTimerStore;
@@ -46,8 +46,8 @@ private:
   // Heap of longer-lived timers (> 1hr)
   std::vector<Timer *> _extra_heap;
 
-  // Current (ms) timestamp of the 0th bucket.
-  uint64_t _first_timestamp;
+  // Current (ms) timestamp.
+  uint64_t _current_timestamp;
 
   // Utility functions to replenish the buckets for each layer
   void refill_ms_buckets();

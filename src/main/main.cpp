@@ -40,8 +40,7 @@ int main(int argc, char** argv)
   __globals->update_config();
 
   // Create components
-  TimerStore *store;
-  store = new TimerStore();
+  TimerStore *store = new TimerStore();
   Replicator* controller_rep = new Replicator();
   Replicator* handler_rep = new Replicator();
   HTTPCallback* callback = new HTTPCallback();

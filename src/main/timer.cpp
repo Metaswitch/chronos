@@ -93,7 +93,7 @@ std::string Timer::url(std::string host)
 //     },
 //     "reliability": {
 //         "replicas": [
-//             "string",["string"]
+//             <comma separated "string"s>
 //         ]
 //     }
 // }

@@ -125,7 +125,7 @@ void Replicator::run()
         CURL* old_handle = msg->easy_handle;
         msg = NULL;
 
-        std::string* body_copy = NULL;
+        std::string const * body_copy = NULL;
         curl_easy_getinfo(old_handle, CURLINFO_PRIVATE, body_copy);
         delete body_copy;
 
@@ -148,7 +148,7 @@ CURL* Replicator::create_curl_handle(const std::string& url,
                                      const std::string& body)
 {
   CURL* curl = curl_easy_init();
-  std::string* body_copy = new std::string(body.c_str());
+  std::string const * body_copy = new std::string(body.c_str());
 
   // Tell cURL to perform a POST but to call it a PUT, this allows
   // us to easily pass a JSON body as a string.
@@ -166,7 +166,7 @@ CURL* Replicator::create_curl_handle(const std::string& url,
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, body.length());
 
   // Save off the body. This is needed as otherwise the body string can be
-  // destroyed before the curl message has been sent, meanign the message
+  // destroyed before the curl message has been sent, meaning the message
   // is invalid.
   curl_easy_setopt(curl, CURLOPT_PRIVATE, body_copy);
 
