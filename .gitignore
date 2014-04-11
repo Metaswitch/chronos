@@ -3,3 +3,4 @@
 /gcov/
 *.swp
 tags
+debian/copyright
