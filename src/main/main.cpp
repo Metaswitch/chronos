@@ -41,7 +41,6 @@ int main(int argc, char** argv)
 
   // Create components
   TimerStore *store = new TimerStore();
-  store = new TimerStore();
   Replicator* controller_rep = new Replicator();
   Replicator* handler_rep = new Replicator();
   HTTPCallback* callback = new HTTPCallback();

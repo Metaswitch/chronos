@@ -7,8 +7,8 @@
 Replicator::Replicator() : _q(), _headers(NULL)
 {
   int thread_rc = pthread_create(&_worker_thread,
-                                 NULL, 
-                                 Replicator::worker_thread_entry_point, 
+                                 NULL,
+                                 Replicator::worker_thread_entry_point,
                                  (void*)this);
   if (thread_rc != 0)
   {
@@ -48,6 +48,20 @@ void Replicator::replicate(Timer* timer)
   __globals->get_cluster_local_ip(localhost);
 
   for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
+  {
+    if (*it == localhost)
+    {
+      continue;
+    }
+
+    std::string url = timer->url(*it);
+    std::string body = timer->to_json();
+
+    CURL* curl = create_curl_handle(url, body);
+    _q.push(curl);
+  }
+
+  for (auto it = timer->extra_replicas.begin(); it != timer->extra_replicas.end(); it++)
   {
     if (*it == localhost)
     {
@@ -106,10 +120,15 @@ void Replicator::run()
           LOG_DEBUG("Replication successful");
         }
 
-        // We're about to invalidate the data `msg` points to so remember the 
+        // We're about to invalidate the data `msg` points to so remember the
         // important bit and NULL `msg` now.
         CURL* old_handle = msg->easy_handle;
         msg = NULL;
+
+        std::string const * body_copy = NULL;
+        curl_easy_getinfo(old_handle, CURLINFO_PRIVATE, body_copy);
+        delete body_copy;
+
         curl_multi_remove_handle(multi_handle, old_handle);
         curl_easy_cleanup(old_handle);
       }
@@ -129,6 +148,7 @@ CURL* Replicator::create_curl_handle(const std::string& url,
                                      const std::string& body)
 {
   CURL* curl = curl_easy_init();
+  std::string const * body_copy = new std::string(body.c_str());
 
   // Tell cURL to perform a POST but to call it a PUT, this allows
   // us to easily pass a JSON body as a string.
@@ -142,8 +162,13 @@ CURL* Replicator::create_curl_handle(const std::string& url,
 
   // The customized bits of this request.
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body_copy->data());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, body.length());
+
+  // Save off the body. This is needed as otherwise the body string can be
+  // destroyed before the curl message has been sent, meaning the message
+  // is invalid.
+  curl_easy_setopt(curl, CURLOPT_PRIVATE, body_copy);
 
   return curl;
 }

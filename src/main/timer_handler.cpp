@@ -63,7 +63,6 @@ void TimerHandler::add_timer(Timer* timer)
 {
   LOG_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
-  signal_new_timer(timer->next_pop_time());
   _store->add_timer(timer);
   pthread_mutex_unlock(&_mutex);
 }
@@ -77,7 +76,6 @@ void TimerHandler::add_timer(Timer* timer)
 void TimerHandler::run() {
   std::unordered_set<Timer*> next_timers;
   std::unordered_set<Timer*>::iterator sample_timer;
-  struct timespec current_time;
 
   pthread_mutex_lock(&_mutex);
 
@@ -85,60 +83,36 @@ void TimerHandler::run() {
 
   while (!_terminate)
   {
-    if (next_timers.empty())
+    if (!next_timers.empty())
     {
-      // We have no timers, the next added timer will wake us
-      _nearest_new_timer = -1;
-      _cond->wait();
-      _store->get_next_timers(next_timers);
+      LOG_DEBUG("Have a timer to pop");
+      pop(next_timers);
     }
     else
     {
-      sample_timer = next_timers.begin();
-      Timer* timer = *sample_timer;
       struct timespec next_pop;
-      timer->next_pop_time(next_pop);
-      _nearest_new_timer = timer->next_pop_time();
+      clock_gettime(CLOCK_MONOTONIC, &next_pop);
 
-      int rc = clock_gettime(CLOCK_MONOTONIC, &current_time);
-      if (rc < 0)
+      if (next_pop.tv_nsec < 990 * 1000 * 1000)
       {
-        // Failed to get the current time.  According to `man 3 clock_gettime` this
-        // cannot occur.  If it does, it's fatal.
-        printf("Failed to get system time: %s", strerror(errno));
-        exit(2);
-      }
-
-      unsigned long long current_timestamp = current_time.tv_sec * 1000;
-      current_timestamp += current_time.tv_nsec / 1000000;
-      if (timer->next_pop_time() <= current_timestamp)
-      {
-        pop(next_timers);
-        _store->get_next_timers(next_timers);
+        next_pop.tv_nsec += 10 * 1000 * 1000;
       }
       else
       {
-        rc = 0;
-        while ((!_terminate) &&
-               (_nearest_new_timer <= timer->next_pop_time()) &&
-               (rc != ETIMEDOUT))
-        {
-          rc = _cond->timedwait(&next_pop);
-          if (rc < 0 && rc != ETIMEDOUT)
-          {
-            printf("Failed to wait for condition variable: %s", strerror(errno));
-            exit(2);
-          }
-        }
+        next_pop.tv_nsec -= 990 * 1000 * 1000;
+        next_pop.tv_sec += 1;
+      }
 
-        if (_nearest_new_timer > timer->next_pop_time())
-        {
-          // The timers we're holding are not the next to pop, swap them out.
-          _store->add_timers(next_timers);
-          _store->get_next_timers(next_timers);
-        }
+      int rc = _cond->timedwait(&next_pop);
+
+      if (rc < 0 && rc != ETIMEDOUT)
+      {
+        printf("Failed to wait for condition variable: %s", strerror(errno));
+        exit(2);
       }
     }
+
+    _store->get_next_timers(next_timers);
   }
 
   for (auto it = next_timers.begin(); it != next_timers.end(); it++)
@@ -199,13 +173,3 @@ void TimerHandler::pop(Timer* timer)
     delete timer;
   }
 }
-
-void TimerHandler::signal_new_timer(unsigned int pop_time)
-{
-  if (_nearest_new_timer > pop_time)
-  {
-    _nearest_new_timer = pop_time;
-    _cond->signal();
-  }
-}
-

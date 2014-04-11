@@ -1,19 +1,12 @@
 #include "timer_store.h"
 #include "log.h"
-
 #include <algorithm>
 #include <time.h>
 
 TimerStore::TimerStore() : _current_ms_bucket(0),
                            _current_s_bucket(0)
 {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-  {
-    perror("Failed to get system time - timer service cannot run: ");
-    exit(-1);
-  }
-  _first_bucket_timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  update_current_timestamp();
 }
 
 TimerStore::~TimerStore()
@@ -136,35 +129,60 @@ void TimerStore::delete_timer(TimerID id)
 // will try again later (after a signal that a new timer has been added).
 void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 {
+  uint64_t previous_timestamp = _current_timestamp;
+  update_current_timestamp();
+
   // If there are no timers, simply return an empty set.
   if (_timer_lookup_table.empty())
   {
     return;
   }
 
-  // The store is not empty, find the first set that will pop.
-  while (_ten_ms_buckets[_current_ms_bucket].empty())
+  // Calculate the number of buckets that the timer store should moved along (typically one).
+  uint32_t actual_ten_ms_passed = (_current_timestamp - previous_timestamp) / 10;
+
+  // Pull out all timers that will pop up to the current ms bucket.
+  for (uint32_t ii = 0; ii < actual_ten_ms_passed; ii++)
   {
-    if (_current_ms_bucket >= 99)
+    if (_ten_ms_buckets[_current_ms_bucket].empty())
     {
-      refill_ms_buckets();
+      if (_current_ms_bucket >= 99)
+      {
+        refill_ms_buckets();
+      }
+      else
+      {
+        _current_ms_bucket++;
+      }
     }
     else
     {
+      // Remove the timers from the lookup table, and pass ownership of the
+      // memory for the timers to the caller.
+      for (auto it = _ten_ms_buckets[_current_ms_bucket].begin();
+           it != _ten_ms_buckets[_current_ms_bucket].end();
+           it++)
+      {
+        _timer_lookup_table.erase((*it)->id);
+        set.insert(*it);
+      }
+
+      _ten_ms_buckets[_current_ms_bucket].clear();
       _current_ms_bucket++;
     }
   }
+}
 
-  // Remove the timers from the lookup table, and pass ownership of the
-  // memory for the timers to the caller.
-  for (auto it = _ten_ms_buckets[_current_ms_bucket].begin();
-       it != _ten_ms_buckets[_current_ms_bucket].end();
-       it++)
+void TimerStore::update_current_timestamp()
+{
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
-    _timer_lookup_table.erase((*it)->id);
-    set.insert(*it);
+    perror("Failed to get system time - timer service cannot run: ");
+    exit(-1);
   }
-  _ten_ms_buckets[_current_ms_bucket].clear();
+  _current_timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
 /*****************************************************************************/
@@ -175,14 +193,13 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 // current 10ms bucket index.
 void TimerStore::refill_ms_buckets()
 {
+  // Update timing records.
+  _current_ms_bucket = 0;
+
   if (_current_s_bucket >= (NUM_SECOND_BUCKETS - 1))
   {
     refill_s_buckets();
   }
-
-  // Update timing records, at this point, time advances by 1 second.
-  _current_ms_bucket = 0;
-  _first_bucket_timestamp += 1000;
 
   // Distribute the next second bucket into the ms buckets.
   distribute_s_bucket(_current_s_bucket++);
@@ -196,6 +213,7 @@ void TimerStore::distribute_s_bucket(unsigned int index)
     std::unordered_set<Timer*>* bucket = find_bucket_from_timer(*it);
     bucket->insert(*it);
   }
+
   _s_buckets[index].clear();
 }
 
@@ -205,18 +223,17 @@ void TimerStore::refill_s_buckets()
 {
   // Reset the second buckets to the beginning.
   _current_s_bucket = 0;
-
   if (!_extra_heap.empty())
   {
     std::pop_heap(_extra_heap.begin(), _extra_heap.end());
     Timer* timer = _extra_heap.back();
 
     while ((timer != NULL) &&
-           (timer->next_pop_time() - _first_bucket_timestamp) < 3600 * 1000)
+          (((timer->next_pop_time() <= _current_timestamp) ) ||
+          ((timer->next_pop_time() - _current_timestamp)) < 3600 * 1000))
     {
       // Remove timer from heap
       _extra_heap.pop_back();
-
       std::unordered_set<Timer*>* bucket = find_bucket_from_timer(timer);
       bucket->insert(timer);
 
@@ -248,9 +265,10 @@ void TimerStore::refill_s_buckets()
 std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
 {
   // Calculate how long till the timer will pop.
-  unsigned long long next_pop_timestamp = t->next_pop_time();
-  unsigned long long time_to_next_pop;
-  if (next_pop_timestamp < _first_bucket_timestamp)
+  uint64_t next_pop_timestamp = t->next_pop_time();
+  uint64_t time_to_next_pop;
+
+  if (next_pop_timestamp < _current_timestamp)
   {
     // Timer should have already popped.  Best we can do is put it in the very first
     // available bucket so it gets popped as soon as possible.
@@ -259,19 +277,21 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
   }
   else
   {
-    time_to_next_pop = next_pop_timestamp - _first_bucket_timestamp;
+    time_to_next_pop = next_pop_timestamp - _current_timestamp;
   }
 
-  // Now find the bucket for the timer.
-  if (time_to_next_pop < 1000)
+  uint32_t ms_bucket = (time_to_next_pop  / 10) + _current_ms_bucket;
+  uint32_t ms_time = (((time_to_next_pop % 1000) / 10) + _current_ms_bucket) > 99 ? 1 : 0;
+  uint32_t s_bucket = (time_to_next_pop / 1000) + _current_s_bucket + ms_time - 1;
+
+  if (ms_bucket <= 99)
   {
-    return &_ten_ms_buckets[time_to_next_pop / 10];
+    return &_ten_ms_buckets[ms_bucket];
   }
-  else if (time_to_next_pop < 1000 * NUM_SECOND_BUCKETS)
+
+  if (s_bucket < NUM_SECOND_BUCKETS - 1)
   {
-    // Note, the seconds buckets are offset by one (to account for the millisecond
-    // buckets taking up the first second's worth of time).
-    return &_s_buckets[(time_to_next_pop / 1000) - 1];
+    return &_s_buckets[s_bucket];
   }
 
   return NULL;

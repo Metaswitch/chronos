@@ -16,10 +16,7 @@ public:
   friend class TestTimer;
 
   // Returns the next time to pop in ms after epoch
-  unsigned long long next_pop_time();
-
-  // Returns the next time to pop in ns after epoch in a timespec
-  void next_pop_time(struct timespec&);
+  uint64_t next_pop_time();
 
   // Construct the URL for this timer given a hostname
   std::string url(std::string);
@@ -42,11 +39,12 @@ public:
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
   TimerID id;
-  unsigned long long start_time;
+  uint64_t start_time;
   uint32_t interval;
   uint32_t repeat_for;
   uint32_t sequence_number;
   std::vector<std::string> replicas;
+  std::vector<std::string> extra_replicas;
   std::string callback_url;
   std::string callback_body;
 
