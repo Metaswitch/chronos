@@ -254,43 +254,6 @@ TEST_F(TestTimerStore, MultiNearGetNextTimersTest)
   cwtest_reset_time();
 }
 
-TEST_F(TestTimerStore, ClashingMultiMidGetNextTimersTest)
-{
-  cwtest_completely_control_time();
-
-  // Lengthen timer one to be in the same second bucket as timer two but different ms
-  // buckets.
-  timers[0]->interval = 10000 + 100;
-
-  ts->add_timer(timers[0]);
-  ts->add_timer(timers[1]);
-
-  std::unordered_set<Timer*> next_timers;
-
-  cwtest_advance_time_ms(timers[0]->interval);
-  ts->get_next_timers(next_timers);
-  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
-  timers[0] = *next_timers.begin();
-  EXPECT_EQ(1, timers[0]->id);
-
-  next_timers.clear();
-
-  cwtest_advance_time_ms(timers[1]->interval - timers[0]->interval);
-  ts->get_next_timers(next_timers);
-  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
-  timers[1] = *next_timers.begin();
-  EXPECT_EQ(2, timers[1]->id);
-
-  next_timers.clear();
-
-  delete timers[0];
-  delete timers[1];
-  delete timers[2];
-  delete tombstone;
-
-  cwtest_reset_time();
-}
-
 TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 {
   cwtest_completely_control_time();
@@ -316,50 +279,6 @@ TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
   ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
   timers[1] = *next_timers.begin();
   EXPECT_EQ(2, timers[1]->id);
-
-  delete timers[0];
-  delete timers[1];
-  delete timers[2];
-  delete tombstone;
-
-  cwtest_reset_time();
-}
-
-TEST_F(TestTimerStore, MultiLongGetTimersTest)
-{
-  cwtest_completely_control_time();
-
-  // Lengthen timer one and two to be in the extra heap.
-  timers[0]->interval = (3600 * 1000) + 100;
-  timers[1]->interval = (3600 * 1000) + 200;
-
-  ts->add_timer(timers[0]);
-  ts->add_timer(timers[1]);
-  ts->add_timer(timers[2]);
-
-  std::unordered_set<Timer*> next_timers;
-
-  cwtest_advance_time_ms(timers[0]->interval);
-  ts->get_next_timers(next_timers);
-  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
-  timers[0] = *next_timers.begin();
-  EXPECT_EQ(1, timers[0]->id);
-
-  next_timers.clear();
-
-  cwtest_advance_time_ms(timers[1]->interval - timers[0]->interval);
-  ts->get_next_timers(next_timers);
-  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
-  timers[1] = *next_timers.begin();
-  EXPECT_EQ(2, timers[1]->id);
-
-  next_timers.clear();
-
-  cwtest_advance_time_ms(timers[2]->interval - timers[1]->interval);
-  ts->get_next_timers(next_timers);
-  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
-  timers[2] = *next_timers.begin();
-  EXPECT_EQ(3, timers[2]->id);
 
   delete timers[0];
   delete timers[1];
