@@ -49,6 +49,10 @@ private:
   // Current (ms) timestamp.
   uint64_t _current_timestamp;
 
+  // Number of ms_buckets to move when updating the current view of the
+  // store.
+  uint64_t _ms_bucket_offset;
+
   // Utility functions to replenish the buckets for each layer
   void refill_ms_buckets();
   void distribute_s_bucket(unsigned int);
