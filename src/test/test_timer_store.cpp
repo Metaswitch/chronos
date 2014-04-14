@@ -18,8 +18,12 @@ protected:
 
     ts = new TimerStore();
 
-    // Force the current time to a known value.
+    // I mark the hours, every one, Nor have I yet outrun the Sun.
+    // My use and value, unto you, Are gauged by what you have to do.
+    cwtest_completely_control_time();
+    ts->update_current_timestamp();
 
+    // Force the current time to a known value.
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
@@ -44,6 +48,7 @@ protected:
   // must clear up the timer instances.
   virtual void TearDown()
   {
+    cwtest_reset_time();
     delete ts;
     Base::TearDown();
   }
@@ -71,7 +76,7 @@ TEST_F(TestTimerStore, AddTimerTest)
   for (int ii = 0; ii < 100; ii++)
   {
     // Timer one pops in 100ms so is in bucket 10.
-    if (ii != 10)
+    if (ii != 9)
     {
       EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
     }
@@ -103,7 +108,7 @@ TEST_F(TestTimerStore, AddTimersTest)
   for (int ii = 0; ii < 100; ii++)
   {
     // Timer one pops in 100ms so is in bucket 10.
-    if (ii != 10)
+    if (ii != 9)
     {
       EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
     }
@@ -154,10 +159,6 @@ TEST_F(TestTimerStore, AddLongTimerTest)
 
 TEST_F(TestTimerStore, NearGetNextTimersTest)
 {
-  // I mark the hours, every one, Nor have I yet outrun the Sun.
-  // My use and value, unto you, Are gauged by what you have to do.
-  cwtest_completely_control_time();
-
   ts->add_timer(timers[0]);
   std::unordered_set<Timer*> next_timers;
   ts->get_next_timers(next_timers);
@@ -174,14 +175,36 @@ TEST_F(TestTimerStore, NearGetNextTimersTest)
   delete timers[1];
   delete timers[2];
   delete tombstone;
+}
 
-  cwtest_reset_time();
+TEST_F(TestTimerStore, NearGetNextTimersOffsetTest)
+{
+  timers[0]->interval = 1600;
+
+  ts->add_timer(timers[0]);
+
+  std::unordered_set<Timer*> next_timers;
+
+  cwtest_advance_time_ms(1500);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(0, next_timers.size()) << "Bucket should have 0 timers";
+
+  next_timers.clear();
+
+  cwtest_advance_time_ms(100);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timers";
+
+  next_timers.clear();
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, MidGetNextTimersTest)
 {
-  cwtest_completely_control_time();
-
   ts->add_timer(timers[1]);
   std::unordered_set<Timer*> next_timers;
   ts->get_next_timers(next_timers);
@@ -198,20 +221,16 @@ TEST_F(TestTimerStore, MidGetNextTimersTest)
   delete timers[1];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, LongGetNextTimersTest)
 {
-  cwtest_completely_control_time();
-
   ts->add_timer(timers[2]);
   std::unordered_set<Timer*> next_timers;
   ts->get_next_timers(next_timers);
 
   ASSERT_EQ(0, next_timers.size());
-  cwtest_advance_time_ms((timers[2]->interval) + 10);
+  cwtest_advance_time_ms((timers[2]->interval));
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size());
@@ -222,14 +241,10 @@ TEST_F(TestTimerStore, LongGetNextTimersTest)
   delete timers[1];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, MultiNearGetNextTimersTest)
 {
-  cwtest_completely_control_time();
-
   // Shorten timer two to be under 1 second.
   timers[1]->interval = 400;
 
@@ -250,14 +265,43 @@ TEST_F(TestTimerStore, MultiNearGetNextTimersTest)
   delete timers[1];
   delete timers[2];
   delete tombstone;
+}
 
-  cwtest_reset_time();
+TEST_F(TestTimerStore, ClashingMultiMidGetNextTimersTest)
+{
+  // Lengthen timer one to be in the same second bucket as timer two but different ms
+  // buckets.
+  timers[0]->interval = 10000 + 100;
+
+  ts->add_timer(timers[0]);
+  ts->add_timer(timers[1]);
+
+  std::unordered_set<Timer*> next_timers;
+
+  cwtest_advance_time_ms(timers[0]->interval);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
+  timers[0] = *next_timers.begin();
+  EXPECT_EQ(1, timers[0]->id);
+
+  next_timers.clear();
+
+  cwtest_advance_time_ms(timers[1]->interval - timers[0]->interval);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
+  timers[1] = *next_timers.begin();
+  EXPECT_EQ(2, timers[1]->id);
+
+  next_timers.clear();
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 {
-  cwtest_completely_control_time();
-
   // Lengthen timer one to be in a different second bucket than timer two.
   timers[0]->interval = 9000 + 100;
 
@@ -284,14 +328,50 @@ TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
   delete timers[1];
   delete timers[2];
   delete tombstone;
+}
 
-  cwtest_reset_time();
+TEST_F(TestTimerStore, MultiLongGetTimersTest)
+{
+  // Lengthen timer one and two to be in the extra heap.
+  timers[0]->interval = (3600 * 1000) + 100;
+  timers[1]->interval = (3600 * 1000) + 200;
+
+  ts->add_timer(timers[0]);
+  ts->add_timer(timers[1]);
+  ts->add_timer(timers[2]);
+
+  std::unordered_set<Timer*> next_timers;
+
+  cwtest_advance_time_ms(timers[0]->interval);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
+  timers[0] = *next_timers.begin();
+  EXPECT_EQ(1, timers[0]->id);
+
+  next_timers.clear();
+
+  cwtest_advance_time_ms(timers[1]->interval - timers[0]->interval);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
+  timers[1] = *next_timers.begin();
+  EXPECT_EQ(2, timers[1]->id);
+
+  next_timers.clear();
+
+  cwtest_advance_time_ms(timers[2]->interval - timers[1]->interval);
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
+  timers[2] = *next_timers.begin();
+  EXPECT_EQ(3, timers[2]->id);
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, ReallyLongTimer)
 {
-  cwtest_completely_control_time();
-
   // Lengthen timer three to really long (10 hours)
   timers[2]->interval = (3600 * 1000) * 10;
   ts->add_timer(timers[2]);
@@ -312,8 +392,6 @@ TEST_F(TestTimerStore, ReallyLongTimer)
   delete timers[1];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, DeleteNearTimer)
@@ -354,8 +432,6 @@ TEST_F(TestTimerStore, DeleteLongTimer)
 
 TEST_F(TestTimerStore, UpdateTimer)
 {
-  cwtest_completely_control_time();
-
   ts->add_timer(timers[0]);
 
   // Replace timer one, using a newer timer with the same ID.
@@ -378,14 +454,10 @@ TEST_F(TestTimerStore, UpdateTimer)
   delete timers[1];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, DontUpdateTimerAge)
 {
-  cwtest_completely_control_time();
-
   ts->add_timer(timers[0]);
 
   // Attempt to replace timer one but the replacement is older
@@ -408,14 +480,10 @@ TEST_F(TestTimerStore, DontUpdateTimerAge)
   delete timers[0];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, DontUpdateTimerSeqNo)
 {
-  cwtest_completely_control_time();
-
   timers[0]->sequence_number++;
   ts->add_timer(timers[0]);
 
@@ -438,14 +506,10 @@ TEST_F(TestTimerStore, DontUpdateTimerSeqNo)
   delete timers[0];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, AddTombstone)
 {
-  cwtest_completely_control_time();
-
   ts->add_timer(tombstone);
 
   std::unordered_set<Timer*> next_timers;
@@ -457,14 +521,10 @@ TEST_F(TestTimerStore, AddTombstone)
   delete timers[1];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
 
 TEST_F(TestTimerStore, OverwriteWithTombstone)
 {
-  cwtest_completely_control_time();
-
   ts->add_timer(timers[0]);
   ts->add_timer(tombstone);
 
@@ -481,7 +541,4 @@ TEST_F(TestTimerStore, OverwriteWithTombstone)
   delete timers[1];
   delete timers[2];
   delete tombstone;
-
-  cwtest_reset_time();
 }
-

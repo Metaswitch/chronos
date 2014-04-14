@@ -7,6 +7,7 @@ TimerStore::TimerStore() : _current_ms_bucket(0),
                            _current_s_bucket(0)
 {
   update_current_timestamp();
+  _ms_bucket_offset = 0;
 }
 
 TimerStore::~TimerStore()
@@ -141,9 +142,13 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
   // Calculate the number of buckets that the timer store should moved along (typically one).
   uint32_t actual_ten_ms_passed = (_current_timestamp - previous_timestamp) / 10;
 
+  _ms_bucket_offset = 0;
+
   // Pull out all timers that will pop up to the current ms bucket.
   for (uint32_t ii = 0; ii < actual_ten_ms_passed; ii++)
   {
+    _ms_bucket_offset = actual_ten_ms_passed - ii - 1;
+
     if (_ten_ms_buckets[_current_ms_bucket].empty())
     {
       if (_current_ms_bucket >= 99)
@@ -268,7 +273,7 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
   uint64_t next_pop_timestamp = t->next_pop_time();
   uint64_t time_to_next_pop;
 
-  if (next_pop_timestamp < _current_timestamp)
+  if (next_pop_timestamp < _current_timestamp + 10)
   {
     // Timer should have already popped.  Best we can do is put it in the very first
     // available bucket so it gets popped as soon as possible.
@@ -277,11 +282,12 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
   }
   else
   {
-    time_to_next_pop = next_pop_timestamp - _current_timestamp;
+    time_to_next_pop = next_pop_timestamp - _current_timestamp - 10;
   }
 
-  uint32_t ms_bucket = (time_to_next_pop  / 10) + _current_ms_bucket;
-  uint32_t ms_time = (((time_to_next_pop % 1000) / 10) + _current_ms_bucket) > 99 ? 1 : 0;
+  uint32_t ms_offset = (_ms_bucket_offset - 1) < 100 ? (_ms_bucket_offset - 1) : 0;
+  uint32_t ms_bucket = (time_to_next_pop  / 10) + _current_ms_bucket + ms_offset;
+  uint32_t ms_time = (((time_to_next_pop % 1000) / 10) + _current_ms_bucket + ms_offset) > 99 ? 1 : 0;
   uint32_t s_bucket = (time_to_next_pop / 1000) + _current_s_bucket + ms_time - 1;
 
   if (ms_bucket <= 99)
