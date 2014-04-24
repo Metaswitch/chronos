@@ -1,6 +1,8 @@
 #include "timer_store.h"
 #include "log.h"
 #include <algorithm>
+#include <string.h>
+#include <assert.h>
 #include <time.h>
 
 TimerStore::TimerStore() : _current_ms_bucket(0),
@@ -104,7 +106,14 @@ void TimerStore::delete_timer(TimerID id)
     std::unordered_set<Timer*>* bucket = find_bucket_from_timer(timer);
     if (bucket)
     {
-      bucket->erase(timer);
+      size_t erased = bucket->erase(timer);
+      if (erased != 1)
+      {
+        // We failed to remove the timer from its bucket.  This is
+        // fatal as we have no safe way to proceed.
+        LOG_ERROR("Failed to remove timer consistently");
+        assert(!"Failed to remove timer consistently");
+      }
     }
     else
     {
@@ -184,10 +193,15 @@ void TimerStore::update_current_timestamp()
 
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
-    perror("Failed to get system time - timer service cannot run: ");
-    exit(-1);
+    LOG_ERROR("Failed to get system time - timer service cannot run: %s",
+              strerror(errno));
+    assert(!"Failed to get system time");
   }
+  
   _current_timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+
+  // Round down to the nearest 10ms so we can consistently track buckets.
+  _current_timestamp -= _current_timestamp % 10;
 }
 
 /*****************************************************************************/
