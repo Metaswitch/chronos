@@ -299,9 +299,17 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
     time_to_next_pop = next_pop_timestamp - _current_timestamp - 10;
   }
 
+  // Work out which 10ms bucket to count from (might require wrapping if we're
+  // at the end of a second.
   uint32_t ms_offset = (_ms_bucket_offset - 1) < 100 ? (_ms_bucket_offset - 1) : 0;
+
+  // Which bucket are we in if we're in an ms bucket?
   uint32_t ms_bucket = (time_to_next_pop  / 10) + _current_ms_bucket + ms_offset;
+
+  // How far through a second are we?  Measured in 10ms buckets.
   uint32_t ms_time = (((time_to_next_pop % 1000) / 10) + _current_ms_bucket + ms_offset) > 99 ? 1 : 0;
+
+  // Which bucket are we in if we're in a second bucket?
   uint32_t s_bucket = (time_to_next_pop / 1000) + _current_s_bucket + ms_time - 1;
 
   if (ms_bucket <= 99)
