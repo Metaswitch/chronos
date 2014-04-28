@@ -1,6 +1,8 @@
 #include "timer_store.h"
 #include "log.h"
 #include <algorithm>
+#include <string.h>
+#include <assert.h>
 #include <time.h>
 
 TimerStore::TimerStore() : _current_ms_bucket(0),
@@ -104,7 +106,14 @@ void TimerStore::delete_timer(TimerID id)
     std::unordered_set<Timer*>* bucket = find_bucket_from_timer(timer);
     if (bucket)
     {
-      bucket->erase(timer);
+      size_t erased = bucket->erase(timer);
+      if (erased != 1)
+      {
+        // We failed to remove the timer from its bucket.  This is
+        // fatal as we have no safe way to proceed.
+        LOG_ERROR("Failed to remove timer consistently");
+        assert(!"Failed to remove timer consistently");
+      }
     }
     else
     {
@@ -184,10 +193,15 @@ void TimerStore::update_current_timestamp()
 
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
-    perror("Failed to get system time - timer service cannot run: ");
-    exit(-1);
+    LOG_ERROR("Failed to get system time - timer service cannot run: %s",
+              strerror(errno));
+    assert(!"Failed to get system time");
   }
+  
   _current_timestamp = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+
+  // Round down to the nearest 10ms so we can consistently track buckets.
+  _current_timestamp -= _current_timestamp % 10;
 }
 
 /*****************************************************************************/
@@ -285,9 +299,17 @@ std::unordered_set<Timer*>* TimerStore::find_bucket_from_timer(Timer* t)
     time_to_next_pop = next_pop_timestamp - _current_timestamp - 10;
   }
 
+  // Work out which 10ms bucket to count from (might require wrapping if we're
+  // at the end of a second.
   uint32_t ms_offset = (_ms_bucket_offset - 1) < 100 ? (_ms_bucket_offset - 1) : 0;
+
+  // Which bucket are we in if we're in an ms bucket?
   uint32_t ms_bucket = (time_to_next_pop  / 10) + _current_ms_bucket + ms_offset;
+
+  // How far through a second are we?  Measured in 10ms buckets.
   uint32_t ms_time = (((time_to_next_pop % 1000) / 10) + _current_ms_bucket + ms_offset) > 99 ? 1 : 0;
+
+  // Which bucket are we in if we're in a second bucket?
   uint32_t s_bucket = (time_to_next_pop / 1000) + _current_s_bucket + ms_time - 1;
 
   if (ms_bucket <= 99)

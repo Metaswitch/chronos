@@ -23,7 +23,7 @@ protected:
     cwtest_completely_control_time();
     ts->update_current_timestamp();
 
-    // Force the current time to a known value.
+    // Default some timers to short, mid and long.
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
@@ -539,6 +539,94 @@ TEST_F(TestTimerStore, OverwriteWithTombstone)
   EXPECT_EQ(100, extracted->repeat_for);
 
   delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
+// Test for issue #19, even if time is moving in non-10ms steps
+// we should be able to reliably update/tombstone timers.
+TEST_F(TestTimerStore, Non10msShortTimerUpdate)
+{
+  // Offset the interval of the first timer so it's not a multiple of 10ms.
+  timers[0]->interval += 4;
+
+  ts->add_timer(timers[0]);
+
+  // Move time on more than the timer's shift but less than 10ms, even
+  // after this the timer store should know which bucket the timer is in.
+  cwtest_advance_time_ms(8);
+
+  // Attempting to get a set of timers updates the internal clock in the
+  // timer store.
+  std::unordered_set<Timer*> next_timers;
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Now, to prove the timer store can still find the timer, update it to
+  // a tombstone.
+  ts->add_timer(tombstone);
+
+  // No timers are ready to pop yet
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Move on till the tombstone should pop (50 ms offset from timer[0])
+  cwtest_advance_time_ms(150);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(1, next_timers.size());
+  next_timers.clear();
+
+  // Move on again to ensure there are no more timers in the store.
+  cwtest_advance_time_ms(100000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // timer[0] was deleted when it was updated in the timer store.
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
+// Test for issue #19
+TEST_F(TestTimerStore, Non10msMediumTimerUpdate)
+{
+  // Offset the interval of the second timer so it's not a multiple of 10ms.
+  timers[1]->interval += 4;
+
+  ts->add_timer(timers[1]);
+
+  // Move time on to less than 1s but closer than the timer's offset, even
+  // after this the timer store should know which bucket the timer is in.
+  cwtest_advance_time_ms(990 + 8);
+
+  // Attempting to get a set of timers updates the internal clock in the
+  // timer store.
+  std::unordered_set<Timer*> next_timers;
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Now, to prove the timer store can still find the timer, update it to
+  // a tombstone.
+  tombstone->id = timers[1]->id;
+  ts->add_timer(tombstone);
+
+  // No timers are ready to pop yet
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Move on till the timer should pop
+  cwtest_advance_time_ms(100000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(1, next_timers.size());
+  next_timers.clear();
+
+  // Move on again to ensure there are no more timers in the store.
+  cwtest_advance_time_ms(100000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // timer[1] was deleted when it was updated in the timer store.
+  delete timers[0];
   delete timers[2];
   delete tombstone;
 }
