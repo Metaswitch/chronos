@@ -32,6 +32,9 @@ DAEMON=/usr/bin/chronos
 
 do_start()
 {
+  # Allow chronos to write out core files. 
+  ulimit -c unlimited 
+
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
   start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON || return 2
 }
