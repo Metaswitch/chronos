@@ -585,3 +585,21 @@ TEST_F(TestTimerStore, MixtureOfTimerLengths)
   EXPECT_EQ(3, next_timers.size());
   next_timers.clear();
 }
+
+TEST_F(TestTimerStore, TimerPopsOnTheHour)
+{
+  std::unordered_set<Timer*> next_timers;
+  uint64_t pop_time_ms;
+
+  pop_time_ms = (timers[0]->start_time / (60 * 60 * 1000));
+  pop_time_ms += 2;
+  pop_time_ms *= (60 * 60 * 1000);
+  timers[0]->interval = pop_time_ms - timers[0]->start_time;
+  ts->add_timer(timers[0]);
+
+  // Move on to the pop time. The time pops correctly.
+  cwtest_advance_time_ms(pop_time_ms - timers[0]->start_time + TIMER_GRANULARITY_MS);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(1, next_timers.size());
+  next_timers.clear();
+}
