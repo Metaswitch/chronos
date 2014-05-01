@@ -545,3 +545,43 @@ TEST_F(TestTimerStore, Non10msMediumTimerUpdate)
   delete timers[2];
   delete tombstone;
 }
+
+TEST_F(TestTimerStore, MixtureOfTimerLengths)
+{
+  // Add timers that all pop at the same time, but in such a way that one ends
+  // up in the short wheel, one in the long wheel, and one in the heap.  Check
+  // they pop at the same time.
+  std::unordered_set<Timer*> next_timers;
+
+  // Timers all pop 1hr, 1s, 500ms from the start of the test.
+  // Set timer 1.
+  timers[0]->interval = ((60 * 60 * 1000) + (1 * 1000) + 500);
+  ts->add_timer(timers[0]);
+
+  // Move on by 1hr. Nothing has popped.
+  cwtest_advance_time_ms(60 * 60 * 1000);
+  timers[1]->start_time += (60 * 60 * 1000);
+  timers[2]->start_time += (60 * 60 * 1000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Timer 2 pops in 1s, 500ms
+  timers[1]->interval = ((1 * 1000) + 500);
+  ts->add_timer(timers[1]);
+
+  // Move on by 1s. Nothing has popped.
+  cwtest_advance_time_ms(1 * 1000);
+  timers[2]->start_time += (1 * 1000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Timer 3 pops in 500ms.
+  timers[2]->interval = 500;
+  ts->add_timer(timers[2]);
+
+  // Move on by 500ms. All timers pop.
+  cwtest_advance_time_ms(500 + TIMER_GRANULARITY_MS);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(3, next_timers.size());
+  next_timers.clear();
+}
