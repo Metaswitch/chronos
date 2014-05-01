@@ -314,7 +314,7 @@ void TimerStore::refill_short_wheel()
   for(auto it = long_bucket->begin(); it != long_bucket->end(); ++it)
   {
     Timer* timer = *it;
-    Bucket* short_bucket = short_wheel_bucket(_tick_timestamp);
+    Bucket* short_bucket = short_wheel_bucket(timer);
     short_bucket->insert(timer);
   }
 
