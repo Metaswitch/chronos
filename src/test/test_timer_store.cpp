@@ -16,12 +16,10 @@ protected:
   {
     Base::SetUp();
 
-    ts = new TimerStore();
-
     // I mark the hours, every one, Nor have I yet outrun the Sun.
     // My use and value, unto you, Are gauged by what you have to do.
     cwtest_completely_control_time();
-    ts->update_current_timestamp();
+    ts = new TimerStore();
 
     // Default some timers to short, mid and long.
     struct timespec ts;
@@ -54,16 +52,18 @@ protected:
   }
 
   // Accessors into private variables.
-  std::unordered_set<Timer*>& _ten_ms_buckets(int ii) { return (ts->_ten_ms_buckets[ii]); }
+  TimerStore::Bucket& _short_bucket(int ii) { return (ts->_short_wheel[ii]); }
+  TimerStore::Bucket& _long_bucket(int ii) { return (ts->_long_wheel[ii]); }
+  std::vector<Timer*> _extra_heap() { return (ts->_extra_heap); }
 
-  std::unordered_set<Timer*>& _s_buckets(int ii) { return (ts->_s_buckets[ii]); }
-
-  std::vector<Timer*>& _extra_heap() { return (ts->_extra_heap); }
+  int _long_wheel_num_buckets() { return TimerStore::LONG_WHEEL_NUM_BUCKETS; }
+  int _short_wheel_num_buckets() { return TimerStore::SHORT_WHEEL_NUM_BUCKETS; }
 
   // Variables under test.
   TimerStore* ts;
   Timer* timers[3];
   Timer* tombstone;
+
 };
 
 /*****************************************************************************/
@@ -78,17 +78,17 @@ TEST_F(TestTimerStore, AddTimerTest)
     // Timer one pops in 100ms so is in bucket 10.
     if (ii != 9)
     {
-      EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
+      EXPECT_TRUE(_short_bucket(ii).empty()) << "Bucket " << ii << " should be empty";
     }
     else
     {
-      EXPECT_EQ(1, _ten_ms_buckets(ii).size()) << "The timer should be in bucket 10";
+      EXPECT_EQ(1, _short_bucket(ii).size()) << "The timer should be in bucket 10";
     }
   }
 
-  for (int ii = 0; ii < NUM_SECOND_BUCKETS; ii++)
+  for (int ii = 0; ii < _long_wheel_num_buckets(); ii++)
   {
-    EXPECT_TRUE(_s_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
+    EXPECT_TRUE(_long_bucket(ii).empty()) << "Bucket " << ii << " should be empty";
   }
 
   EXPECT_TRUE(_extra_heap().empty());
@@ -110,24 +110,24 @@ TEST_F(TestTimerStore, AddTimersTest)
     // Timer one pops in 100ms so is in bucket 10.
     if (ii != 9)
     {
-      EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
+      EXPECT_TRUE(_short_bucket(ii).empty()) << "Bucket " << ii << " should be empty";
     }
     else
     {
-      EXPECT_EQ(1, _ten_ms_buckets(ii).size()) << "The timer should be in bucket " << ii;
+      EXPECT_EQ(1, _short_bucket(ii).size()) << "The timer should be in bucket " << ii;
     }
   }
 
-  for (int ii = 0; ii < NUM_SECOND_BUCKETS; ii++)
+  for (int ii = 0; ii < _long_wheel_num_buckets(); ii++)
   {
     // Timer 2 pops in 10100ms so is in the 9th second bucket.
     if (ii != 9)
     {
-      EXPECT_TRUE(_s_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
+      EXPECT_TRUE(_long_bucket(ii).empty()) << "Bucket " << ii << " should be empty";
     }
     else
     {
-      EXPECT_EQ(1, _s_buckets(ii).size()) << "The timer should be in bucket " << ii;
+      EXPECT_EQ(1, _long_bucket(ii).size()) << "The timer should be in bucket " << ii;
     }
   }
 
@@ -142,12 +142,12 @@ TEST_F(TestTimerStore, AddLongTimerTest)
   ts->add_timer(timers[2]);
   for (int ii = 0; ii < 100; ii++)
   {
-    EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
+    EXPECT_TRUE(_short_bucket(ii).empty()) << "Bucket " << ii << " should be empty";
   }
 
-  for (int ii = 0; ii < NUM_SECOND_BUCKETS; ii++)
+  for (int ii = 0; ii < _long_wheel_num_buckets(); ii++)
   {
-    EXPECT_TRUE(_s_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
+    EXPECT_TRUE(_long_bucket(ii).empty()) << "Bucket " << ii << " should be empty";
   }
 
   EXPECT_EQ(1, _extra_heap().size());
