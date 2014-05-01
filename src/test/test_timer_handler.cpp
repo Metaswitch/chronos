@@ -315,7 +315,6 @@ TEST_F(TestTimerHandler, FutureTimerLeakTest)
   // Since this timer won't pop, and we're exiting from the 'have timers in hand' branch of
   // the core loop, we'll not hit the store again.
   EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(timers)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
