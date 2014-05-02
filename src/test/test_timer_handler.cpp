@@ -320,6 +320,7 @@ TEST_F(TestTimerHandler, FutureTimerLeakTest)
 
   _th = new TimerHandler(_store, _replicator, _callback);
   _cond()->block_till_waiting();
+  delete timer; timer = NULL;
 }
 
 TEST_F(TestTimerHandler, FutureTimerPop)

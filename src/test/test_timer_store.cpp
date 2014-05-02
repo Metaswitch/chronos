@@ -54,6 +54,7 @@ protected:
   // must clear up the timer instances.
   virtual void TearDown()
   {
+    delete ts; ts = NULL;
     cwtest_reset_time();
     Base::TearDown();
   }
@@ -308,10 +309,11 @@ TEST_F(TestTimerStore, ReallyLongTimer)
 
 TEST_F(TestTimerStore, DeleteNearTimer)
 {
+  uint64_t interval = timers[0]->interval;
   ts->add_timer(timers[0]);
   ts->delete_timer(1);
   std::unordered_set<Timer*> next_timers;
-  cwtest_advance_time_ms(timers[0]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
   delete timers[1];
@@ -321,10 +323,11 @@ TEST_F(TestTimerStore, DeleteNearTimer)
 
 TEST_F(TestTimerStore, DeleteMidTimer)
 {
+  uint64_t interval = timers[2]->interval;
   ts->add_timer(timers[1]);
   ts->delete_timer(2);
   std::unordered_set<Timer*> next_timers;
-  cwtest_advance_time_ms(timers[1]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
   delete timers[0];
@@ -334,9 +337,10 @@ TEST_F(TestTimerStore, DeleteMidTimer)
 
 TEST_F(TestTimerStore, DeleteLongTimer)
 {
+  uint64_t interval = timers[2]->interval;
   ts->add_timer(timers[2]);
   ts->delete_timer(3);
-  cwtest_advance_time_ms(timers[2]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(interval + TIMER_GRANULARITY_MS);
   std::unordered_set<Timer*> next_timers;
   ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
@@ -584,6 +588,11 @@ TEST_F(TestTimerStore, MixtureOfTimerLengths)
   ts->get_next_timers(next_timers);
   EXPECT_EQ(3, next_timers.size());
   next_timers.clear();
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
 }
 
 TEST_F(TestTimerStore, TimerPopsOnTheHour)
@@ -602,4 +611,9 @@ TEST_F(TestTimerStore, TimerPopsOnTheHour)
   ts->get_next_timers(next_timers);
   EXPECT_EQ(1, next_timers.size());
   next_timers.clear();
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
 }
