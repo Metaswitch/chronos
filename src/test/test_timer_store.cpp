@@ -5,6 +5,11 @@
 
 #include <gtest/gtest.h>
 
+// The timer store has a granularity of 10ms. This means that timers may pop up
+// to 10ms late. As a result the timer store tests often add this granularity
+// when advancing time to guarantee that a timer has popped.
+const int TIMER_GRANULARITY_MS = 10;
+
 /*****************************************************************************/
 /* Test fixture                                                              */
 /*****************************************************************************/
@@ -16,12 +21,10 @@ protected:
   {
     Base::SetUp();
 
-    ts = new TimerStore();
-
     // I mark the hours, every one, Nor have I yet outrun the Sun.
     // My use and value, unto you, Are gauged by what you have to do.
     cwtest_completely_control_time();
-    ts->update_current_timestamp();
+    ts = new TimerStore();
 
     // Default some timers to short, mid and long.
     struct timespec ts;
@@ -32,6 +35,9 @@ protected:
       timers[ii] = default_timer(ii + 1);
       timers[ii]->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
     }
+
+    // Timer 1 will pop in 100ms.
+    timers[0]->interval = 100;
 
     // Timer 2 will pop strictly after 1 second.
     timers[1]->interval = 10000 + 200;
@@ -49,113 +55,19 @@ protected:
   virtual void TearDown()
   {
     cwtest_reset_time();
-    delete ts;
     Base::TearDown();
   }
-
-  // Accessors into private variables.
-  std::unordered_set<Timer*>& _ten_ms_buckets(int ii) { return (ts->_ten_ms_buckets[ii]); }
-
-  std::unordered_set<Timer*>& _s_buckets(int ii) { return (ts->_s_buckets[ii]); }
-
-  std::vector<Timer*>& _extra_heap() { return (ts->_extra_heap); }
 
   // Variables under test.
   TimerStore* ts;
   Timer* timers[3];
   Timer* tombstone;
+
 };
 
 /*****************************************************************************/
 /* Instance Functions                                                        */
 /*****************************************************************************/
-
-TEST_F(TestTimerStore, AddTimerTest)
-{
-  ts->add_timer(timers[0]);
-  for (int ii = 0; ii < 100; ii++)
-  {
-    // Timer one pops in 100ms so is in bucket 10.
-    if (ii != 9)
-    {
-      EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
-    }
-    else
-    {
-      EXPECT_EQ(1, _ten_ms_buckets(ii).size()) << "The timer should be in bucket 10";
-    }
-  }
-
-  for (int ii = 0; ii < NUM_SECOND_BUCKETS; ii++)
-  {
-    EXPECT_TRUE(_s_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
-  }
-
-  EXPECT_TRUE(_extra_heap().empty());
-
-  delete timers[1];
-  delete timers[2];
-  delete tombstone;
-}
-
-TEST_F(TestTimerStore, AddTimersTest)
-{
-  std::unordered_set<Timer*> timer_set;
-  timer_set.insert(timers[0]);
-  timer_set.insert(timers[1]);
-  ts->add_timers(timer_set);
-
-  for (int ii = 0; ii < 100; ii++)
-  {
-    // Timer one pops in 100ms so is in bucket 10.
-    if (ii != 9)
-    {
-      EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
-    }
-    else
-    {
-      EXPECT_EQ(1, _ten_ms_buckets(ii).size()) << "The timer should be in bucket " << ii;
-    }
-  }
-
-  for (int ii = 0; ii < NUM_SECOND_BUCKETS; ii++)
-  {
-    // Timer 2 pops in 10100ms so is in the 9th second bucket.
-    if (ii != 9)
-    {
-      EXPECT_TRUE(_s_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
-    }
-    else
-    {
-      EXPECT_EQ(1, _s_buckets(ii).size()) << "The timer should be in bucket " << ii;
-    }
-  }
-
-  EXPECT_TRUE(_extra_heap().empty());
-
-  delete timers[2];
-  delete tombstone;
-}
-
-TEST_F(TestTimerStore, AddLongTimerTest)
-{
-  ts->add_timer(timers[2]);
-  for (int ii = 0; ii < 100; ii++)
-  {
-    EXPECT_TRUE(_ten_ms_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
-  }
-
-  for (int ii = 0; ii < NUM_SECOND_BUCKETS; ii++)
-  {
-    EXPECT_TRUE(_s_buckets(ii).empty()) << "Bucket " << ii << " should be empty";
-  }
-
-  EXPECT_EQ(1, _extra_heap().size());
-
-  delete timers[0];
-  delete timers[1];
-  delete tombstone;
-}
 
 TEST_F(TestTimerStore, NearGetNextTimersTest)
 {
@@ -164,7 +76,7 @@ TEST_F(TestTimerStore, NearGetNextTimersTest)
   ts->get_next_timers(next_timers);
 
   ASSERT_EQ(0, next_timers.size());
-  cwtest_advance_time_ms(1000);
+  cwtest_advance_time_ms(100 + TIMER_GRANULARITY_MS);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size());
@@ -191,7 +103,7 @@ TEST_F(TestTimerStore, NearGetNextTimersOffsetTest)
 
   next_timers.clear();
 
-  cwtest_advance_time_ms(100);
+  cwtest_advance_time_ms(100 + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timers";
 
@@ -230,7 +142,7 @@ TEST_F(TestTimerStore, LongGetNextTimersTest)
   ts->get_next_timers(next_timers);
 
   ASSERT_EQ(0, next_timers.size());
-  cwtest_advance_time_ms((timers[2]->interval));
+  cwtest_advance_time_ms(timers[2]->interval + TIMER_GRANULARITY_MS);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size());
@@ -253,7 +165,7 @@ TEST_F(TestTimerStore, MultiNearGetNextTimersTest)
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(1000);
+  cwtest_advance_time_ms(1000 + TIMER_GRANULARITY_MS);
 
   ts->get_next_timers(next_timers);
 
@@ -278,7 +190,7 @@ TEST_F(TestTimerStore, ClashingMultiMidGetNextTimersTest)
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(timers[0]->interval);
+  cwtest_advance_time_ms(timers[0]->interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
   timers[0] = *next_timers.begin();
@@ -310,7 +222,7 @@ TEST_F(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(timers[0]->interval);
+  cwtest_advance_time_ms(timers[0]->interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
   timers[0] = *next_timers.begin();
@@ -342,7 +254,7 @@ TEST_F(TestTimerStore, MultiLongGetTimersTest)
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(timers[0]->interval);
+  cwtest_advance_time_ms(timers[0]->interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
   timers[0] = *next_timers.begin();
@@ -381,7 +293,7 @@ TEST_F(TestTimerStore, ReallyLongTimer)
   ts->get_next_timers(next_timers);
   ASSERT_EQ(0, next_timers.size());
 
-  cwtest_advance_time_ms((3600 * 1000) * 10);
+  cwtest_advance_time_ms(((3600 * 1000) * 10) + TIMER_GRANULARITY_MS);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size()) << "Bucket should have 1 timer";
@@ -399,6 +311,7 @@ TEST_F(TestTimerStore, DeleteNearTimer)
   ts->add_timer(timers[0]);
   ts->delete_timer(1);
   std::unordered_set<Timer*> next_timers;
+  cwtest_advance_time_ms(timers[0]->interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
   delete timers[1];
@@ -411,6 +324,7 @@ TEST_F(TestTimerStore, DeleteMidTimer)
   ts->add_timer(timers[1]);
   ts->delete_timer(2);
   std::unordered_set<Timer*> next_timers;
+  cwtest_advance_time_ms(timers[1]->interval + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
   delete timers[0];
@@ -422,6 +336,7 @@ TEST_F(TestTimerStore, DeleteLongTimer)
 {
   ts->add_timer(timers[2]);
   ts->delete_timer(3);
+  cwtest_advance_time_ms(timers[2]->interval + TIMER_GRANULARITY_MS);
   std::unordered_set<Timer*> next_timers;
   ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
@@ -513,7 +428,7 @@ TEST_F(TestTimerStore, AddTombstone)
   ts->add_timer(tombstone);
 
   std::unordered_set<Timer*> next_timers;
-  cwtest_advance_time_ms(100000);
+  cwtest_advance_time_ms(1000000);
   ts->get_next_timers(next_timers);
   EXPECT_EQ(1, next_timers.size());
 
@@ -529,7 +444,7 @@ TEST_F(TestTimerStore, OverwriteWithTombstone)
   ts->add_timer(tombstone);
 
   std::unordered_set<Timer*> next_timers;
-  cwtest_advance_time_ms(100000);
+  cwtest_advance_time_ms(1000000);
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size());
 
@@ -571,7 +486,7 @@ TEST_F(TestTimerStore, Non10msShortTimerUpdate)
   EXPECT_EQ(0, next_timers.size());
 
   // Move on till the tombstone should pop (50 ms offset from timer[0])
-  cwtest_advance_time_ms(150);
+  cwtest_advance_time_ms(150 + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_EQ(1, next_timers.size());
   next_timers.clear();
@@ -629,4 +544,62 @@ TEST_F(TestTimerStore, Non10msMediumTimerUpdate)
   delete timers[0];
   delete timers[2];
   delete tombstone;
+}
+
+TEST_F(TestTimerStore, MixtureOfTimerLengths)
+{
+  // Add timers that all pop at the same time, but in such a way that one ends
+  // up in the short wheel, one in the long wheel, and one in the heap.  Check
+  // they pop at the same time.
+  std::unordered_set<Timer*> next_timers;
+
+  // Timers all pop 1hr, 1s, 500ms from the start of the test.
+  // Set timer 1.
+  timers[0]->interval = ((60 * 60 * 1000) + (1 * 1000) + 500);
+  ts->add_timer(timers[0]);
+
+  // Move on by 1hr. Nothing has popped.
+  cwtest_advance_time_ms(60 * 60 * 1000);
+  timers[1]->start_time += (60 * 60 * 1000);
+  timers[2]->start_time += (60 * 60 * 1000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Timer 2 pops in 1s, 500ms
+  timers[1]->interval = ((1 * 1000) + 500);
+  ts->add_timer(timers[1]);
+
+  // Move on by 1s. Nothing has popped.
+  cwtest_advance_time_ms(1 * 1000);
+  timers[2]->start_time += (1 * 1000);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(0, next_timers.size());
+
+  // Timer 3 pops in 500ms.
+  timers[2]->interval = 500;
+  ts->add_timer(timers[2]);
+
+  // Move on by 500ms. All timers pop.
+  cwtest_advance_time_ms(500 + TIMER_GRANULARITY_MS);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(3, next_timers.size());
+  next_timers.clear();
+}
+
+TEST_F(TestTimerStore, TimerPopsOnTheHour)
+{
+  std::unordered_set<Timer*> next_timers;
+  uint64_t pop_time_ms;
+
+  pop_time_ms = (timers[0]->start_time / (60 * 60 * 1000));
+  pop_time_ms += 2;
+  pop_time_ms *= (60 * 60 * 1000);
+  timers[0]->interval = pop_time_ms - timers[0]->start_time;
+  ts->add_timer(timers[0]);
+
+  // Move on to the pop time. The timer pops correctly.
+  cwtest_advance_time_ms(pop_time_ms - timers[0]->start_time + TIMER_GRANULARITY_MS);
+  ts->get_next_timers(next_timers);
+  EXPECT_EQ(1, next_timers.size());
+  next_timers.clear();
 }
