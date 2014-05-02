@@ -76,7 +76,7 @@ TEST_F(TestTimerStore, NearGetNextTimersTest)
   ts->get_next_timers(next_timers);
 
   ASSERT_EQ(0, next_timers.size());
-  cwtest_advance_time_ms(1000 + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(100 + TIMER_GRANULARITY_MS);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1, next_timers.size());
@@ -597,7 +597,7 @@ TEST_F(TestTimerStore, TimerPopsOnTheHour)
   timers[0]->interval = pop_time_ms - timers[0]->start_time;
   ts->add_timer(timers[0]);
 
-  // Move on to the pop time. The time pops correctly.
+  // Move on to the pop time. The timer pops correctly.
   cwtest_advance_time_ms(pop_time_ms - timers[0]->start_time + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_EQ(1, next_timers.size());

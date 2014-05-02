@@ -27,9 +27,6 @@ public:
   friend class TestTimerStore;
 
 private:
-  // A table of all known timers
-  std::map<TimerID, Timer *> _timer_lookup_table;
-
   // The timer store uses 3 data structures to ensure timers pop on time:
   // - A short timer wheel consisting of 100 10ms buckets (1s in total).
   // - A long timer wheel consisting of 3600 1s buckets (1hr in total).
@@ -44,11 +41,11 @@ private:
   // tick the timers in the current bucket are popped. Every time the short
   // wheel does a full rotation, the long wheel ticks forward, and every timer
   // in the next bucket is placed into the correct place in the short wheel.
-  // Every time th elong wheel does a full rotation, all timers on the heap due
+  // Every time the long wheel does a full rotation, all timers on the heap due
   // to pop in the next hour are placed into the appropriate place in the
   // short/long wheels.
   //
-  // To acheive this the store tracks the time of the next tick to process
+  // To achieve this the store tracks the time of the next tick to process
   // _tick_timestamp, which is a multiple of 10ms. The wheels are arrays
   // of sets that store pointers to timer objects. Any timestamp can be mapped
   // to an index into these arrays (using division and modulo arithmetic).
@@ -62,7 +59,7 @@ private:
   //   are due to pop in the next hour are moved into the correct positions in
   //   the short/long wheels.
   //
-  // A result of this algirthm is that it is not possible to tell where a timer
+  // A result of this algorithm is that it is not possible to tell where a timer
   // is stored based solely on it's pop time. For example:
   // - At time 0ms, a new timer was set to pop at time 3,600,030ms. It would
   //   go straight into the heap as it's due to pop in >= 1hr.
@@ -70,12 +67,16 @@ private:
   //   3,600,030ms.  It would go in the short wheel as it's due to pop in <1s.
   // - So at time 3,599,990 one the timers are in different locations, despite
   //   popping at the same time.
-  // - This is OK, because at time 3,600,000 the long whell does a complete
+  // - This is OK, because at time 3,600,000 the long wheel does a complete
   //   rotation, and both timers get moved into the short wheel, to be popped
   //   at the right time.
+  //
   // This does mean that when removing a timer, both wheels and the heap may
   // need to be searched, although the timer is guaranteed to be in only one of
-  // them (and the heap is searched first for efficiency).
+  // them (and the heap is searched last for efficiency).
+
+  // A table of all known timers
+  std::map<TimerID, Timer *> _timer_lookup_table;
 
   // Constants controlling the size and resolution of the timer wheels.
   static const int SHORT_WHEEL_RESOLUTION_MS = 10;
@@ -88,7 +89,7 @@ private:
   static const int LONG_WHEEL_PERIOD_MS =
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
 
-  // Map to allow timers to be looked up by timer ID.
+  // Type of a single timer bucket.
   typedef std::unordered_set<Timer *> Bucket;
 
   // The short timer wheel.

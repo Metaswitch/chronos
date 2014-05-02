@@ -78,7 +78,11 @@ void TimerStore::add_timer(Timer* t)
   {
     // If the timer should have already popped, pretend it is due to pop in
     // this tick.
-    next_pop_time = std::max(next_pop_time, _tick_timestamp);
+    if (next_pop_time < _tick_timestamp)
+    {
+      LOG_WARNING("Modifying timer after pop time, window condition detected");
+      next_pop_time = _tick_timestamp;
+    }
 
     bucket = short_wheel_bucket(next_pop_time);
     bucket->insert(t);
@@ -174,7 +178,8 @@ void TimerStore::delete_timer(TimerID id)
 // will try again later (after a signal that a new timer has been added).
 void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 {
-  // Work out how many ticks to process.
+  // Work out how many ticks to process. Integer division does the necessary
+  // rounding for us.
   uint64_t current_timestamp = wall_time_ms();
   int num_ticks = ((current_timestamp - _tick_timestamp) /
                    SHORT_WHEEL_RESOLUTION_MS);
@@ -214,7 +219,10 @@ uint64_t TimerStore::wall_time_ms()
     assert(!"Failed to get system time");
   }
 
-  wall_time = (ts.tv_sec * 1000);
+  // Convert the timestamp to ms (being careful to always store the result in a
+  // uinit64 to avoid wrapping).
+  wall_time = ts.tv_sec;
+  sall_time *= 1000;
   wall_time += (ts.tv_nsec / 1000000);
   return wall_time;
 }
