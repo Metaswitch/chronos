@@ -222,7 +222,7 @@ uint64_t TimerStore::wall_time_ms()
   // Convert the timestamp to ms (being careful to always store the result in a
   // uinit64 to avoid wrapping).
   wall_time = ts.tv_sec;
-  sall_time *= 1000;
+  wall_time *= 1000;
   wall_time += (ts.tv_nsec / 1000000);
   return wall_time;
 }
