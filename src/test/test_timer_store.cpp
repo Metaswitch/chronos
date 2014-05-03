@@ -617,3 +617,39 @@ TEST_F(TestTimerStore, TimerPopsOnTheHour)
   delete timers[2];
   delete tombstone;
 }
+
+TEST_F(TestTimerStore, PopOverdueTimer)
+{
+  cwtest_advance_time_ms(500);
+  std::unordered_set<Timer*> next_timers;
+  ts->get_next_timers(next_timers);
+
+  ts->add_timer(timers[0]);
+  ts->get_next_timers(next_timers);
+
+  ASSERT_EQ(1, next_timers.size());
+  timers[0] = *next_timers.begin();
+  EXPECT_EQ(1, timers[0]->id);
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
+TEST_F(TestTimerStore, DeleteOverdueTimer)
+{
+  cwtest_advance_time_ms(500);
+  std::unordered_set<Timer*> next_timers;
+  ts->get_next_timers(next_timers);
+
+  ts->add_timer(timers[0]);
+  ts->delete_timer(1);
+
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(0, next_timers.size());
+
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
