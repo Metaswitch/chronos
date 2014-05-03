@@ -92,6 +92,9 @@ private:
   // Type of a single timer bucket.
   typedef std::unordered_set<Timer *> Bucket;
 
+  // Bucket for timers that are added after they were supposed to pop.
+  Bucket _overdue_timers;
+
   // The short timer wheel.
   Bucket _short_wheel[SHORT_WHEEL_NUM_BUCKETS];
 
@@ -140,6 +143,10 @@ private:
   // expensive operation and should only be called when unsure of the timer
   // store's consistency.
   void purge_timer_from_wheels(Timer* timer);
+
+  // Pop a single timer bucket into the set.
+  void pop_bucket(TimerStore::Bucket* bucket,
+                  std::unordered_set<Timer*>& set);
 };
 
 #endif
