@@ -5,6 +5,23 @@
 #include <assert.h>
 #include <time.h>
 
+// Macros to help log timer details.
+#define TIMER_LOG_FMT "ID:       %lu\n"                                        \
+                      "Start:    %lu\n"                                        \
+                      "Interval: %u\n"                                         \
+                      "Repeat:   %u\n"                                         \
+                      "Seq:      %u\n"                                         \
+                      "URL:      %s\n"                                         \
+                      "Body:\n"                                                \
+                      "%s"
+#define TIMER_LOG_PARAMS(T) (T)->id,                                           \
+                            (T)->start_time,                                   \
+                            (T)->interval,                                     \
+                            (T)->repeat_for,                                   \
+                            (T)->sequence_number,                              \
+                            (T)->callback_url.c_str(),                         \
+                            (T)->callback_body.c_str()
+
 TimerStore::TimerStore()
 {
   _tick_timestamp = to_short_wheel_resolution(wall_time_ms());
@@ -63,7 +80,8 @@ void TimerStore::add_timer(Timer* t)
     }
   }
 
-  // Work out where to store the timer (short wheel, long wheel, or heap).
+  // Work out where to store the timer (overdue bucket, short wheel, long wheel,
+  // or heap).
   //
   // Note that these if tests MUST use less than. For example if _tick_time is
   // 20,330 a 1s timer will pop at 21,330. When in the short wheel the timer
@@ -73,16 +91,24 @@ void TimerStore::add_timer(Timer* t)
   uint64_t next_pop_time = t->next_pop_time();
   Bucket* bucket;
 
-  if (to_short_wheel_resolution(next_pop_time) <
-      to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS))
+  if (next_pop_time < _tick_timestamp)
   {
-    // If the timer should have already popped, pretend it is due to pop in
-    // this tick.
-    if (next_pop_time < _tick_timestamp)
-    {
-      LOG_WARNING("Modifying timer after pop time, window condition detected");
-      next_pop_time = _tick_timestamp;
-    }
+    // The timer should have already popped so put it in the overdue timers,
+    // and warn the user.
+    //
+    // We can't just put the timer in the next bucket to pop.  We need to know
+    // what bucket to look in when deleting timers, and this is derived from
+    // the pop time. So if we put the timer in the wrong bucket we can't find
+    // it to delete it.
+    LOG_WARNING("Modifying timer after pop time (current time is %lu). "
+                "Window condition detected.\n" TIMER_LOG_FMT,
+                _tick_timestamp,
+                TIMER_LOG_PARAMS(t));
+    _overdue_timers.insert(t);
+  }
+  else if (to_short_wheel_resolution(next_pop_time) <
+           to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS))
+  {
 
     bucket = short_wheel_bucket(next_pop_time);
     bucket->insert(t);
@@ -130,37 +156,46 @@ void TimerStore::delete_timer(TimerID id)
     Bucket* bucket;
     size_t num_erased;
 
-    // Delete the timer from the timer wheels / heap. Try the short wheel
-    // first, then the long wheel, then finally the heap.
-    bucket = short_wheel_bucket(timer);
-    num_erased = bucket->erase(timer);
+    // Delete the timer from the overdue buckets / timer wheels / heap. Try the
+    // overdue bucket first, then the short wheel then the long wheel, then
+    // finally the heap.
+    num_erased = _overdue_timers.erase(timer);
 
     if (num_erased == 0)
     {
-      bucket = long_wheel_bucket(timer);
+      bucket = short_wheel_bucket(timer);
       num_erased = bucket->erase(timer);
 
       if (num_erased == 0)
       {
-        std::vector<Timer*>::iterator heap_it;
-        heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
-        if (heap_it != _extra_heap.end())
-        {
-          // Timer is in heap, remove it.
-          _extra_heap.erase(heap_it, heap_it + 1);
-          std::make_heap(_extra_heap.begin(), _extra_heap.end());
-        }
-        else
-        {
-          // We failed to remove the timer from any data structure.  Try and
-          // purge the timer from all the timer wheels (we're already sure
-          // that it's not in the heap).
+        bucket = long_wheel_bucket(timer);
+        num_erased = bucket->erase(timer);
 
-          // LCOV_EXCL_START
-          LOG_ERROR("Failed to remove timer consistently");
-          assert(!"Failed to remove timer consistently");
-          purge_timer_from_wheels(timer);
-          // LCOV_EXCL_STOP
+        if (num_erased == 0)
+        {
+          std::vector<Timer*>::iterator heap_it;
+          heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
+          if (heap_it != _extra_heap.end())
+          {
+            // Timer is in heap, remove it.
+            _extra_heap.erase(heap_it, heap_it + 1);
+            std::make_heap(_extra_heap.begin(), _extra_heap.end());
+          }
+          else
+          {
+            // We failed to remove the timer from any data structure.  Try and
+            // purge the timer from all the timer wheels (we're already sure
+            // that it's not in the heap).
+
+            // LCOV_EXCL_START
+            LOG_ERROR("Failed to remove timer consistently");
+            purge_timer_from_wheels(timer);
+
+            // Assert after purging, so we get a nice log detailing how the
+            // purge went.
+            assert(!"Failed to remove timer consistently");
+            // LCOV_EXCL_STOP
+          }
         }
       }
     }
@@ -178,8 +213,11 @@ void TimerStore::delete_timer(TimerID id)
 // will try again later (after a signal that a new timer has been added).
 void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 {
-  // Work out how many ticks to process. Integer division does the necessary
-  // rounding for us.
+  // Always pop the overdue timers, even if we're not processing any ticks.
+  pop_bucket(&_overdue_timers, set);
+
+  // Now process the required number of ticks. Integer division does the
+  // necessary rounding for us.
   uint64_t current_timestamp = wall_time_ms();
   int num_ticks = ((current_timestamp - _tick_timestamp) /
                    SHORT_WHEEL_RESOLUTION_MS);
@@ -188,13 +226,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
   {
     // Pop all timers in the current bucket.
     Bucket* bucket = short_wheel_bucket(_tick_timestamp);
-
-    for(auto it = bucket->begin(); it != bucket->end(); it++)
-    {
-      _timer_lookup_table.erase((*it)->id);
-      set.insert(*it);
-    }
-    bucket->clear();
+    pop_bucket(bucket, set);
 
     // Get ready for the next tick - advance the tick time, and refill the
     // timer wheels.
@@ -257,6 +289,17 @@ TimerStore::Bucket* TimerStore::long_wheel_bucket(uint64_t t)
 {
   size_t bucket_index = (t / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
   return &_long_wheel[bucket_index];
+}
+
+void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
+                            std::unordered_set<Timer*>& set)
+{
+  for(auto it = bucket->begin(); it != bucket->end(); it++)
+  {
+    _timer_lookup_table.erase((*it)->id);
+    set.insert(*it);
+  }
+  bucket->clear();
 }
 
 // Refill the timer buckets from the longer lived store. This function is safe
@@ -336,14 +379,22 @@ void TimerStore::refill_short_wheel()
 // LCOV_EXCL_START
 void TimerStore::purge_timer_from_wheels(Timer* t)
 {
+  LOG_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
+
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
-    _short_wheel[ii].erase(t);
+    if (_short_wheel[ii].erase(t) != 0)
+    {
+      LOG_WARNING("  Deleting timer %lu from short wheel bucket %d", t->id, ii);
+    }
   }
 
   for (int ii = 0; ii < LONG_WHEEL_NUM_BUCKETS; ++ii)
   {
-    _long_wheel[ii].erase(t);
+    if (_long_wheel[ii].erase(t) != 0)
+    {
+      LOG_WARNING("  Deleting timer %lu from long wheel bucket %d", t->id, ii);
+    }
   }
 }
 // LCOV_EXCL_STOP

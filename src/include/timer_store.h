@@ -27,15 +27,19 @@ public:
   friend class TestTimerStore;
 
 private:
-  // The timer store uses 3 data structures to ensure timers pop on time:
+  // The timer store uses 4 data structures to ensure timers pop on time:
   // - A short timer wheel consisting of 100 10ms buckets (1s in total).
   // - A long timer wheel consisting of 3600 1s buckets (1hr in total).
-  // - A heap.
+  // - A heap,
+  // - A set of overdue timers.
   //
   // New timers are placed into on of these structures:
   // - The short wheel if due to pop in the next second.
   // - The long wheel if due to pop in the next hour (but not the next second).
   // - The heap if due to pop >=1hr in the future.
+  // - The overdue set if they should have already popped.
+  //
+  // Timers in the overdue set are popped whenever `get_next_timers` is called.
   //
   // The short wheel ticks forward at the rate of 1 bucket per 10ms. On evey
   // tick the timers in the current bucket are popped. Every time the short
@@ -71,9 +75,9 @@ private:
   //   rotation, and both timers get moved into the short wheel, to be popped
   //   at the right time.
   //
-  // This does mean that when removing a timer, both wheels and the heap may
-  // need to be searched, although the timer is guaranteed to be in only one of
-  // them (and the heap is searched last for efficiency).
+  // This does mean that when removing a timer, the overdue set, both wheels and
+  // the heap may need to be searched, although the timer is guaranteed to be in
+  // only one of them (and the heap is searched last for efficiency).
 
   // A table of all known timers
   std::map<TimerID, Timer *> _timer_lookup_table;
@@ -91,6 +95,9 @@ private:
 
   // Type of a single timer bucket.
   typedef std::unordered_set<Timer *> Bucket;
+
+  // Bucket for timers that are added after they were supposed to pop.
+  Bucket _overdue_timers;
 
   // The short timer wheel.
   Bucket _short_wheel[SHORT_WHEEL_NUM_BUCKETS];
@@ -140,6 +147,10 @@ private:
   // expensive operation and should only be called when unsure of the timer
   // store's consistency.
   void purge_timer_from_wheels(Timer* timer);
+
+  // Pop a single timer bucket into the set.
+  void pop_bucket(TimerStore::Bucket* bucket,
+                  std::unordered_set<Timer*>& set);
 };
 
 #endif
