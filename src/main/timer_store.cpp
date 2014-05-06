@@ -5,6 +5,23 @@
 #include <assert.h>
 #include <time.h>
 
+// Macros to help log timer details.
+#define TIMER_LOG_FMT "ID:       %lu\n"                                        \
+                      "Start:    %lu\n"                                        \
+                      "Interval: %u\n"                                         \
+                      "Repeat:   %u\n"                                         \
+                      "Seq:      %u\n"                                         \
+                      "URL:      %s\n"                                         \
+                      "Body:\n"                                                \
+                      "%s"
+#define TIMER_LOG_PARAMS(T) (T)->id,                                           \
+                            (T)->start_time,                                   \
+                            (T)->interval,                                     \
+                            (T)->repeat_for,                                   \
+                            (T)->sequence_number,                              \
+                            (T)->callback_url.c_str(),                         \
+                            (T)->callback_body.c_str()
+
 TimerStore::TimerStore()
 {
   _tick_timestamp = to_short_wheel_resolution(wall_time_ms());
@@ -78,7 +95,9 @@ void TimerStore::add_timer(Timer* t)
   {
     // The timer should have already popped so put it in the overdue timers,
     // and warn the user.
-    LOG_WARNING("Modifying timer after pop time, window condition detected");
+    LOG_WARNING("Modifying timer after pop time, window condition detected.\n"
+                TIMER_LOG_FMT,
+                TIMER_LOG_PARAMS(t));
     _overdue_timers.insert(t);
   }
   else if (to_short_wheel_resolution(next_pop_time) <
@@ -164,8 +183,11 @@ void TimerStore::delete_timer(TimerID id)
 
             // LCOV_EXCL_START
             LOG_ERROR("Failed to remove timer consistently");
-            assert(!"Failed to remove timer consistently");
             purge_timer_from_wheels(timer);
+
+            // Assert after purging, so we get a nice log detailing how the
+            // purge went.
+            assert(!"Failed to remove timer consistently");
             // LCOV_EXCL_STOP
           }
         }
@@ -351,14 +373,22 @@ void TimerStore::refill_short_wheel()
 // LCOV_EXCL_START
 void TimerStore::purge_timer_from_wheels(Timer* t)
 {
+  LOG_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
+
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
-    _short_wheel[ii].erase(t);
+    if (_short_wheel[ii].erase(t) != 0)
+    {
+      LOG_WARNING("  Deleting timer %lu from short wheel bucket %d", t->id, ii);
+    }
   }
 
   for (int ii = 0; ii < LONG_WHEEL_NUM_BUCKETS; ++ii)
   {
-    _long_wheel[ii].erase(t);
+    if (_long_wheel[ii].erase(t) != 0)
+    {
+      LOG_WARNING("  Deleting timer %lu from long wheel bucket %d", t->id, ii);
+    }
   }
 }
 // LCOV_EXCL_STOP
