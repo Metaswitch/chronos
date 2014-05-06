@@ -95,8 +95,14 @@ void TimerStore::add_timer(Timer* t)
   {
     // The timer should have already popped so put it in the overdue timers,
     // and warn the user.
-    LOG_WARNING("Modifying timer after pop time, window condition detected.\n"
-                TIMER_LOG_FMT,
+    //
+    // We can't just put the timer in the next bucket to pop.  We need to know
+    // what bucket to look in when deleting timers, and this is derived from
+    // the pop time. So if we put the timer in the wrong bucket we can't find
+    // it to delete it.
+    LOG_WARNING("Modifying timer after pop time (current time is %lu). "
+                "Window condition detected.\n" TIMER_LOG_FMT,
+                _tick_timestamp,
                 TIMER_LOG_PARAMS(t));
     _overdue_timers.insert(t);
   }
