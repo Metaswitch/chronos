@@ -36,7 +36,7 @@ The only part that doesn't install is the actual `gtest` library, it does howeve
 
 To fetch the code, use `git` and remember to fetch the sub-modules as well:
 
-    git clone git@bitbucket.org:Metaswitch/chronos.git --recursive
+    git clone git@github.com:Metaswitch/chronos.git --recursive
 
 The supplied makefile has a few useful targets:
 
