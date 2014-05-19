@@ -100,6 +100,9 @@ TEST_F(TestTimer, FromJSONTests)
   // Or you can pass specific replicas to use.
   std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1\", \"10.0.0.2\" ] }}";
 
+  // You can skip the `repeat-for` to set up a one-shot timer.
+  std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
+
   // Each of the failing json blocks should not parse to a timer.
   for (auto it = failing_test_data.begin(); it != failing_test_data.end(); it++)
   {
@@ -159,6 +162,13 @@ TEST_F(TestTimer, FromJSONTests)
   EXPECT_EQ("", err);
   EXPECT_TRUE(replicated);
   EXPECT_EQ(2, get_replication_factor(timer));
+  delete timer;
+  
+  // If no repeat for was specifed, use the interval
+  timer = Timer::from_json(1, 0x11011100011101, no_repeat_for, err, replicated);
+  EXPECT_NE((void*)NULL, timer);
+  EXPECT_EQ("", err);
+  EXPECT_EQ(timer->interval, timer->repeat_for);
   delete timer;
 }
 
