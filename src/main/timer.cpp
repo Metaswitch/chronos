@@ -322,18 +322,27 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
 
   // Parse out the timing block
   rapidjson::Value& timing = doc["timing"];
-
   JSON_ASSERT_OBJECT(timing, "timing");
+
   JSON_ASSERT_CONTAINS(timing, "timing", "interval");
-  JSON_ASSERT_CONTAINS(timing, "timing", "repeat-for");
-
   rapidjson::Value& interval = timing["interval"];
-  rapidjson::Value& repeat_for = timing["repeat-for"];
-
   JSON_ASSERT_INTEGER(interval, "interval");
-  JSON_ASSERT_INTEGER(repeat_for, "repeat-for");
 
-  timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for.GetInt() * 1000));
+  // Extract the repeat-for parameter, if it's absent, set it to the interval
+  // instead.
+  int repeat_for_int;
+  if (timing.HasMember("repeat-for"))
+  {
+    rapidjson::Value& repeat_for = timing["repeat-for"];
+    JSON_ASSERT_INTEGER(repeat_for, "repeat-for");
+    repeat_for_int = repeat_for.GetInt();
+  }
+  else
+  {
+    repeat_for_int = interval.GetInt();
+  }
+
+  timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
 
   if (timing.HasMember("start-time"))
   {
