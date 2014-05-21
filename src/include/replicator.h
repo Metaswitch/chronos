@@ -6,6 +6,14 @@
 #include "timer.h"
 #include "eventq.h"
 
+#define REPLICATOR_THREAD_COUNT 50
+
+struct ReplicationRequest
+{
+  std::string url;
+  std::string body;
+};
+
 // This class is used to replicate timers to the specified replicas, using cURL
 // to handle the HTTP construction and sending.
 class Replicator
@@ -20,11 +28,8 @@ public:
   static void* worker_thread_entry_point(void*);
 
 private:
-  CURL* create_curl_handle(const std::string& url,
-                           const std::string& body);
-
-  eventq<CURL*> _q;
-  pthread_t _worker_thread;
+  eventq<ReplicationRequest *> _q;
+  pthread_t _worker_threads[REPLICATOR_THREAD_COUNT];
   struct curl_slist* _headers;
 };
 
