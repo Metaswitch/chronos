@@ -146,6 +146,7 @@ void TimerHandler::pop(Timer* timer)
   // Tombstones are reaped when they pop.
   if (timer->is_tombstone())
   {
+    LOG_DEBUG("Discarding expired tombstone");
     delete timer;
     return;
   }
