@@ -107,7 +107,7 @@ void Replicator::run()
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, _headers);
 
   ReplicationRequest* replication_request;
-  while(_q.pop(replication_request, 10))
+  while(_q.pop(replication_request))
   {
     // The customized bits of this request.
     curl_easy_setopt(curl, CURLOPT_URL, replication_request->url.c_str());
