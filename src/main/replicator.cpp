@@ -43,7 +43,7 @@ Replicator::~Replicator()
 void* Replicator::worker_thread_entry_point(void* arg)
 {
   Replicator* rep = (Replicator*)arg;
-  rep->run();
+  rep->worker_thread_entry_point();
   return NULL;
 }
 
@@ -57,30 +57,25 @@ void Replicator::replicate(Timer* timer)
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
 
+  // Concatenate the two lists of replicas.
+  std::vector<std::string> all_replicas(timer->replicas.size() +
+                                        timer->extra_replicas.size());
+  all_replicas.insert(all_replicas.end(),
+                      timer->replicas.begin(),
+                      timer->replicas.end());
+  all_replicas.insert(all_replicas.end(),
+                      timer->extra_replicas.begin(),
+                      timer->extra_replicas.end());
+
+  // Only create the body once (as it's the same for each replica).
   std::string body = timer->to_json();
 
-  for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
+  for (auto it = all_replicas.begin(); it != all_replicas.end(); it++)
   {
     if (*it == localhost)
     {
       continue;
     }
-
-    ReplicationRequest* replication_request = new ReplicationRequest();
-    replication_request->url = timer->url(*it);
-    replication_request->body = body;
-    _q.push(replication_request);
-  }
-
-  for (auto it = timer->extra_replicas.begin(); it != timer->extra_replicas.end(); it++)
-  {
-    if (*it == localhost)
-    {
-      continue;
-    }
-
-    std::string url = timer->url(*it);
-    std::string body = timer->to_json();
 
     ReplicationRequest* replication_request = new ReplicationRequest();
     replication_request->url = timer->url(*it);
@@ -92,7 +87,7 @@ void Replicator::replicate(Timer* timer)
 // The replication worker thread.  This loops, receiving cURL handles off a queue
 // and handling them synchronously.  We run a pool of these threads to mitigate
 // starvation.
-void Replicator::run()
+void Replicator::worker_thread_entry_point()
 {
   CURL* curl = curl_easy_init();
 
@@ -115,12 +110,18 @@ void Replicator::run()
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, replication_request->body.length());
 
     // Send the request.
-    curl_easy_perform(curl);
+    CURLcode rc = curl_easy_perform(curl);
+    if (rc == CURLE_HTTP_RETURNED_ERROR)
+    {
+      long http_rc;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
+      LOG_WARNING("Failed to replicate timer to %s, HTTP error was %d %s",
+                  replication_request->url.c_str(),
+                  http_rc,
+                  curl_easy_strerror(rc));
+    }
 
     // Clean up
     delete replication_request;
   }
-
-  // Received terminate signal, shut down.
-  pthread_exit(NULL);
 }

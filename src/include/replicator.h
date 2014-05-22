@@ -22,7 +22,7 @@ public:
   Replicator();
   virtual ~Replicator();
 
-  void run();
+  void worker_thread_entry_point();
   virtual void replicate(Timer*);
 
   static void* worker_thread_entry_point(void*);
