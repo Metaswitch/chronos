@@ -28,6 +28,7 @@ public:
   static void* worker_thread_entry_point(void*);
 
 private:
+  void replicate_int(const std::string&, const std::string&);
   eventq<ReplicationRequest *> _q;
   pthread_t _worker_threads[REPLICATOR_THREAD_COUNT];
   struct curl_slist* _headers;
