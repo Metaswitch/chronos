@@ -57,30 +57,23 @@ void Replicator::replicate(Timer* timer)
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
 
-  // Concatenate the two lists of replicas.
-  std::vector<std::string> all_replicas(timer->replicas.size() +
-                                        timer->extra_replicas.size());
-  all_replicas.insert(all_replicas.end(),
-                      timer->replicas.begin(),
-                      timer->replicas.end());
-  all_replicas.insert(all_replicas.end(),
-                      timer->extra_replicas.begin(),
-                      timer->extra_replicas.end());
-
   // Only create the body once (as it's the same for each replica).
   std::string body = timer->to_json();
 
-  for (auto it = all_replicas.begin(); it != all_replicas.end(); it++)
+  for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
   {
-    if (*it == localhost)
+    if (*it != localhost)
     {
-      continue;
+      replicate_int(body, timer->url(*it));
     }
+  }
 
-    ReplicationRequest* replication_request = new ReplicationRequest();
-    replication_request->url = timer->url(*it);
-    replication_request->body = body;
-    _q.push(replication_request);
+  for (auto it = timer->extra_replicas.begin(); it != timer->extra_replicas.end(); it++)
+  {
+    if (*it != localhost)
+    {
+      replicate_int(body, timer->url(*it));
+    }
   }
 }
 
@@ -124,4 +117,18 @@ void Replicator::worker_thread_entry_point()
     // Clean up
     delete replication_request;
   }
+
+  curl_easy_cleanup(curl);
+}
+
+/*****************************************************************************/
+/* Private functions.                                                        */
+/*****************************************************************************/
+
+void Replicator::replicate_int(const std::string& body, const std::string& url)
+{
+  ReplicationRequest* replication_request = new ReplicationRequest();
+  replication_request->url = url;
+  replication_request->body = body;
+  _q.push(replication_request);
 }
