@@ -86,7 +86,9 @@ void TimerHandler::run() {
     if (!next_timers.empty())
     {
       LOG_DEBUG("Have a timer to pop");
+      pthread_mutex_unlock(&_mutex);
       pop(next_timers);
+      pthread_mutex_lock(&_mutex);
     }
     else
     {
