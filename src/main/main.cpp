@@ -39,6 +39,9 @@ int main(int argc, char** argv)
   __globals = new Globals();
   __globals->update_config();
 
+  // Log the PID, this is useful for debugging if monit restarts chronos.
+  LOG_STATUS("Starting with PID %d", getpid());
+
   // Create components
   TimerStore *store = new TimerStore();
   Replicator* controller_rep = new Replicator();

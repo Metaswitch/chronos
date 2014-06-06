@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+# Gather extra diags from chronos (typically used by monit to get diags from
+# when chronos has locked up). 
+
+PIDFILE=/var/run/chronos.pid
+EXTRA_DIAGS_DIR=/var/log/chronos/extra_diags
+
+# Ensure the extra diags directory exists. 
+[ -e $EXTRA_DIAGS_DIR ] || mkdir $EXTRA_DIAGS_DIR
+
+# Gather the diagnostics we want:
+# -  What the PID file things the chronos PID is.
+# -  What chronos processes are actually running.
+# -  What sockets chronos has open.
+# -  Whether it's responding to pings.
+cat $PIDFILE                       > $EXTRA_DIAGS_DIR/pidfile
+ps -eaf | grep chronos             > $EXTRA_DIAGS_DIR/processes.log
+netstat -plan                      > $EXTRA_DIAGS_DIR/netstat.log 2>&1
+curl --verbose --silent --max-time 1 http://localhost:7253/ping > $EXTRA_DIAGS_DIR/ping.log 2>&1
+
+:
