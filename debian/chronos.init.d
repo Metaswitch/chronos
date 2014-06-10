@@ -32,8 +32,8 @@ DAEMON=/usr/bin/chronos
 
 do_start()
 {
-  # Allow chronos to write out core files. 
-  ulimit -c unlimited 
+  # Allow chronos to write out core files.
+  ulimit -c unlimited
 
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
   start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON || return 2
@@ -52,6 +52,21 @@ do_reload()
 {
   start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $EXECNAME
   return 0
+}
+
+#
+# Function that aborts chronos
+#
+# This is very similar to do_stop except it sends SIGABRT to dump a core file
+# and waits longer for it to complete.
+#
+do_abort()
+{
+  start-stop-daemon --stop --quiet --retry=ABRT/60/KILL/5 --pidfile $PIDFILE --name $EXECNAME
+  RETVAL="$?"
+  [ "$RETVAL" = 2 ] && return 2
+  rm -f $PIDFILE
+  return $RETVAL
 }
 
 case "$1" in
@@ -75,17 +90,9 @@ case "$1" in
         status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
         ;;
   reload|force-reload)
-        #
-        # If do_reload() is not implemented then leave this commented out
-        # and leave 'force-reload' as an alias for 'restart'.
-        #
         do_reload
         ;;
   restart)
-        #
-        # If the "reload" option is implemented then remove the
-        # 'force-reload' alias
-        #
         log_daemon_msg "Restarting $DESC" "$NAME"
         do_stop
         case "$?" in
@@ -101,6 +108,14 @@ case "$1" in
                 # Failed to stop
                 log_end_msg 1
                 ;;
+        esac
+        ;;
+  abort)
+        [ "$VERBOSE" != no ] && log_daemon_msg "Abort $DESC" "$NAME"
+        do_abort
+        case "$?" in
+                0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+                2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
         esac
         ;;
   *)
