@@ -10,7 +10,7 @@ Chronos's cluster settings are controlled by `/etc/chronos/chronos.conf`, which 
 
     [cluster]
     localhost = 1.2.3.4
-    node = 1.2.3.4:7253
+    node = 1.2.3.4
 
 ## Scaling up
 
@@ -22,8 +22,8 @@ Additional nodes are added to the cluster by adding extra `node` lines and sendi
 
     [cluster]
     localhost = 1.2.3.4
-    node = 1.2.3.4:7253
-    node = 5.6.7.8:7253
+    node = 1.2.3.4
+    node = 5.6.7.8
 
 The order and form of `node` entries *must* be consistent across all the Chronos nodes in the cluster.
 
