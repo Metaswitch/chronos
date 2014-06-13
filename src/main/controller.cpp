@@ -122,7 +122,7 @@ void Controller::handle_request(struct evhttp_request* req)
 
   // Now we have a valid timer object, reply to the HTTP request.
   evhttp_add_header(evhttp_request_get_output_headers(req),
-                    "Location", timer->url("localhost").c_str());
+                    "Location", timer->url().c_str());
   evhttp_send_reply(req, 200, "OK", NULL);
 
   // Replicate the timer to the other replicas if this is a client request

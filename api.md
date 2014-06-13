@@ -94,7 +94,7 @@ No body need be provided and will be ignored if it is.  Repeated deletion of a t
 
 ### Response (POST/PUT)
 
-If the timer creation/update was successful, the response to the POST/PUT request will be a standard HTTP `200 OK` with a `Location` header directing the client at the URI that may be used to refresh or cancel the configured timer.
+If the timer creation/update was successful, the response to the POST/PUT request will be a standard HTTP `200 OK` with a `Location` header containing the timer ID that may be used to refresh or cancel the configured timer.
 
 _Note: Performing a PUT to a non-existent timer will create a timer with the specified `timer-id`, allowing the client to chose the `timer-id` to use.  This is not an advised usage, but may happen accidentally when attempting to refresh a timer that has just passed its `repeat-for` interval._
 

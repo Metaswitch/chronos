@@ -19,7 +19,7 @@ public:
   uint64_t next_pop_time();
 
   // Construct the URL for this timer given a hostname
-  std::string url(std::string);
+  std::string url(std::string host = "");
 
   // Convert this timer to JSON to be sent to replicas
   std::string to_json();
