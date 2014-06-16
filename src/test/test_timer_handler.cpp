@@ -31,7 +31,8 @@ protected:
   {
     delete _th;
     delete _store;
-    // Replicator/Callback are deleted by the timer handler.
+    delete _replicator;
+    // _callback is deleted by the timer handler.
 
     Base::TearDown();
   }
