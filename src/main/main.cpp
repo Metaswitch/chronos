@@ -46,8 +46,9 @@ int main(int argc, char** argv)
   TimerStore *store = new TimerStore();
   Replicator* controller_rep = new Replicator();
   Replicator* handler_rep = new Replicator();
-  HTTPCallback* callback = new HTTPCallback();
-  TimerHandler* handler = new TimerHandler(store, handler_rep, callback);
+  HTTPCallback* callback = new HTTPCallback(handler_rep);
+  TimerHandler* handler = new TimerHandler(store, callback);
+  callback->start(handler);
   Controller* controller = new Controller(controller_rep, handler);
 
   // Create an event reactor.

@@ -9,7 +9,7 @@ class MockCallback : public Callback
 {
 public:
   MOCK_METHOD0(protocol, std::string());
-  MOCK_METHOD3(perform, bool(std::string, std::string, unsigned int));
+  MOCK_METHOD1(perform, void(Timer*));
 };
 
 #endif
