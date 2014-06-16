@@ -1,6 +1,8 @@
 #ifndef CALLBACK_H__
 #define CALLBACK_H__
 
+#include "timer.h"
+
 #include <string>
 
 // Virtual class for handling timer callbacks.
@@ -14,14 +16,10 @@ public:
   // to chose a callback hander to manage it.
   virtual std::string protocol() = 0;
 
-  // Perform the callback.
+  // Perform the callback for the given Timer.  Takes ownership of the Timer object.
   //
-  //  * The first argument is the location of the callback server (e.g. HTTP URL or zmq socket)
-  //  * The second argument is the opaque data for the callback (e.g. HTTP body)
-  //  * The third argument is the sequence number for the callback.
-  //
-  //  Returns true if the callback was successful, false otherwise.
-  virtual bool perform(std::string, std::string, unsigned int) = 0;
+  // Returns true if the callback was successful, false otherwise.
+  virtual void perform(Timer*) = 0;
 };
 
 #endif

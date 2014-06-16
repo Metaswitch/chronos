@@ -10,13 +10,12 @@
 #endif
 
 #include "timer_store.h"
-#include "replicator.h"
 #include "callback.h"
 
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Replicator*, Callback*);
+  TimerHandler(TimerStore*, Callback*);
   ~TimerHandler();
   void add_timer(Timer*);
   void run();
@@ -29,7 +28,6 @@ private:
   void signal_new_timer(unsigned int);
 
   TimerStore* _store;
-  Replicator* _replicator;
   Callback* _callback;
 
   pthread_t _handler_thread;

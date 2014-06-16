@@ -12,10 +12,8 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
 }
 
 TimerHandler::TimerHandler(TimerStore* store,
-                           Replicator* replicator,
                            Callback* callback) :
                            _store(store),
-                           _replicator(replicator),
                            _callback(callback),
                            _terminate(false),
                            _nearest_new_timer(-1)
@@ -55,7 +53,6 @@ TimerHandler::~TimerHandler()
 
   pthread_mutex_destroy(&_mutex);
 
-  delete _replicator;
   delete _callback;
 }
 
@@ -153,26 +150,9 @@ void TimerHandler::pop(Timer* timer)
     return;
   }
 
+  // Increment the timer's sequence before sending the callback.
   timer->sequence_number++;
-  bool success = _callback->perform(timer->callback_url,
-                                    timer->callback_body,
-                                    timer->sequence_number);
-  if (success)
-  {
-    // Check if the next pop occurs before the repeat-for interval and,
-    // if not, convert to a tombstone to indicate the timer is dead.
-    if ((timer->sequence_number + 1) * timer->interval > timer->repeat_for)
-    {
-      timer->become_tombstone();
-    }
-    _replicator->replicate(timer);
-    _store->add_timer(timer);
-    timer = NULL; // We relinquish control of the timer when we give
-                  // it to the store.
-  }
-  else
-  {
-    LOG_WARNING("Failed to process callback for %lu", timer->id);
-    delete timer;
-  }
+
+  // The callback takes ownership of the timer at this point.
+  _callback->perform(timer); timer = NULL;
 }
