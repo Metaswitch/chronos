@@ -7,7 +7,7 @@
 Replicator::Replicator() : _q(), _headers(NULL)
 {
   // Create a pool of replicator threads
-  for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ii++)
+  for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ++ii)
   {
     pthread_t thread;
     int thread_rc = pthread_create(&thread,
@@ -29,7 +29,7 @@ Replicator::Replicator() : _q(), _headers(NULL)
 Replicator::~Replicator()
 {
   _q.terminate();
-  for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ii++)
+  for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ++ii)
   {
     pthread_join(_worker_threads[ii], NULL);
   }
@@ -60,7 +60,7 @@ void Replicator::replicate(Timer* timer)
   // Only create the body once (as it's the same for each replica).
   std::string body = timer->to_json();
 
-  for (auto it = timer->replicas.begin(); it != timer->replicas.end(); it++)
+  for (auto it = timer->replicas.begin(); it != timer->replicas.end(); ++it)
   {
     if (*it != localhost)
     {
@@ -68,7 +68,7 @@ void Replicator::replicate(Timer* timer)
     }
   }
 
-  for (auto it = timer->extra_replicas.begin(); it != timer->extra_replicas.end(); it++)
+  for (auto it = timer->extra_replicas.begin(); it != timer->extra_replicas.end(); ++it)
   {
     if (*it != localhost)
     {

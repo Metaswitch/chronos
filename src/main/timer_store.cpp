@@ -30,16 +30,16 @@ TimerStore::TimerStore()
 TimerStore::~TimerStore()
 {
   // Delete the timers in the lookup table as they will never pop now.
-  for (auto it = _timer_lookup_table.begin(); it != _timer_lookup_table.end(); it++)
+  for (auto it = _timer_lookup_table.begin(); it != _timer_lookup_table.end(); ++it)
   {
     delete it->second;
   }
   _timer_lookup_table.clear();
-  for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ii ++)
+  for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
     _short_wheel[ii].clear();
   }
-  for (int ii = 0; ii < LONG_WHEEL_NUM_BUCKETS; ii++)
+  for (int ii = 0; ii < LONG_WHEEL_NUM_BUCKETS; ++ii)
   {
     _long_wheel[ii].clear();
   }
@@ -137,7 +137,7 @@ void TimerStore::add_timer(Timer* t)
 // this operation, since the timers are now owned by the store.
 void TimerStore::add_timers(std::unordered_set<Timer*>& set)
 {
-  for (auto it = set.begin(); it != set.end(); it++)
+  for (auto it = set.begin(); it != set.end(); ++it)
   {
     add_timer(*it);
   }
@@ -222,7 +222,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
   int num_ticks = ((current_timestamp - _tick_timestamp) /
                    SHORT_WHEEL_RESOLUTION_MS);
 
-  for (int i = 0; i < num_ticks; ++i)
+  for (int ii = 0; ii < num_ticks; ++ii)
   {
     // Pop all timers in the current bucket.
     Bucket* bucket = short_wheel_bucket(_tick_timestamp);
@@ -294,7 +294,7 @@ TimerStore::Bucket* TimerStore::long_wheel_bucket(uint64_t t)
 void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
                             std::unordered_set<Timer*>& set)
 {
-  for(auto it = bucket->begin(); it != bucket->end(); it++)
+  for(auto it = bucket->begin(); it != bucket->end(); ++it)
   {
     _timer_lookup_table.erase((*it)->id);
     set.insert(*it);

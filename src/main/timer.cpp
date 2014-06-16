@@ -40,7 +40,7 @@ uint64_t Timer::next_pop_time()
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
 
-  for (auto it = replicas.begin(); it != replicas.end(); it++, replica_index++)
+  for (auto it = replicas.begin(); it != replicas.end(); ++it, ++replica_index)
   {
     if (*it == localhost)
     {
@@ -71,7 +71,7 @@ std::string Timer::url(std::string host)
   uint64_t hash = 0;
   std::map<std::string, uint64_t> cluster_hashes;
   __globals->get_cluster_hashes(cluster_hashes);
-  for (auto it = replicas.begin(); it != replicas.end(); it++)
+  for (auto it = replicas.begin(); it != replicas.end(); ++it)
   {
     hash |= cluster_hashes[*it];
   }
@@ -120,7 +120,7 @@ std::string Timer::to_json()
   callback.AddMember("http", http, doc.GetAllocator());
 
   rapidjson::Value replicas_array(rapidjson::kArrayType);
-  for (auto it = replicas.begin(); it != replicas.end(); it++)
+  for (auto it = replicas.begin(); it != replicas.end(); ++it)
   {
     replicas_array.PushBack((*it).c_str(), doc.GetAllocator());
   }
@@ -174,7 +174,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
 
     for (auto it = cluster_hashes.begin();
          it != cluster_hashes.end();
-         it++)
+         ++it)
     {
       // Quickly check if this replica might be one of the replicas for the
       // given timer (i.e. if the replica's individual hash collides with the
@@ -198,7 +198,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
 
     for (unsigned int ii = 0;
          ii < _replication_factor && ii < cluster.size();
-         ii++)
+         ++ii)
     {
       replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
     }
@@ -207,7 +207,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     // replicas to the extra_replicas vector.
     for (unsigned int ii = 0;
          ii < hash_replicas.size();
-         ii++)
+         ++ii)
     {
       if (std::find(replicas.begin(), replicas.end(), hash_replicas[ii]) == replicas.end())
       {
@@ -226,14 +226,14 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     unsigned int first_replica = hash % cluster.size();
     for (unsigned int ii = 0;
          ii < _replication_factor && ii < cluster.size();
-         ii++)
+         ++ii)
     {
       replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
     }
   }
 
   LOG_DEBUG("Replicas calculated:");
-  for (auto it = replicas.begin(); it != replicas.end(); it++)
+  for (auto it = replicas.begin(); it != replicas.end(); ++it)
   {
     LOG_DEBUG(" - %s", it->c_str());
   }
@@ -402,7 +402,7 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
       }
 
       timer->_replication_factor = replicas.Size();
-      for (auto it = replicas.Begin(); it != replicas.End(); it++)
+      for (auto it = replicas.Begin(); it != replicas.End(); ++it)
       {
         JSON_ASSERT_STRING(*it, "replica address");
         timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
