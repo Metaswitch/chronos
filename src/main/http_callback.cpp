@@ -23,7 +23,7 @@ void HTTPCallback::start(TimerHandler* handler)
   _running = true;
 
   // Create a pool of worker threads
-  for (int ii = 0; ii < HTTPCALLBACK_THREAD_COUNT; ii++)
+  for (int ii = 0; ii < HTTPCALLBACK_THREAD_COUNT; ++ii)
   {
     pthread_t thread;
     int thread_rc = pthread_create(&thread,
@@ -42,7 +42,7 @@ void HTTPCallback::start(TimerHandler* handler)
 void HTTPCallback::stop()
 {
   _q.terminate();
-  for (int ii = 0; ii < HTTPCALLBACK_THREAD_COUNT; ii++)
+  for (int ii = 0; ii < HTTPCALLBACK_THREAD_COUNT; ++ii)
   {
     pthread_join(_worker_threads[ii], NULL);
   }

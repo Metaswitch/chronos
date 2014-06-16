@@ -71,7 +71,7 @@ void Globals::update_config()
   set_cluster_addresses(cluster_addresses);
   std::map<std::string, uint64_t> cluster_hashes;
   LOG_STATUS("Cluster nodes:");
-  for (auto it = cluster_addresses.begin(); it != cluster_addresses.end(); it++)
+  for (auto it = cluster_addresses.begin(); it != cluster_addresses.end(); ++it)
   {
     LOG_STATUS(" - %s", it->c_str());
     cluster_hashes[*it] = generate_hash(*it);
@@ -89,10 +89,10 @@ uint64_t Globals::generate_hash(std::string data)
 {
   uint64_t hash[2];
   uint64_t rc = 0;
-  for (int ii = 0; ii < 3; ii++)
+  for (int ii = 0; ii < 3; ++ii)
   {
     MurmurHash3_x86_128(data.c_str(), data.length(), ii, (void*)hash);
-    for (int jj = 0; jj < 2; jj++)
+    for (int jj = 0; jj < 2; ++jj)
     {
       int bit = hash[jj] % 64;
       rc |= ((uint64_t)1 << bit);

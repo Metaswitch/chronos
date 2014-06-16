@@ -114,7 +114,7 @@ void TimerHandler::run() {
     _store->get_next_timers(next_timers);
   }
 
-  for (auto it = next_timers.begin(); it != next_timers.end(); it++)
+  for (auto it = next_timers.begin(); it != next_timers.end(); ++it)
   {
     delete *it;
   }
@@ -131,7 +131,7 @@ void TimerHandler::run() {
 // thus empties the passed in set.
 void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 {
-  for (auto it = timers.begin(); it != timers.end(); it++)
+  for (auto it = timers.begin(); it != timers.end(); ++it)
   {
     pop(*it);
   }

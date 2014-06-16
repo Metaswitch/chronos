@@ -104,7 +104,7 @@ TEST_F(TestTimer, FromJSONTests)
   std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
 
   // Each of the failing json blocks should not parse to a timer.
-  for (auto it = failing_test_data.begin(); it != failing_test_data.end(); it++)
+  for (auto it = failing_test_data.begin(); it != failing_test_data.end(); ++it)
   {
     std::string err;
     bool replicated;
@@ -177,7 +177,7 @@ TEST_F(TestTimer, FromJSONTests)
 void* generate_ids(void* arg)
 {
   std::vector<TimerID>* output = (std::vector<TimerID>*)arg;
-  for (int ii = 0; ii < 1000; ii++)
+  for (int ii = 0; ii < 1000; ++ii)
   {
     TimerID t = Timer::generate_timer_id();
     output->push_back(t);
@@ -197,19 +197,19 @@ TEST_F(TestTimer, GenerateTimerIDTests)
   std::vector<TimerID> all_ids;
 
   // Generate multiple (sorted) arrays of IDs in multiple threads.
-  for (int ii = 0; ii < concurrency; ii++)
+  for (int ii = 0; ii < concurrency; ++ii)
   {
     ASSERT_EQ(0, pthread_create(&thread_ids[ii], NULL, generate_ids, &ids[ii]));
   }
 
   // Wait for the threads to finish.
-  for (int ii = 0; ii < concurrency; ii++)
+  for (int ii = 0; ii < concurrency; ++ii)
   {
     ASSERT_EQ(0, pthread_join(thread_ids[ii], NULL));
   }
 
   // Merge all the (sorted) ID lists together.
-  for (int ii = 0; ii < concurrency; ii++)
+  for (int ii = 0; ii < concurrency; ++ii)
   {
     int midpoint = all_ids.size();
     all_ids.insert(all_ids.end(), ids[ii].begin(), ids[ii].end());
@@ -217,7 +217,7 @@ TEST_F(TestTimer, GenerateTimerIDTests)
   }
 
   // Assert that no pairs are equal.
-  for(int ii = 1; ii < concurrency * 1000; ii++)
+  for(int ii = 1; ii < concurrency * 1000; ++ii)
   {
     EXPECT_NE(all_ids[ii], all_ids[ii-1]);
   }

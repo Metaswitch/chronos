@@ -30,7 +30,7 @@ protected:
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
 
-    for (int ii = 0; ii < 3; ii++)
+    for (int ii = 0; ii < 3; ++ii)
     {
       timers[ii] = default_timer(ii + 1);
       timers[ii]->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
