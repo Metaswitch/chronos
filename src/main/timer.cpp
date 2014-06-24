@@ -346,6 +346,12 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     repeat_for_int = interval.GetInt();
   }
 
+  if ((interval.GetInt() == 0) && (repeat_for_int != 0))
+  {
+    // If the interval time is 0 and the repeat_for_int isn't then reject the timer. 
+    JSON_PARSE_ERROR(boost::str(boost::format("Can't have a zero interval time with a non-zero (%d) repeat-for time") % repeat_for_int));
+  }
+
   timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
 
   if (timing.HasMember("start-time"))
