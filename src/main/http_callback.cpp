@@ -74,7 +74,7 @@ void HTTPCallback::worker_thread_entry_point()
     curl_easy_setopt(curl, CURLOPT_URL, timer->callback_url.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, timer->callback_body.data());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, timer->callback_body.length());
-    
+
     // Include the sequence number header.
     struct curl_slist* headers = NULL;
     headers = curl_slist_append(headers, (std::string("X-Sequence-Number: ") +
@@ -99,9 +99,18 @@ void HTTPCallback::worker_thread_entry_point()
     }
     else
     {
-      LOG_WARNING("Failed to process callback for %lu", timer->id);
+      if (curl_rc == CURLE_HTTP_RETURNED_ERROR)
+      {
+        long http_rc = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
+        LOG_WARNING("Got HTTP error %d from %s", http_rc, timer->callback_url.c_str());
+      }
+
+      LOG_WARNING("Failed to process callback for %lu: URL %s, curl error was: %s", timer->id,
+                  timer->callback_url.c_str(),
+                  curl_easy_strerror(curl_rc));
       delete timer;
-    } 
+    }
 
     // Tidy up request-speciifc objects
     curl_slist_free_all(headers);
