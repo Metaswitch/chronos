@@ -1,15 +1,15 @@
 ## Chronos Technical Introduction
 
-In Chronos we're aiming to build a mechanism to trigger some work to be done on a recurring interval in a way that is both redundant and efficient. The solution to this must satisfy the following properties:
+With Chronos we've aimed to build a cloud-ready timer service in a way that is both redundant and efficient. The solution to this must satisfy the following properties:
 
 1. Cannot contain a single point of failure (must be redundant).
 
      * Implies that the client must not be limited to talking to a single access point (in case that fails)
      * Implies that more than one process (or, better, server node) be responsible for handling a given timer.
 
-1. Must support dynamic addition or removal of capacity with no loss of service.
-2. Must support a clustered client (for example, a client instance might set a timer, then die, but the timer should still be able to be popped on another instance of the client cluster).
-3. If asked for a timer to pop in n seconds, must pop it within at most 2\*n seconds (the closer to n the better).
+2. Must support dynamic addition or removal of capacity with no loss of service.
+3. Must support a clustered client (for example, a client instance might set a timer, then die, but the timer should still be able to be popped on another instance of the client cluster).
+4. If asked for a timer to pop in `n` seconds, must pop it within at most `2*n` seconds (the closer to `n` the better).
 
 A solution should also:
 
@@ -122,7 +122,7 @@ The solution uses a bloom filter to store the list of replicas and appends that 
 
 Normally this would be inefficient since checking a bloom filter to see if a given value is in it requires hashing the value multiple times, suggesting that checking every member from the cluster would be computationally expensive. Fortunately, we can calculate the bits in the bloom filter that would have to be set if each member was a replica ahead of time (since the cluster membership list rarely changes) and check for presence in the bloom filter with (example C/C++ code):
 
-(bloom\_filter & member\_bits) == member\_bits
+    (bloom_filter & member_bits) == member_bits
 
 This is super cheap in comparison to calculating hashes.
 
@@ -163,4 +163,4 @@ In this way, the timers will automatically spread themselves out over the larger
 
 ### Real World Example
 
-As a complete example, Ralf configures the timer to recur at the rate specified by the CDF for sending INTERIM messages. It asks for this timer to recur for the session refresh interval (+ some extra for contingency). This means that Ralf can handle the INTERIM timers at the correct rate and, if the call is lost without Ralf seeing the BYE message flow past, the INTERIM messages will eventually (after one session refresh interval) stop being generated. The CDF will detect this and treat it as the call terminating (as spec-ed by IMS).
+As a complete example, Ralf configures the timer to recur at the rate specified by the CDF for sending INTERIM messages. It asks for this timer to recur for the session refresh interval (plus some extra for contingency). This means that Ralf can handle the INTERIM timers at the correct rate and, if the call is lost without Ralf seeing the BYE message flow past, the INTERIM messages will eventually (after one session refresh interval) stop being generated. The CDF will detect this and treat it as the call terminating (as spec-ed by IMS).
