@@ -48,7 +48,7 @@ Chronos is made up of 6 major components:
  * Timer Wheel – The local timer wheel.
  * HTTP Callback Client – A simple HTTP client that calls back to the client.
 
-![Architecture Diagram](doc/architecture.png?raw=true)
+![Architecture Diagram](architecture.png?raw=true)
 
 ### Implementation Notes
 
