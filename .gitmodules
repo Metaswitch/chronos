@@ -3,4 +3,4 @@
 	url = git@github.com:Metaswitch/clearwater-build-infra.git
 [submodule "modules/cpp-common"]
 	path = modules/cpp-common
-	url = git@github.com:Metaswitch/cpp-common.git
+	url = git@github.com:ClearwaterCore/cpp-common.git
