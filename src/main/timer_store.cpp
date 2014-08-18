@@ -1,3 +1,7 @@
+ extern "C" {
+#include "syslog_facade.h"
+}
+
 #include "timer_store.h"
 #include "log.h"
 #include <algorithm>
@@ -246,6 +250,8 @@ uint64_t TimerStore::wall_time_ms()
 
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
+    syslog(SYSLOG_ERR, "Fatal - Failed to get system time - timer service cannot run: %s",
+              strerror(errno));
     LOG_ERROR("Failed to get system time - timer service cannot run: %s",
               strerror(errno));
     assert(!"Failed to get system time");

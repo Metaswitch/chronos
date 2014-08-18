@@ -1,3 +1,7 @@
+ extern "C" {
+#include "syslog_facade.h"
+}
+
 #include "timer.h"
 #include "timer_store.h"
 #include "timer_handler.h"
@@ -20,6 +24,8 @@ void exception_handler(int sig)
   signal(SIGSEGV, SIG_DFL);
 
   // Log the signal, along with a backtrace.
+  syslog(SYSLOG_ERR, "Fatal - Chronos crashed with exception %d", sig);
+  closelog();
   LOG_BACKTRACE("Signal %d caught", sig);
 
   // Ensure the log files are complete - the core file created by abort() below
@@ -43,6 +49,8 @@ int main(int argc, char** argv)
   __globals = new Globals();
   __globals->update_config();
 
+  openlog("chronos", SYSLOG_PID, SYSLOG_LOCAL6);
+  syslog(SYSLOG_NOTICE, "Chronos started");
   // Log the PID, this is useful for debugging if monit restarts chronos.
   LOG_STATUS("Starting with PID %d", getpid());
 
@@ -58,6 +66,7 @@ int main(int argc, char** argv)
   // Create an event reactor.
   struct event_base* base = event_base_new();
   if (!base) {
+    syslog(SYSLOG_ERR, "Fatal - Couldn't create the event reactor service");
     std::cerr << "Couldn't create an event_base: exiting" << std::endl;
     return 1;
   }
@@ -65,9 +74,14 @@ int main(int argc, char** argv)
   // Create an HTTP server instance.
   struct evhttp* http = evhttp_new(base);
   if (!http) {
+    syslog(SYSLOG_ERR, "Fatal - Could not create an http service");
     std::cerr << "Couldn't create evhttp: exiting" << std::endl;
     return 1;
-  }
+  } 
+  else
+  {
+    syslog(SYSLOG_NOTICE, "Chronos http service is now available");
+  }  
 
   // Register a callback for the "/ping" path.
   evhttp_set_cb(http, "/ping", Controller::controller_ping_cb, NULL);
@@ -90,6 +104,7 @@ int main(int argc, char** argv)
   //
   // After this point nothing will use __globals so it's safe to delete
   // it here.
+  syslog(SYSLOG_ERR, "Fatal - Termination signal received - terminating");
   delete __globals; __globals = NULL;
   curl_global_cleanup();
 
