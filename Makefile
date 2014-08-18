@@ -14,7 +14,7 @@ INCLUDE_DIR := ${ROOT}/src/include
 CPPFLAGS := -pedantic -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -std=c++0x `curl-config --cflags` -Werror
 CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/
-LDFLAGS := -lrt -lpthread `curl-config --libs` -levent -lboost_program_options -lboost_regex
+LDFLAGS := -lrt -lpthread `curl-config --libs` -levent -lboost_program_options -lboost_regex -lc
 LDFLAGS_BUILD :=
 LDFLAGS_TEST := -lgtest -lgmock
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils
