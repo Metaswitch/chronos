@@ -1,3 +1,5 @@
 build/bin/chronos /usr/bin
+build/usr/lib/*.so /usr/share/chronos/lib
+build/usr/lib/*.so.* /usr/share/chronos/lib
 etc /
 usr /

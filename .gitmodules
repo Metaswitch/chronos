@@ -4,3 +4,9 @@
 [submodule "modules/cpp-common"]
 	path = modules/cpp-common
 	url = git@github.com:Metaswitch/cpp-common.git
+[submodule "modules/curl"]
+	path = modules/curl
+	url = git@github.com:bagder/curl.git
+[submodule "modules/c-ares"]
+	path = modules/c-ares
+	url = git@github.com:bagder/c-ares.git
