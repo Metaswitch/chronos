@@ -35,6 +35,9 @@ do_start()
   # Allow chronos to write out core files.
   ulimit -c unlimited
 
+  # Include the libraries that come with chronos.
+  export LD_LIBRARY_PATH=/usr/share/chronos/lib:$LD_LIBRARY_PATH
+
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
   start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON || return 2
 }

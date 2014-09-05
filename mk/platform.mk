@@ -88,10 +88,6 @@ TARGET_OBJS_TEST := $(patsubst %.cpp, ${OBJ_DIR_TEST}/%.o, ${TARGET_SOURCES} ${T
 # The dependencies
 DEPS := $(patsubst %.o, %.depends, $(patsubst %.so, %.depends, ${TARGET_OBJS} ${TARGET_OBJS_TEST}))
 
-# Build the production binary.
-.PHONY: build
-build: ${TARGET_BIN}
-
 # Buld the test binary.
 .PHONY: build_test
 build_test: ${TARGET_BIN_TEST}
@@ -101,15 +97,6 @@ build_test: ${TARGET_BIN_TEST}
 install:
 	mkdir -p ${PREFIX}/bin
 	cp ${TARGET_BIN} ${PREFIX}/bin/
-
-# Clean up.
-.PHONY: clean
-clean:
-	rm -f ${TARGET_BIN}
-	rm -f ${TARGET_OBJS}
-	rm -f ${TARGET_OBJS_TEST}
-	rm -rf ${EXTRA_CLEANS}
-	rm -f $(DEPS)
 
 
 ${TARGET_BIN}: ${TARGET_OBJS}
