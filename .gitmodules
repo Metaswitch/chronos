@@ -10,3 +10,6 @@
 [submodule "modules/c-ares"]
 	path = modules/c-ares
 	url = git@github.com:bagder/c-ares.git
+[submodule "modules/rapidjson"]
+	path = modules/rapidjson
+	url = git@github.com:miloyip/rapidjson.git
