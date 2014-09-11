@@ -2,7 +2,6 @@
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #include "utils.h"
 #include "log.h"
@@ -113,8 +112,11 @@ std::string Timer::to_json()
   timing.AddMember("repeat-for", repeat_for/1000, doc.GetAllocator());
 
   rapidjson::Value http(rapidjson::kObjectType);
-  http.AddMember("uri", callback_url.c_str(), doc.GetAllocator());
-  http.AddMember("opaque", callback_body.c_str(), doc.GetAllocator());
+  rapidjson::Value val;
+  val.SetString(callback_url.c_str(), doc.GetAllocator());
+  http.AddMember("uri", val, doc.GetAllocator());
+  val.SetString(callback_body.c_str(), doc.GetAllocator());
+  http.AddMember("opaque", val, doc.GetAllocator());
 
   rapidjson::Value callback(rapidjson::kObjectType);
   callback.AddMember("http", http, doc.GetAllocator());
@@ -122,7 +124,8 @@ std::string Timer::to_json()
   rapidjson::Value replicas_array(rapidjson::kArrayType);
   for (auto it = replicas.begin(); it != replicas.end(); ++it)
   {
-    replicas_array.PushBack((*it).c_str(), doc.GetAllocator());
+    val.SetString((*it).c_str(), doc.GetAllocator());
+    replicas_array.PushBack(val, doc.GetAllocator());
   }
 
   rapidjson::Value reliability(rapidjson::kObjectType);
@@ -390,11 +393,11 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   timer->callback_url = std::string(uri.GetString(), uri.GetStringLength());
   timer->callback_body = std::string(opaque.GetString(), opaque.GetStringLength());
 
-  // Parse out the 'reliability' block
-  rapidjson::Value& reliability = doc["reliability"];
-
   if (doc.HasMember("reliability"))
   {
+    // Parse out the 'reliability' block
+    rapidjson::Value& reliability = doc["reliability"];
+
     JSON_ASSERT_OBJECT(reliability, "reliability");
 
     if (reliability.HasMember("replicas"))
