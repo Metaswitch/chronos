@@ -1,6 +1,3 @@
- extern "C" {
-#include "syslog_facade.h"
-}
 
 #include "timer_store.h"
 #include "log.h"
@@ -8,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include "chronosdcea.h"
 
 // Macros to help log timer details.
 #define TIMER_LOG_FMT "ID:       %lu\n"                                        \
@@ -250,8 +248,7 @@ uint64_t TimerStore::wall_time_ms()
 
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
-    syslog(SYSLOG_ERR, "Fatal - Failed to get system time - timer service cannot run: %s",
-              strerror(errno));
+    CL_CHRONOS_NO_SYSTEM_TIME.log(strerror(errno));
     LOG_ERROR("Failed to get system time - timer service cannot run: %s",
               strerror(errno));
     assert(!"Failed to get system time");
