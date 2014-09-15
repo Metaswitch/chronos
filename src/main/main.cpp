@@ -6,6 +6,7 @@
 #include "http_callback.h"
 #include "controller.h"
 #include "globals.h"
+#include "alarm.h"
 
 #include <iostream>
 #include <cassert>
@@ -55,6 +56,10 @@ int main(int argc, char** argv)
   callback->start(handler);
   Controller* controller = new Controller(controller_rep, handler);
 
+  // Start the alarm request agent
+  AlarmReqAgent::get_instance().start();
+  Alarm::clear_all("chronos");
+
   // Create an event reactor.
   struct event_base* base = event_base_new();
   if (!base) {
@@ -85,6 +90,9 @@ int main(int argc, char** argv)
 
   // Start the reactor, this blocks the current thread
   event_base_dispatch(base);
+
+  // Stop the alarm request agent
+  AlarmReqAgent::get_instance().stop();
 
   // Event loop is completed, terminate.
   //

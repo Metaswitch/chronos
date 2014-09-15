@@ -24,7 +24,11 @@ SRC_CONF_FILE=$SRC_CONF_DIR/chronos.monit
 
 case "$1" in
   configure)
+    # Trigger snmpd restart to load Chronos alarm-defs
+    initctl emit --no-wait snmpd-config-change
+
     install $SRC_CONF_FILE $MONIT_CONF_FILE
+    service monit reload || /bin/true
   ;;
 esac
 

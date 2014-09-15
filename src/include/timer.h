@@ -27,6 +27,9 @@ public:
   // Check if the timer is owned by the specified node.
   bool is_local(std::string);
 
+  // Check if this node is the last replica for the timer
+  bool is_last_replica();
+
   // Check if a timer is a tombstone record.
   bool is_tombstone();
 

@@ -6,6 +6,7 @@
 #include "timer_handler.h"
 #include "replicator.h"
 #include "timer.h"
+#include "alarm.h"
 
 #include <string>
 #include <curl/curl.h>
@@ -34,6 +35,8 @@ private:
   bool _running;
   TimerHandler* _handler;
   Replicator* _replicator;
+
+  static AlarmPair _timer_pop_alarms;
 };
 
 #endif
