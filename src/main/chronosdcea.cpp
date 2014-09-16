@@ -45,64 +45,64 @@
 / Action:
 **********************************************************/
 // Chronos syslog identities
-SysLog1<const char*> CL_CHRONOS_CRASHED
+PDLog1<const char*> CL_CHRONOS_CRASHED
 {
   CL_CHRONOS_ID + 1,
-  SYSLOG_ERR,
+  PDLOG_ERR,
   "Fatal - Chronos has exited or crashed with signal %s",
   "",
   "",
   ""
 };
-SysLog CL_CHRONOS_STARTED
+PDLog CL_CHRONOS_STARTED
 {
   CL_CHRONOS_ID + 2,
-  SYSLOG_NOTICE,
+  PDLOG_NOTICE,
   "Chronos started",
   "The Chronos application has started.",
   "Normal",
   "None"
 };
-SysLog CL_CHRONOS_REACTOR_FAIL
+PDLog CL_CHRONOS_REACTOR_FAIL
 {
   CL_CHRONOS_ID + 3,
-  SYSLOG_ERR,
+  PDLOG_ERR,
   "Fatal - Couldn't create the event reactor service",
   "The event handler for Chronos could not be initialized.",
   "The Chronos application will exit.",
   "Report this issue."
 };
-SysLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE
+PDLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE
 {
   CL_CHRONOS_ID + 4,
-    SYSLOG_ERR,
+    PDLOG_ERR,
     "Fatal - Could not create an http service",
     "The HTTP service could not be started",
     "The Chronos application will exit.",
     ""
 };
-SysLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE
+PDLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE
 {
   CL_CHRONOS_ID + 5,
-  SYSLOG_NOTICE,
+  PDLOG_NOTICE,
   "Chronos http service is now available",
   "",
   "",
   ""
 };
-SysLog CL_CHRONOS_ENDED
+PDLog CL_CHRONOS_ENDED
 {
   CL_CHRONOS_ID + 6,
-  SYSLOG_ERR,
+  PDLOG_ERR,
   "Fatal - Termination signal received - terminating",
   "",
   "",
   ""
 };
-SysLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
+PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
 {
   CL_CHRONOS_ID + 7,
-  SYSLOG_ERR,
+  PDLOG_ERR,
   "Fatal - Failed to get system time - timer service cannot run: %s",
   "The Chronos time service cannot get the system time",
   "",
