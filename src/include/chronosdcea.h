@@ -37,14 +37,83 @@
 #ifndef _CHRONOSDCEA_H__
 #define _CHRONOSDCEA_H__
 
+#include <string>
 #include "craft_dcea.h"
 
-extern SysLog1<const char*> CL_CHRONOS_CRASHED;
-extern SysLog CL_CHRONOS_STARTED;
-extern SysLog CL_CHRONOS_REACTOR_FAIL;
-extern SysLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE;
-extern SysLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE;
-extern SysLog CL_CHRONOS_ENDED;
-extern SysLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME;
+// Chronos syslog identities
+/**********************************************************
+/ log_id
+/ severity
+/ Description: (formatted)
+/ Cause: 
+/ Effect:
+/ Action:
+**********************************************************/
+// Chronos syslog identities
+static const PDLog1<const char*> CL_CHRONOS_CRASHED
+{
+  PDLogBase::CL_CHRONOS_ID + 1,
+  PDLOG_ERR,
+  "Fatal - Chronos has exited or crashed with signal %s",
+   "Chronos has encountered a fatal software error or has been terminated",
+   "The Chronos application will restart.",
+   "This error can occur if Chronos has been terminated by operator command.",
+   "Check the craft log to see if Monit has reported a chronos timeout.  This would be reported as a 'poll_chronos' failed.  Monit will restart chronos for this case.",
+   "Actual crashes such as abort, segment trap, bus error trap, should be reported as a problem. "
+};
+static const PDLog CL_CHRONOS_STARTED
+{
+  PDLogBase::CL_CHRONOS_ID + 2,
+  PDLOG_NOTICE,
+  "Chronos started",
+  "The Chronos application has started.",
+  "Normal",
+  "None"
+};
+static const PDLog CL_CHRONOS_REACTOR_FAIL
+{
+  PDLogBase::CL_CHRONOS_ID + 3,
+  PDLOG_ERR,
+  "Fatal - Couldn't create the event reactor service",
+  "The event handler for Chronos could not be initialized.",
+  "The Chronos application will exit.",
+  "Report this issue."
+};
+static const PDLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE
+{
+  PDLogBase::CL_CHRONOS_ID + 4,
+    PDLOG_ERR,
+    "Fatal - Could not create an http service",
+    "The HTTP service could not be started",
+    "The Chronos application will exit.",
+    ""
+};
+static const PDLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE
+{
+  PDLogBase::CL_CHRONOS_ID + 5,
+  PDLOG_NOTICE,
+  "Chronos http service is now available",
+  "",
+  "",
+  ""
+};
+static const PDLog CL_CHRONOS_ENDED
+{
+  PDLogBase::CL_CHRONOS_ID + 6,
+  PDLOG_ERR,
+  "Fatal - Termination signal received - terminating",
+  "",
+  "",
+  ""
+};
+static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
+{
+  PDLogBase::CL_CHRONOS_ID + 7,
+  PDLOG_ERR,
+  "Fatal - Failed to get system time - timer service cannot run: %s",
+  "The Chronos time service cannot get the system time",
+  "",
+  ""
+};
 
 #endif
