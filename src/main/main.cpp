@@ -86,7 +86,7 @@ int main(int argc, char** argv)
   __globals = new Globals();
   __globals->update_config();
 
-  openlog("chronos", SYSLOG_PID, SYSLOG_LOCAL6);
+  openlog("chronos", PDLOG_PID, PDLOG_LOCAL6);
   CL_CHRONOS_STARTED.log();
   // Log the PID, this is useful for debugging if monit restarts chronos.
   LOG_STATUS("Starting with PID %d", getpid());
