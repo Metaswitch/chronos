@@ -3,14 +3,10 @@
 
 #include <cstring>
 
-
-AlarmPair HTTPCallback::_timer_pop_alarms("chronos", "CHRONOS_TIMER_POP_ERROR_CLEAR",
-                                                     "CHRONOS_TIMER_POP_ERROR_MAJOR");
-
-
 HTTPCallback::HTTPCallback(Replicator* replicator) : _q(),
                                                      _running(false),
-                                                     _replicator(replicator)
+                                                     _replicator(replicator),
+                                                     _timer_pop_alarms(NULL)
 {
 }
 
@@ -20,6 +16,11 @@ HTTPCallback::~HTTPCallback()
   {
     stop();
   }
+}
+
+void HTTPCallback::set_timer_pop_alarms(AlarmPair* timer_pop_alarms)
+{
+  _timer_pop_alarms = timer_pop_alarms;
 }
 
 void HTTPCallback::start(TimerHandler* handler)
@@ -101,7 +102,10 @@ void HTTPCallback::worker_thread_entry_point()
       _handler->add_timer(timer);
       timer = NULL; // We relinquish control of the timer when we give
                     // it to the store.
-      _timer_pop_alarms.clear();
+      if (_timer_pop_alarms)
+      {
+        _timer_pop_alarms->clear();
+      }
     }
     else
     {
@@ -116,9 +120,9 @@ void HTTPCallback::worker_thread_entry_point()
                   timer->callback_url.c_str(),
                   curl_easy_strerror(curl_rc));
 
-      if (timer->is_last_replica())
+      if (_timer_pop_alarms && timer->is_last_replica())
       {
-        _timer_pop_alarms.set();
+        _timer_pop_alarms->set();
       }
 
       delete timer;

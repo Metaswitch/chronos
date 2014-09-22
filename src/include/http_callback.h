@@ -19,6 +19,8 @@ public:
   HTTPCallback(Replicator*);
   ~HTTPCallback();
 
+  void set_timer_pop_alarms(AlarmPair* timer_pop_alarms);
+
   void start(TimerHandler*);
   void stop();
 
@@ -36,7 +38,7 @@ private:
   TimerHandler* _handler;
   Replicator* _replicator;
 
-  static AlarmPair _timer_pop_alarms;
+  AlarmPair* _timer_pop_alarms;
 };
 
 #endif

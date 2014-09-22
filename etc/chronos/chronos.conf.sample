@@ -9,3 +9,6 @@ level = 2
 [cluster]
 localhost = localhost
 node = localhost
+
+[alarms]
+enabled = true
