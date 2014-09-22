@@ -110,7 +110,7 @@ static const PDLog CL_CHRONOS_ENDED
   "Chronos has been terminated by monit or has exited",
   "Chronos timer service is not longer available",
    2,
-  "(1)This occurs normally when Chronos is stopped.",
+  "(1). This occurs normally when Chronos is stopped.",
   "(2). If Chronos failed to respond then monit can restart Chronos.  Report this issue."
 );
 static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
