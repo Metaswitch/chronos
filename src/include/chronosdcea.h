@@ -57,9 +57,8 @@ static const PDLog1<const char*> CL_CHRONOS_CRASHED
   "Fatal - Chronos has exited or crashed with signal %s",
    "Chronos has encountered a fatal software error or has been terminated",
    "The Chronos application will restart.",
-   3,
+   2,
    "This error can occur if Chronos has been terminated by operator command.",
-   "Check the craft log to see if Monit has reported a chronos timeout.  This would be reported as a 'poll_chronos' failed.  Monit will restart chronos for this case.",
    "Actual crashes such as abort, segment trap, bus error trap, should be reported as a problem. "
  );
 static const PDLog CL_CHRONOS_STARTED
