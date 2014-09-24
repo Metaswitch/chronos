@@ -3,7 +3,7 @@
 	url = git@github.com:Metaswitch/clearwater-build-infra.git
 [submodule "modules/cpp-common"]
 	path = modules/cpp-common
-	url = git@github.com:ClearwaterCore/cpp-common.git
+	url = git@github.com:Metaswitch/cpp-common.git
 [submodule "modules/curl"]
 	path = modules/curl
 	url = git@github.com:bagder/curl.git
