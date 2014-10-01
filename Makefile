@@ -8,7 +8,7 @@ TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := src/main/main.cpp
 TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp) test_interposer.cpp fakelogger.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
-TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp
+TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp signalnames.cpp
 TARGET_EXTRA_OBJS_TEST :=
 INCLUDE_DIR := ${ROOT}/src/include
 CPPFLAGS := -pedantic -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -std=c++0x `curl-config --cflags` -Werror
