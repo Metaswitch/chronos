@@ -5,7 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
-#include "chronosdcea.h"
+#include "chronos_ent_definitions.h"
 
 // Macros to help log timer details.
 #define TIMER_LOG_FMT "ID:       %lu\n"                                        \
