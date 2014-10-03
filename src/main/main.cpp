@@ -54,7 +54,9 @@ int main(int argc, char** argv)
 
   if (alarms_enabled)
   {
-    // Create Chronos's alarm objects
+    // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
+    // in the alarm definition JSON file exactly.
+
     timer_pop_alarms = new AlarmPair("chronos", "CHRONOS_TIMER_POP_ERROR_CLEAR",
                                                 "CHRONOS_TIMER_POP_ERROR_MAJOR");
 

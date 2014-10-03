@@ -152,7 +152,7 @@ bool Timer::is_last_replica()
 {
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
-  return (replicas.back() == localhost);
+  return ((!replicas.empty()) ? replicas.back() == localhost : true);
 }
 
 bool Timer::is_tombstone()
