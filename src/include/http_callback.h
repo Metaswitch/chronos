@@ -16,10 +16,9 @@
 class HTTPCallback : public Callback
 {
 public:
-  HTTPCallback(Replicator*);
+  HTTPCallback(Replicator*,
+               AlarmPair* timer_pop_alarms);
   ~HTTPCallback();
-
-  void set_timer_pop_alarms(AlarmPair* timer_pop_alarms);
 
   void start(TimerHandler*);
   void stop();

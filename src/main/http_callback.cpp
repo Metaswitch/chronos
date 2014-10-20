@@ -3,10 +3,12 @@
 
 #include <cstring>
 
-HTTPCallback::HTTPCallback(Replicator* replicator) : _q(),
-                                                     _running(false),
-                                                     _replicator(replicator),
-                                                     _timer_pop_alarms(NULL)
+HTTPCallback::HTTPCallback(Replicator* replicator,
+                           AlarmPair* timer_pop_alarms) :
+  _q(),
+  _running(false),
+  _replicator(replicator),
+  _timer_pop_alarms(timer_pop_alarms)
 {
 }
 
@@ -16,11 +18,6 @@ HTTPCallback::~HTTPCallback()
   {
     stop();
   }
-}
-
-void HTTPCallback::set_timer_pop_alarms(AlarmPair* timer_pop_alarms)
-{
-  _timer_pop_alarms = timer_pop_alarms;
 }
 
 void HTTPCallback::start(TimerHandler* handler)
