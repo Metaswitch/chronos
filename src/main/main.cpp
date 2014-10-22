@@ -57,8 +57,8 @@ int main(int argc, char** argv)
     // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
     // in the alarm definition JSON file exactly.
 
-    timer_pop_alarms = new AlarmPair("chronos", "CHRONOS_TIMER_POP_ERROR_CLEAR",
-                                                "CHRONOS_TIMER_POP_ERROR_MAJOR");
+    timer_pop_alarms = new AlarmPair("chronos", AlarmDef::CHRONOS_TIMER_POP_ERROR,
+                                                AlarmDef::MAJOR);
 
     // Start the alarm request agent
     AlarmReqAgent::get_instance().start();
