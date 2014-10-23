@@ -6,6 +6,7 @@
 #include "timer_handler.h"
 #include "replicator.h"
 #include "timer.h"
+#include "alarm.h"
 
 #include <string>
 #include <curl/curl.h>
@@ -15,7 +16,8 @@
 class HTTPCallback : public Callback
 {
 public:
-  HTTPCallback(Replicator*);
+  HTTPCallback(Replicator*,
+               AlarmPair* timer_pop_alarms);
   ~HTTPCallback();
 
   void start(TimerHandler*);
@@ -34,6 +36,8 @@ private:
   bool _running;
   TimerHandler* _handler;
   Replicator* _replicator;
+
+  AlarmPair* _timer_pop_alarms;
 };
 
 #endif

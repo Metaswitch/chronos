@@ -1,5 +1,15 @@
+# Monitor the service's PID file and public interface. Issue an alarm for
+# any restart, clear after the process has run for 30s.
+
 check process chronos with pidfile /var/run/chronos.pid
-  start program = "/etc/init.d/chronos start"
-  stop program = "/etc/init.d/chronos stop"
-  if failed host localhost port 7253 type tcp
-    protocol http and request "/ping" then exec "/bin/bash -c '/usr/share/chronos/write_monit_restart_diags && /etc/init.d/chronos abort'"
+
+  start program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos start'"
+  stop program  = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos stop'"
+
+  if failed host localhost port 7253 type tcp protocol http and request "/ping"
+     then exec "/bin/bash -c '/usr/share/chronos/write_monit_restart_diags && /etc/init.d/chronos abort'"
+
+  if uptime < 30 seconds
+     then exec "/bin/true"
+     else if succeeded then exec "/usr/share/clearwater/bin/issue_alarm.py monit 3000.1"
+
