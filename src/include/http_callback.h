@@ -17,7 +17,7 @@ class HTTPCallback : public Callback
 {
 public:
   HTTPCallback(Replicator*,
-               AlarmPair* timer_pop_alarms);
+               Alarm* timer_pop_alarm);
   ~HTTPCallback();
 
   void start(TimerHandler*);
@@ -37,7 +37,7 @@ private:
   TimerHandler* _handler;
   Replicator* _replicator;
 
-  AlarmPair* _timer_pop_alarms;
+  Alarm* _timer_pop_alarm;
 };
 
 #endif

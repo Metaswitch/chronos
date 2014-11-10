@@ -4,11 +4,11 @@
 #include <cstring>
 
 HTTPCallback::HTTPCallback(Replicator* replicator,
-                           AlarmPair* timer_pop_alarms) :
+                           Alarm* timer_pop_alarm) :
   _q(),
   _running(false),
   _replicator(replicator),
-  _timer_pop_alarms(timer_pop_alarms)
+  _timer_pop_alarm(timer_pop_alarm)
 {
 }
 
@@ -99,9 +99,9 @@ void HTTPCallback::worker_thread_entry_point()
       _handler->add_timer(timer);
       timer = NULL; // We relinquish control of the timer when we give
                     // it to the store.
-      if (_timer_pop_alarms)
+      if (_timer_pop_alarm)
       {
-        _timer_pop_alarms->clear();
+        _timer_pop_alarm->clear();
       }
     }
     else
@@ -117,9 +117,9 @@ void HTTPCallback::worker_thread_entry_point()
                   timer->callback_url.c_str(),
                   curl_easy_strerror(curl_rc));
 
-      if (_timer_pop_alarms && timer->is_last_replica())
+      if (_timer_pop_alarm && timer->is_last_replica())
       {
-        _timer_pop_alarms->set();
+        _timer_pop_alarm->set();
       }
 
       delete timer;
