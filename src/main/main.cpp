@@ -6,6 +6,7 @@
 #include "http_callback.h"
 #include "controller.h"
 #include "globals.h"
+#include "alarm.h"
 
 #include <iostream>
 #include <cassert>
@@ -32,6 +33,8 @@ void exception_handler(int sig)
 
 int main(int argc, char** argv)
 {
+  Alarm* timer_pop_alarm = NULL;
+
   // Initialize cURL before creating threads
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
@@ -46,11 +49,27 @@ int main(int argc, char** argv)
   // Log the PID, this is useful for debugging if monit restarts chronos.
   LOG_STATUS("Starting with PID %d", getpid());
 
+  bool alarms_enabled;
+  __globals->get_alarms_enabled(alarms_enabled);
+
+  if (alarms_enabled)
+  {
+    // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
+    // in the alarm definition JSON file exactly.
+
+    timer_pop_alarm = new Alarm("chronos", AlarmDef::CHRONOS_TIMER_POP_ERROR,
+                                            AlarmDef::MAJOR);
+
+    // Start the alarm request agent
+    AlarmReqAgent::get_instance().start();
+    AlarmState::clear_all("chronos");
+  }
+
   // Create components
   TimerStore *store = new TimerStore();
   Replicator* controller_rep = new Replicator();
   Replicator* handler_rep = new Replicator();
-  HTTPCallback* callback = new HTTPCallback(handler_rep);
+  HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
   TimerHandler* handler = new TimerHandler(store, callback);
   callback->start(handler);
   Controller* controller = new Controller(controller_rep, handler);
@@ -88,6 +107,16 @@ int main(int argc, char** argv)
 
   // Event loop is completed, terminate.
   //
+
+  if (alarms_enabled)
+  { 
+    // Stop the alarm request agent
+    AlarmReqAgent::get_instance().stop();
+
+    // Delete Chronos's alarm objects
+    delete timer_pop_alarm;
+  }
+
   // After this point nothing will use __globals so it's safe to delete
   // it here.
   delete __globals; __globals = NULL;

@@ -151,6 +151,13 @@ bool Timer::is_local(std::string host)
   return (std::find(replicas.begin(), replicas.end(), host) != replicas.end());
 }
 
+bool Timer::is_last_replica()
+{
+  std::string localhost;
+  __globals->get_cluster_local_ip(localhost);
+  return ((!replicas.empty()) ? replicas.back() == localhost : true);
+}
+
 bool Timer::is_tombstone()
 {
   return ((callback_url == "") && (callback_body == ""));

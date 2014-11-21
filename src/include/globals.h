@@ -43,6 +43,7 @@ public:
   GLOBAL(cluster_local_ip, std::string);
   GLOBAL(cluster_hashes, std::map<std::string, uint64_t>);
   GLOBAL(cluster_addresses, std::vector<std::string>);
+  GLOBAL(alarms_enabled, bool);
 
 public:
   void update_config();
