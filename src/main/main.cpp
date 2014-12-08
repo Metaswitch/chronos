@@ -25,8 +25,8 @@ void exception_handler(int sig)
   signal(SIGSEGV, SIG_DFL);
 
   // Log the signal, along with a backtrace.
-  const char* signamep = (sig >= SIGHUP and sig <= SIGSYS) ? signalnames[sig-1] : "Unknown";
-  CL_CHRONOS_CRASHED.log(signamep);
+  CL_CHRONOS_CRASHED.log(strsignal(sig));
+  closelog();
   closelog();
   LOG_BACKTRACE("Signal %d caught", sig);
 
