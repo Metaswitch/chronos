@@ -13,7 +13,7 @@ TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := src/main/main.cpp
 TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp) test_interposer.cpp fakelogger.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
-TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp signalnames.cpp
+TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp
 TARGET_EXTRA_OBJS_TEST :=
 INCLUDE_DIR := ${ROOT}/src/include
 CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -std=c++0x -I ${INSTALL_DIR}/include -Werror
