@@ -57,6 +57,8 @@ fi
 
 echo "start_prefix=\"$namespace_prefix\" # clearwater-infrastructure" >> $DEFAULT_TEMP
 
+# Compare files to see if action is needed. If the source file does
+# not exist cmp will return non-zero and we will create it.
 if ! cmp -s $DEFAULT_PATH $DEFAULT_TEMP
 then
   # default configuration update needed, so copy the change and
