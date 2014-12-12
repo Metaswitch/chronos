@@ -6,9 +6,6 @@ check process chronos with pidfile /var/run/chronos.pid
   start program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos start'"
   stop program  = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos stop'"
 
-  if failed host localhost port 7253 type tcp protocol http and request "/ping"
-     then exec "/bin/bash -c '/usr/share/chronos/write_monit_restart_diags && /etc/init.d/chronos abort'"
-
   if uptime < 30 seconds
      then exec "/bin/true"
      else if succeeded then exec "/usr/share/clearwater/bin/issue_alarm.py monit 3000.1"
