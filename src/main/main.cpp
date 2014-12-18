@@ -1,4 +1,4 @@
-#include "chronos_ent_definitions.h"
+#include "chronos_pd_definitions.h"
 #include "timer.h"
 #include "timer_store.h"
 #include "timer_handler.h"
@@ -49,7 +49,9 @@ int main(int argc, char** argv)
   __globals = new Globals();
   __globals->update_config();
 
-  openlog("chronos", PDLOG_PID, PDLOG_LOCAL6);
+  boost::filesystem::path p = argv[0];
+  std::string binary_name = p.filename;
+  openlog(binary_name.c_str(), PDLOG_PID, PDLOG_LOCAL6);
   CL_CHRONOS_STARTED.log();
   // Log the PID, this is useful for debugging if monit restarts chronos.
   LOG_STATUS("Starting with PID %d", getpid());
