@@ -2,7 +2,7 @@
  * @file chronos_ent_definitions.h  Chronos ENT declarations.
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2014  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -38,17 +38,32 @@
 #define _CHRONOS_ENT_DEFINITIONS_H__
 
 #include <string>
-#include "craft_ent_definitions.h"
+#include "pdlog.h"
 
-/// Description of the following PDLog definitions content
-/**********************************************************
-/ log_id
-/ severity
-/ Description: (formatted)
-/ Cause:
-/ Effect:
-/ Action: \n separated list
-**********************************************************/
+// Defines instances of PDLog for the chronos module
+
+// A PDLogBase defines the base class containing:
+//   Identity - Identifies the log id to be used in the syslog id field.
+//   Severity - One of Emergency, Alert, Critical, Error, Warning, Notice, and Info.
+//              Directly corresponds to the syslog severity types.
+//              Only Error and Notice are used.  See syslog_facade.h for definitions.
+//   Message - Formatted description of the condition.
+//   Cause - The cause of the condition.
+//   Effect - The effect the condition.
+//   Action - A list of one or more actions to take to resolve the condition if it is an error.
+// The elements of the class are used to format a syslog call.
+// The call to output to syslog is in the method,  dcealog.
+// By default syslog limits a total syslog message size to 2048 bytes.  Anything
+// above the limit is truncated.  The formatted message, cause, effect, and action(s) are
+// concatenated into the syslog message.  Note, as an arbitrary convention, for more
+// than a signle action, the actions are numbered as (1)., (2)., ...  to make the actions
+// easier to read within the syslog message.  syslog removes extra whitespace and
+// carriage-returns/linefeeds before inserting the complete string into a message.
+// Note also, the action(s) are a list of strings with all but the last string having a
+// space character at the end.  The space makes the actions more readable.
+// Most of the derived classes are templates defining the types for arguments to the log call.
+//  The paremeterized types being values that are output as a formatted string in the Message field.
+// Description of the following PDLog definitions content
 static const PDLog1<const char*> CL_CHRONOS_CRASHED
 (
   PDLogBase::CL_CHRONOS_ID + 1,
@@ -76,7 +91,7 @@ static const PDLog CL_CHRONOS_REACTOR_FAIL
   PDLOG_ERR,
   "Fatal - Couldn't create the event reactor service.",
   "The event handler for Chronos could not be initialized.",
-  "The Chronos application will exit.",
+  "The application will exit and restart until the problem is fixed.",
   "Report this issue to support."
 );
 
@@ -86,7 +101,7 @@ static const PDLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE
   PDLOG_ERR,
   "Fatal - Could not create an HTTP service.",
   "The HTTP service could not be started.",
-  "The Chronos application will exit.",
+  "The application will exit and restart until the problem is fixed.",
   "Report this issue to support."
 );
 

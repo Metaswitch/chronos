@@ -1,6 +1,3 @@
- extern "C" {
-#include "syslog_facade.h"
-}
 #include "chronos_ent_definitions.h"
 #include "timer.h"
 #include "timer_store.h"
