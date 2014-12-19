@@ -61,7 +61,7 @@ static const PDLog1<const char*> CL_CHRONOS_CRASHED
   "Chronos has encountered a fatal software error or has been terminated.",
   "The Chronos application will restart.",
   "This error can occur if Chronos has been terminated by operator command. "
-  "Crashes such as segment trap or bus error trap should be reported."
+  "Check your installation and configuration for other types of crashes."
 );
 
 static const PDLog CL_CHRONOS_STARTED
