@@ -60,8 +60,8 @@ static const PDLog1<const char*> CL_CHRONOS_CRASHED
   "Fatal - Chronos has exited or crashed with signal %s.",
   "Chronos has encountered a fatal software error or has been terminated.",
   "The application will exit and restart until the problem is fixed.",
-  "This error can occur if Chronos has been terminated by operator command. "
-  "Check your installation and configuration for other types of crashes."
+  "Ensure that Chronos has been installed correctly and that it "
+  "has valid configuration."
 );
 
 static const PDLog CL_CHRONOS_STARTED
@@ -82,7 +82,7 @@ static const PDLog CL_CHRONOS_REACTOR_FAIL
   "The event handler for Chronos could not be initialized.",
   "The application will exit and restart until the problem is fixed.",
   "Ensure that Chronos has been installed correctly and that it "
-  "has a valid configuration."
+  "has valid configuration."
 );
 
 static const PDLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE
@@ -124,8 +124,8 @@ static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
   "Fatal - Failed to get system time - timer service cannot run: %s.",
   "The Chronos time service cannot get the system time.",
   "The application will exit and restart until the problem is fixed.",
-  "(1). Make sure that ntp is running and the system time and date is set. "
-  "(2). Check the ntp status and configuration."
+  "(1). Make sure that NTP is running and the system time and date is set. "
+  "(2). Check the NTP status and configuration."
 );
 
 #endif
