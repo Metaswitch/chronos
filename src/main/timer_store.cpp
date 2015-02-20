@@ -32,19 +32,25 @@ TimerStore::TimerStore()
 TimerStore::~TimerStore()
 {
   // Delete the timers in the lookup table as they will never pop now.
-  for (auto it = _timer_lookup_table.begin(); it != _timer_lookup_table.end(); ++it)
+  for (std::map<TimerID, Timer*>::iterator it = _timer_lookup_table.begin(); 
+                                           it != _timer_lookup_table.end(); 
+                                           ++it)
   {
     delete it->second;
   }
+
   _timer_lookup_table.clear();
+
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
     _short_wheel[ii].clear();
   }
+
   for (int ii = 0; ii < LONG_WHEEL_NUM_BUCKETS; ++ii)
   {
     _long_wheel[ii].clear();
   }
+
   _extra_heap.clear();
 }
 
@@ -54,7 +60,8 @@ TimerStore::~TimerStore()
 void TimerStore::add_timer(Timer* t)
 {
   // First check if this timer already exists.
-  auto map_it = _timer_lookup_table.find(t->id);
+  std::map<TimerID, Timer*>::iterator map_it = _timer_lookup_table.find(t->id);
+
   if (map_it != _timer_lookup_table.end())
   {
     Timer* existing = map_it->second;
@@ -139,7 +146,9 @@ void TimerStore::add_timer(Timer* t)
 // this operation, since the timers are now owned by the store.
 void TimerStore::add_timers(std::unordered_set<Timer*>& set)
 {
-  for (auto it = set.begin(); it != set.end(); ++it)
+  for (std::unordered_set<Timer*>::iterator it = set.begin(); 
+                                            it != set.end(); 
+                                            ++it)
   {
     add_timer(*it);
   }
@@ -297,7 +306,9 @@ TimerStore::Bucket* TimerStore::long_wheel_bucket(uint64_t t)
 void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
                             std::unordered_set<Timer*>& set)
 {
-  for(auto it = bucket->begin(); it != bucket->end(); ++it)
+  for(TimerStore::Bucket::iterator it = bucket->begin(); 
+                                   it != bucket->end(); 
+                                   ++it)
   {
     _timer_lookup_table.erase((*it)->id);
     set.insert(*it);
@@ -365,7 +376,9 @@ void TimerStore::refill_short_wheel()
 {
   Bucket* long_bucket = long_wheel_bucket(_tick_timestamp);
 
-  for(auto it = long_bucket->begin(); it != long_bucket->end(); ++it)
+  for (Bucket::iterator it = long_bucket->begin(); 
+                        it != long_bucket->end(); 
+                        ++it)
   {
     Timer* timer = *it;
     Bucket* short_bucket = short_wheel_bucket(timer);

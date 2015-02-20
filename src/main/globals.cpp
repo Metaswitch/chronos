@@ -72,7 +72,10 @@ void Globals::update_config()
   set_cluster_addresses(cluster_addresses);
   std::map<std::string, uint64_t> cluster_hashes;
   LOG_STATUS("Cluster nodes:");
-  for (auto it = cluster_addresses.begin(); it != cluster_addresses.end(); ++it)
+
+  for (std::vector<std::string>::iterator it = cluster_addresses.begin(); 
+                                          it != cluster_addresses.end(); 
+                                          ++it)
   {
     LOG_STATUS(" - %s", it->c_str());
     cluster_hashes[*it] = generate_hash(*it);

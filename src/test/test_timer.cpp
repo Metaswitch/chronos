@@ -106,7 +106,9 @@ TEST_F(TestTimer, FromJSONTests)
   std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
 
   // Each of the failing json blocks should not parse to a timer.
-  for (auto it = failing_test_data.begin(); it != failing_test_data.end(); ++it)
+  for (std::vector<std::string>::iterator it = failing_test_data.begin(); 
+                                          it != failing_test_data.end(); 
+                                          ++it)
   {
     std::string err;
     bool replicated;

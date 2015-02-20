@@ -39,7 +39,9 @@ uint64_t Timer::next_pop_time()
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
 
-  for (auto it = replicas.begin(); it != replicas.end(); ++it, ++replica_index)
+  for (std::vector<std::string>::iterator it = replicas.begin(); 
+                                          it != replicas.end(); 
+                                          ++it, ++replica_index)
   {
     if (*it == localhost)
     {
@@ -70,7 +72,10 @@ std::string Timer::url(std::string host)
   uint64_t hash = 0;
   std::map<std::string, uint64_t> cluster_hashes;
   __globals->get_cluster_hashes(cluster_hashes);
-  for (auto it = replicas.begin(); it != replicas.end(); ++it)
+
+  for (std::vector<std::string>::iterator it = replicas.begin(); 
+                                          it != replicas.end(); 
+                                          ++it)
   {
     hash |= cluster_hashes[*it];
   }
@@ -122,7 +127,10 @@ std::string Timer::to_json()
   callback.AddMember("http", http, doc.GetAllocator());
 
   rapidjson::Value replicas_array(rapidjson::kArrayType);
-  for (auto it = replicas.begin(); it != replicas.end(); ++it)
+
+  for (std::vector<std::string>::iterator it = replicas.begin(); 
+                                          it != replicas.end(); 
+                                          ++it)
   {
     val.SetString((*it).c_str(), doc.GetAllocator());
     replicas_array.PushBack(val, doc.GetAllocator());
@@ -182,7 +190,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     std::map<std::string, uint64_t> cluster_hashes;
     __globals->get_cluster_hashes(cluster_hashes);
 
-    for (auto it = cluster_hashes.begin();
+    for (std::map<std::string, uint64_t>::iterator it = cluster_hashes.begin();
          it != cluster_hashes.end();
          ++it)
     {
@@ -243,7 +251,9 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   }
 
   LOG_DEBUG("Replicas calculated:");
-  for (auto it = replicas.begin(); it != replicas.end(); ++it)
+  for (std::vector<std::string>::iterator it = replicas.begin(); 
+                                          it != replicas.end(); 
+                                          ++it)
   {
     LOG_DEBUG(" - %s", it->c_str());
   }
@@ -418,7 +428,10 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
       }
 
       timer->_replication_factor = replicas.Size();
-      for (auto it = replicas.Begin(); it != replicas.End(); ++it)
+
+      for (rapidjson::Value::ConstValueIterator it = replicas.Begin(); 
+                                                it != replicas.End(); 
+                                                ++it)
       {
         JSON_ASSERT_STRING(*it, "replica address");
         timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
