@@ -25,6 +25,7 @@ Globals::Globals()
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
+    ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ;
 
 #ifndef UNITTEST
@@ -85,6 +86,10 @@ void Globals::update_config()
   bool alarms_enabled = (conf_map["alarms.enabled"].as<std::string>().compare("true") == 0);
   set_alarms_enabled(alarms_enabled);
   LOG_STATUS("Alarms enabled: %d", alarms_enabled);
+
+  int http_threads = conf_map["http.threads"].as<int>();
+  set_http_threads(http_threads);
+  LOG_STATUS("HTTP Threads: %d", http_threads);
 
   unlock();
 }

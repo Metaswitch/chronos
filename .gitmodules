@@ -13,3 +13,15 @@
 [submodule "modules/rapidjson"]
 	path = modules/rapidjson
 	url = git@github.com:miloyip/rapidjson.git
+[submodule "modules/libevhtp"]
+	path = modules/libevhtp
+	url = git@github.com:Metaswitch/libevhtp.git
+[submodule "modules/sas-client"]
+	path = modules/sas-client
+	url = git@github.com:Metaswitch/sas-client.git
+[submodule "modules/gmock"]
+	path = modules/gmock
+	url = git@github.com:Metaswitch/gmock-upstream.git
+[submodule "modules/gcovr"]
+	path = modules/gcovr
+	url = git@github.com:gcovr/gcovr.git

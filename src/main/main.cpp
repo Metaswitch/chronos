@@ -5,15 +5,25 @@
 #include "replicator.h"
 #include "callback.h"
 #include "http_callback.h"
-#include "controller.h"
 #include "globals.h"
 #include "alarm.h"
 #include <boost/filesystem.hpp>
+#include "httpstack.h"
+#include "httpstack_utils.h"
+#include "handlers.h"
 
 #include <iostream>
 #include <cassert>
 
 #include "time.h"
+
+static sem_t term_sem;
+
+// Signal handler that triggers sprout termination.
+void terminate_handler(int sig)
+{
+  sem_post(&term_sem);
+}
 
 // Signal handler that simply dumps the stack and then crashes out.
 void exception_handler(int sig)
@@ -45,6 +55,9 @@ int main(int argc, char** argv)
   // Set up our exception signal handler for asserts and segfaults.
   signal(SIGABRT, exception_handler);
   signal(SIGSEGV, exception_handler);
+
+  sem_init(&term_sem, 0, 0);
+  signal(SIGTERM, terminate_handler);
 
   // Initialize the global configuration.
   __globals = new Globals();
@@ -80,51 +93,57 @@ int main(int argc, char** argv)
   HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
   TimerHandler* handler = new TimerHandler(store, callback);
   callback->start(handler);
-  Controller* controller = new Controller(controller_rep, handler);
-
-  // Create an event reactor.
-  struct event_base* base = event_base_new();
-  if (!base)
-  {
-    CL_CHRONOS_REACTOR_FAIL.log();
-    closelog();
-    std::cerr << "Couldn't create an event_base: exiting" << std::endl;
-    return 1;
-  }
-
-  // Create an HTTP server instance.
-  struct evhttp* http = evhttp_new(base);
-  if (!http)
-  {
-    CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE.log();
-    closelog();
-    std::cerr << "Couldn't create evhttp: exiting" << std::endl;
-    return 1;
-  }
-  else
-  {
-    CL_CHRONOS_HTTP_SERVICE_AVAILABLE.log();
-  }
-
-  // Register a callback for the "/ping" path.
-  evhttp_set_cb(http, "/ping", Controller::controller_ping_cb, NULL);
-
-  // Register a callback for the "/timers" path, we have to do this with the
-  // generic callback as libevent doesn't support regex paths.
-  evhttp_set_gencb(http, Controller::controller_cb, controller);
-
-  // Bind to the correct port
+  
+  HttpStack* http_stack = HttpStack::get_instance();
   std::string bind_address;
   int bind_port;
+  int http_threads;
   __globals->get_bind_address(bind_address);
   __globals->get_bind_port(bind_port);
-  evhttp_bind_socket(http, bind_address.c_str(), bind_port);
+  __globals->get_http_threads(http_threads);
 
-  // Start the reactor, this blocks the current thread
-  event_base_dispatch(base);
+  HttpStackUtils::PingHandler ping_handler;
+  ControllerTask::Config controller_config(controller_rep, handler);
+  HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config);
 
-  // Event loop is completed, terminate.
-  //
+  try
+  {
+    http_stack->initialize();
+    http_stack->configure(bind_address, bind_port, http_threads, NULL);
+    http_stack->register_handler((char*)"^/ping$", &ping_handler);
+    http_stack->register_handler((char*)"^/timers$", &controller_handler);
+    http_stack->start();
+    CL_CHRONOS_HTTP_SERVICE_AVAILABLE.log();
+  }
+  catch (HttpStack::Exception& e)
+  {
+    CL_CHRONOS_HTTP_INTERFACE_FAIL.log(e._func, e._rc);
+    closelog();
+    std::cerr << "Caught HttpStack::Exception" << std::endl;
+    return 1;
+  }
+
+  CL_CHRONOS_HTTP_SERVICE_AVAILABLE.log();
+
+  // Wait here until the quit semaphore is signaled.
+  sem_wait(&term_sem);
+
+  try
+  {
+    http_stack->stop();
+    http_stack->wait_stopped();
+  }
+  catch (HttpStack::Exception& e)
+  {
+    CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL.log(e._func, e._rc);
+    std::cerr << "Caught HttpStack::Exception" << std::endl;
+  }
+
+  delete handler; handler = NULL;
+  delete callback; callback = NULL;
+  delete handler_rep; handler_rep = NULL;
+  delete controller_rep; controller_rep = NULL;
+  delete store; store = NULL;
 
   if (alarms_enabled)
   {
@@ -134,6 +153,8 @@ int main(int argc, char** argv)
     // Delete Chronos's alarm objects
     delete timer_pop_alarm;
   }
+ 
+  sem_destroy(&term_sem);
 
   // After this point nothing will use __globals so it's safe to delete
   // it here.
