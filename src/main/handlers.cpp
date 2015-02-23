@@ -47,7 +47,7 @@ void ControllerTask::run()
             replicated_timer ? "" : " not");
 
   // Now we have a valid timer object, reply to the HTTP request.
-  _req.add_header("Location", timer->url().c_str());
+  _req.add_header("Location", timer->url());
   send_http_reply(HTTP_OK);
 
   // Replicate the timer to the other replicas if this is a client request
@@ -77,7 +77,7 @@ HTTPCode ControllerTask::parse_request()
 
   LOG_DEBUG("Path is %s", path.c_str());
 
-  if ((path == "/timers") || (path == "/timers/"))
+  if ((path == "") || (path == "/"))
   {
     if (_req.method() != htp_method_POST)
     {
@@ -88,7 +88,7 @@ HTTPCode ControllerTask::parse_request()
       _timer_id = Timer::generate_timer_id();
     }
   }
-  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
+  else if (boost::regex_match(path, matches, boost::regex("/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
     {

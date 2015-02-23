@@ -18,7 +18,7 @@ public:
     Config(Replicator* replicator,
            TimerHandler* handler) :
       _replicator(replicator),
-      _handler(_handler)
+      _handler(handler)
     {}
   
     ~Config()
