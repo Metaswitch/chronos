@@ -111,7 +111,7 @@ int main(int argc, char** argv)
     http_stack->initialize();
     http_stack->configure(bind_address, bind_port, http_threads, NULL);
     http_stack->register_handler((char*)"^/ping$", &ping_handler);
-    http_stack->register_handler((char*)"^/timers.*", &controller_handler);
+    http_stack->register_handler((char*)"^/timers", &controller_handler);
     http_stack->start();
     CL_CHRONOS_HTTP_SERVICE_AVAILABLE.log();
   }
