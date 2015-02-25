@@ -68,7 +68,10 @@ void ControllerTask::run()
   }
 
   _cfg->_handler->add_timer(timer);
+  
+  // The store takes ownership of the timer. 
   timer = NULL;
+  delete this;
 }
 
 HTTPCode ControllerTask::parse_request()
