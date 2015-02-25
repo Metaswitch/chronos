@@ -1,5 +1,5 @@
 #include "handlers.h"
-#include "mock_timer_handler.h"
+#include "fake_timer_handler.h"
 #include "mock_replicator.h"
 #include "mockhttpstack.hpp"
 #include "base.h"
@@ -21,7 +21,7 @@ protected:
   {
     Base::SetUp();
     _replicator = new MockReplicator();
-    _th = new MockTimerHandler();
+    _th = new FakeTimerHandler();
     _httpstack = new MockHttpStack();
   }
 
@@ -51,7 +51,7 @@ protected:
   }
 
   MockReplicator* _replicator;
-  MockTimerHandler* _th;
+  FakeTimerHandler* _th;
   MockHttpStack* _httpstack;
 };
 
@@ -68,7 +68,6 @@ TEST_F(TestHandler, ValidJSONDeleteTimer)
   ControllerTask::Config cfg(_replicator, _th);
   ControllerTask* task = new ControllerTask(req, &cfg, 0);
   EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   task->run();
 }
@@ -86,7 +85,6 @@ TEST_F(TestHandler, ValidJSONCreateTimer)
   ControllerTask::Config cfg(_replicator, _th);
   ControllerTask* task = new ControllerTask(req, &cfg, 0);
   EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   task->run();
 }
