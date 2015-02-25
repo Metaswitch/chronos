@@ -1,5 +1,5 @@
 [http]
-bind-address = 0.0.0.0
+bind-address = localhost
 bind-port = 7253
 
 [logging]
