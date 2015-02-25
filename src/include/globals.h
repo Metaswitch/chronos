@@ -11,7 +11,7 @@
 // Defines a global variable and it's associated get and set
 // functions.  Note that, although get functions are protected
 // by the lock automatically, set functions are not, allowing
-// updates to be applied atomically (using the lock() and 
+// updates to be applied atomically (using the lock() and
 // unlock() functions around the various set operations)..
 #define GLOBAL(NAME, ...)                     \
   public:                                      \
@@ -44,7 +44,7 @@ public:
   GLOBAL(cluster_hashes, std::map<std::string, uint64_t>);
   GLOBAL(cluster_addresses, std::vector<std::string>);
   GLOBAL(alarms_enabled, bool);
-  GLOBAL(http_threads, int);
+  GLOBAL(threads, int);
 
 public:
   void update_config();

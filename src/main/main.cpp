@@ -19,7 +19,7 @@
 
 static sem_t term_sem;
 
-// Signal handler that triggers sprout termination.
+// Signal handler that triggers Chronos termination.
 void terminate_handler(int sig)
 {
   sem_post(&term_sem);
@@ -100,7 +100,12 @@ int main(int argc, char** argv)
   int http_threads;
   __globals->get_bind_address(bind_address);
   __globals->get_bind_port(bind_port);
-  __globals->get_http_threads(http_threads);
+  __globals->get_threads(http_threads);
+
+  if (!strcmp(bind_address.c_str(), "0.0.0.0"))
+  {
+    LOG_ERROR("0.0.0.0 has been deprecated for the bind_address setting. Use the local IP address instead");
+  }
 
   HttpStackUtils::PingHandler ping_handler;
   ControllerTask::Config controller_config(controller_rep, handler);

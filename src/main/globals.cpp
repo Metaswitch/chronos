@@ -87,9 +87,9 @@ void Globals::update_config()
   set_alarms_enabled(alarms_enabled);
   LOG_STATUS("Alarms enabled: %d", alarms_enabled);
 
-  int http_threads = conf_map["http.threads"].as<int>();
-  set_http_threads(http_threads);
-  LOG_STATUS("HTTP Threads: %d", http_threads);
+  int threads = conf_map["http.threads"].as<int>();
+  set_threads(threads);
+  LOG_STATUS("HTTP Threads: %d", threads);
 
   unlock();
 }
