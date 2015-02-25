@@ -17,10 +17,14 @@ class TimerHandler
 public:
   TimerHandler(TimerStore*, Callback*);
   ~TimerHandler();
-  void add_timer(Timer*);
+  virtual void add_timer(Timer*);
   void run();
 
   friend class TestTimerHandler;
+
+#ifdef UNITTEST
+  TimerHandler() {}
+#endif
 
 private:
   void pop(std::unordered_set<Timer*>&);

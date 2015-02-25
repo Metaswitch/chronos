@@ -114,10 +114,13 @@ void TimerHandler::run() {
     _store->get_next_timers(next_timers);
   }
 
-  for (auto it = next_timers.begin(); it != next_timers.end(); ++it)
+  for (std::unordered_set<Timer*>::iterator it = next_timers.begin(); 
+                                            it != next_timers.end(); 
+                                            ++it)
   {
     delete *it;
   }
+
   next_timers.clear();
 
   pthread_mutex_unlock(&_mutex);
@@ -131,7 +134,9 @@ void TimerHandler::run() {
 // thus empties the passed in set.
 void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 {
-  for (auto it = timers.begin(); it != timers.end(); ++it)
+  for (std::unordered_set<Timer*>::iterator it = timers.begin(); 
+                                            it != timers.end(); 
+                                            ++it)
   {
     pop(*it);
   }

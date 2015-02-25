@@ -2,10 +2,10 @@
 
 Chronos is a distributed timer service, based on an arbitrary-size cluster of communicating nodes which replicate timers between them. This document describes how to configure Chronos to know about the other Chronos nodes it should replicate timers to.
 
-Chronos's cluster settings are controlled by `/etc/chronos/chronos.conf`, which looks like this:
+Chronos's cluster settings are controlled by `/etc/chronos/chronos.conf`, which includes:
 
     [http]
-    bind-address = 0.0.0.0
+    bind-address = 1.2.3.4
     bind-port = 7253
 
     [cluster]
@@ -17,7 +17,7 @@ Chronos's cluster settings are controlled by `/etc/chronos/chronos.conf`, which 
 Additional nodes are added to the cluster by adding extra `node` lines and sending a SIGHUP (so that Chronos reloads the config):
 
     [http]
-    bind-address = 0.0.0.0
+    bind-address = 1.2.3.4
     bind-port = 7253
 
     [cluster]

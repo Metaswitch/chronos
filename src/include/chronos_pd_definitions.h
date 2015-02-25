@@ -74,28 +74,6 @@ static const PDLog CL_CHRONOS_STARTED
   "None."
 );
 
-static const PDLog CL_CHRONOS_REACTOR_FAIL
-(
-  PDLogBase::CL_CHRONOS_ID + 3,
-  PDLOG_ERR,
-  "Fatal - Chronos encountered a fatal error on startup.",
-  "The event handler for Chronos could not be initialized.",
-  "The application will exit and restart until the problem is fixed.",
-  "Ensure that Chronos has been installed correctly and that it "
-  "has valid configuration."
-);
-
-static const PDLog CL_CHRONOS_FAIL_CREATE_HTTP_SERVICE
-(
-  PDLogBase::CL_CHRONOS_ID + 4,
-  PDLOG_ERR,
-  "Fatal - Could not create an HTTP service.",
-  "The HTTP service could not be started.",
-  "The application will exit and restart until the problem is fixed.",
-  "(1). Check the Chronos configuration."
-  "(2). Check the network status and configuration."
-);
-
 static const PDLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE
 (
   PDLogBase::CL_CHRONOS_ID + 5,
@@ -126,6 +104,29 @@ static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
   "The application will exit and restart until the problem is fixed.",
   "(1). Make sure that NTP is running and the system time and date is set. "
   "(2). Check the NTP status and configuration."
+);
+
+static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_FAIL
+(
+  PDLogBase::CL_CHRONOS_ID + 8,
+  PDLOG_ERR,
+  "Fatal - Failed to initialize HttpStack stack in function %s with error %d.",
+  "The HTTP interfaces could not be initialized.",
+  "The application will exit and restart until the problem is fixed.",
+  "(1). Check the /etc/clearwater/config for correctness. "
+  "(2). Check the network status and configuration. "
+);
+
+static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL
+(
+  PDLogBase::CL_CHRONOS_ID + 9,
+  PDLOG_ERR,
+  "The HTTP interfaces encountered an error when stopping the HTTP stack "
+  "in %s with error %d.",
+  "When Chronos was exiting it encountered an error when shutting "
+  "down the HTTP stack.",
+  "Not critical as Chronos is exiting anyway.",
+  "No action required."
 );
 
 #endif

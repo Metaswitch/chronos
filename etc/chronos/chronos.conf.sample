@@ -1,6 +1,7 @@
 [http]
-bind-address = 0.0.0.0
+bind-address = localhost
 bind-port = 7253
+threads = 50
 
 [logging]
 folder = /var/log/chronos

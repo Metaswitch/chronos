@@ -106,7 +106,9 @@ TEST_F(TestTimer, FromJSONTests)
   std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
 
   // Each of the failing json blocks should not parse to a timer.
-  for (auto it = failing_test_data.begin(); it != failing_test_data.end(); ++it)
+  for (std::vector<std::string>::iterator it = failing_test_data.begin(); 
+                                          it != failing_test_data.end(); 
+                                          ++it)
   {
     std::string err;
     bool replicated;
@@ -124,14 +126,14 @@ TEST_F(TestTimer, FromJSONTests)
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
   EXPECT_EQ(2, get_replication_factor(timer));
-  EXPECT_EQ(2, timer->replicas.size());
+  EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
   timer = Timer::from_json(1, 0, default_repl_factor2, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
   EXPECT_EQ(2, get_replication_factor(timer));
-  EXPECT_EQ(2, timer->replicas.size());
+  EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
 
   // If you do specify a replication-factor, use that.
@@ -140,7 +142,7 @@ TEST_F(TestTimer, FromJSONTests)
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
   EXPECT_EQ(3, get_replication_factor(timer));
-  EXPECT_EQ(3, timer->replicas.size());
+  EXPECT_EQ(3u, timer->replicas.size());
   delete timer;
 
   // Get the replicas from the bloom filter if given
@@ -261,8 +263,8 @@ TEST_F(TestTimer, ToJSON)
   EXPECT_TRUE(replicated);
   ASSERT_NE((void*)NULL, t2);
 
-  EXPECT_EQ(2, t3->id) << json;
-  EXPECT_EQ(1000000, t3->start_time) << json;
+  EXPECT_EQ(2u, t3->id) << json;
+  EXPECT_EQ(1000000u, t3->start_time) << json;
   EXPECT_EQ(t2->interval, t3->interval) << json;
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
@@ -282,7 +284,7 @@ TEST_F(TestTimer, IsLocal)
 TEST_F(TestTimer, IsTombstone)
 {
   Timer* t2 = Timer::create_tombstone(100, 0);
-  EXPECT_NE(0, t2->start_time);
+  EXPECT_NE(0u, t2->start_time);
   EXPECT_TRUE(t2->is_tombstone());
   delete t2;
 }
@@ -292,7 +294,7 @@ TEST_F(TestTimer, BecomeTombstone)
   EXPECT_FALSE(t1->is_tombstone());
   t1->become_tombstone();
   EXPECT_TRUE(t1->is_tombstone());
-  EXPECT_EQ(1000000, t1->start_time);
-  EXPECT_EQ(100, t1->interval);
-  EXPECT_EQ(100, t1->repeat_for);
+  EXPECT_EQ(1000000u, t1->start_time);
+  EXPECT_EQ(100u, t1->interval);
+  EXPECT_EQ(100u, t1->repeat_for);
 }
