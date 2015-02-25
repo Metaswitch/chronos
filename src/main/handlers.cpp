@@ -37,6 +37,7 @@ void ControllerTask::run()
 
     if (!timer)
     {
+      LOG_DEBUG("Unable to create timer");
       send_http_reply(HTTP_BAD_RESULT);
       delete this;
       return;
@@ -77,10 +78,11 @@ HTTPCode ControllerTask::parse_request()
 
   LOG_DEBUG("Path is %s", path.c_str());
 
-  if ((path == "") || (path == "/"))
+  if ((path == "/timers") || (path == "/timers/"))
   {
     if (_req.method() != htp_method_POST)
     {
+      LOG_DEBUG("Empty timer, but the method wasn't POST");
       return HTTP_BADMETHOD;
     }
     else
@@ -88,10 +90,11 @@ HTTPCode ControllerTask::parse_request()
       _timer_id = Timer::generate_timer_id();
     }
   }
-  else if (boost::regex_match(path, matches, boost::regex("/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
+  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
     {
+      LOG_DEBUG("Timer present, but the method wasn't PUT or DELETE");
       return HTTP_BADMETHOD;
     }
     else
@@ -102,6 +105,7 @@ HTTPCode ControllerTask::parse_request()
   }
   else
   {
+    LOG_DEBUG("Timer present, but badly formatted");
     return HTTP_NOT_FOUND;
   }
 
