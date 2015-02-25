@@ -29,10 +29,10 @@ void ControllerTask::run()
   {
     std::string body = _req.get_rx_body();
     std::string error_str;
-    timer = Timer::from_json(_timer_id, 
-                             _replica_hash, 
-                             body, 
-                             error_str, 
+    timer = Timer::from_json(_timer_id,
+                             _replica_hash,
+                             body,
+                             error_str,
                              replicated_timer);
 
     if (!timer)
@@ -73,7 +73,7 @@ void ControllerTask::run()
 
 HTTPCode ControllerTask::parse_request()
 {
-  std::string path = _req.path();
+  std::string path = _req.full_path();
   boost::smatch matches;
 
   LOG_DEBUG("Path is %s", path.c_str());

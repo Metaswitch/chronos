@@ -93,7 +93,7 @@ int main(int argc, char** argv)
   HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
   TimerHandler* handler = new TimerHandler(store, callback);
   callback->start(handler);
-  
+
   HttpStack* http_stack = HttpStack::get_instance();
   std::string bind_address;
   int bind_port;
@@ -153,7 +153,7 @@ int main(int argc, char** argv)
     // Delete Chronos's alarm objects
     delete timer_pop_alarm;
   }
- 
+
   sem_destroy(&term_sem);
 
   // After this point nothing will use __globals so it's safe to delete
