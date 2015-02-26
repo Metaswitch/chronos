@@ -26,7 +26,7 @@ Globals::Globals()
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
-    ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
+    ("exception.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
     ;
 
 #ifndef UNITTEST
