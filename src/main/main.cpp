@@ -11,6 +11,7 @@
 #include "httpstack.h"
 #include "httpstack_utils.h"
 #include "handlers.h"
+#include "health_checker.h"
 
 #include <iostream>
 #include <cassert>
@@ -87,7 +88,8 @@ int main(int argc, char** argv)
   }
 
   // Create components
-  TimerStore *store = new TimerStore();
+  HealthChecker* hc = new HealthChecker();
+  TimerStore *store = new TimerStore(hc);
   Replicator* controller_rep = new Replicator();
   Replicator* handler_rep = new Replicator();
   HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
@@ -149,7 +151,8 @@ int main(int argc, char** argv)
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
-
+  delete hc; hc = NULL;
+  
   if (alarms_enabled)
   {
     // Stop the alarm request agent
