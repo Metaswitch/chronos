@@ -24,10 +24,10 @@
                             (T)->callback_url.c_str(),                         \
                             (T)->callback_body.c_str()
 
-TimerStore::TimerStore(HealthChecker* hc)
+TimerStore::TimerStore(HealthChecker* hc) :
+  _health_checker(hc)
 {
   _tick_timestamp = to_short_wheel_resolution(wall_time_ms());
-  _health_checker = hc;
 }
 
 TimerStore::~TimerStore()
