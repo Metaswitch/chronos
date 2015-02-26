@@ -8,6 +8,8 @@
 class MockReplicator : public Replicator
 {
 public:
+  MockReplicator() : Replicator(NULL) {}
+
   MOCK_METHOD1(replicate, void(Timer*));
 };
 

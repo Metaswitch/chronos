@@ -35,15 +35,15 @@ void signal_handler(int sig)
   signal(SIGABRT, SIG_DFL);
   signal(SIGSEGV, signal_handler);
 
-  // Check if there's a stored jmp_buf on the thread and handle if there is
-  exception_handler->handle_exception();
-
   // Log the signal, along with a backtrace.
   LOG_BACKTRACE("Signal %d caught", sig);
 
   // Ensure the log files are complete - the core file created by abort() below
   // will trigger the log files to be copied to the diags bundle
   LOG_COMMIT();
+
+  // Check if there's a stored jmp_buf on the thread and handle if there is
+  exception_handler->handle_exception();
 
   CL_CHRONOS_CRASHED.log(strsignal(sig));
   closelog();
@@ -105,8 +105,8 @@ int main(int argc, char** argv)
                                            hc);
 
   TimerStore *store = new TimerStore(hc);
-  Replicator* controller_rep = new Replicator();
-  Replicator* handler_rep = new Replicator();
+  Replicator* controller_rep = new Replicator(exception_handler);
+  Replicator* handler_rep = new Replicator(exception_handler);
   HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
   TimerHandler* handler = new TimerHandler(store, callback);
   callback->start(handler);

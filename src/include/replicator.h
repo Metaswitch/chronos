@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 
 #include "timer.h"
+#include "exception_handler.h"
 #include "eventq.h"
 
 #define REPLICATOR_THREAD_COUNT 50
@@ -19,7 +20,7 @@ struct ReplicationRequest
 class Replicator
 {
 public:
-  Replicator();
+  Replicator(ExceptionHandler* exception_handler);
   virtual ~Replicator();
 
   void worker_thread_entry_point();
@@ -32,6 +33,7 @@ private:
   eventq<ReplicationRequest *> _q;
   pthread_t _worker_threads[REPLICATOR_THREAD_COUNT];
   struct curl_slist* _headers;
+  ExceptionHandler* _exception_handler;
 };
 
 #endif

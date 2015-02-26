@@ -4,7 +4,10 @@
 #include <cstring>
 #include <pthread.h>
 
-Replicator::Replicator() : _q(), _headers(NULL)
+Replicator::Replicator(ExceptionHandler* exception_handler) :
+  _q(),
+  _headers(NULL),
+  _exception_handler(exception_handler)
 {
   // Create a pool of replicator threads
   for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ++ii)
@@ -60,8 +63,8 @@ void Replicator::replicate(Timer* timer)
   // Only create the body once (as it's the same for each replica).
   std::string body = timer->to_json();
 
-  for (std::vector<std::string>::iterator it = timer->replicas.begin(); 
-                                          it != timer->replicas.end(); 
+  for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                          it != timer->replicas.end();
                                           ++it)
   {
     if (*it != localhost)
@@ -70,8 +73,8 @@ void Replicator::replicate(Timer* timer)
     }
   }
 
-  for (std::vector<std::string>::iterator it = timer->extra_replicas.begin(); 
-                                          it != timer->extra_replicas.end(); 
+  for (std::vector<std::string>::iterator it = timer->extra_replicas.begin();
+                                          it != timer->extra_replicas.end();
                                           ++it)
   {
     if (*it != localhost)
@@ -101,22 +104,30 @@ void Replicator::worker_thread_entry_point()
   ReplicationRequest* replication_request;
   while(_q.pop(replication_request))
   {
-    // The customized bits of this request.
-    curl_easy_setopt(curl, CURLOPT_URL, replication_request->url.c_str());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, replication_request->body.data());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, replication_request->body.length());
-
-    // Send the request.
-    CURLcode rc = curl_easy_perform(curl);
-    if (rc == CURLE_HTTP_RETURNED_ERROR)
+    CW_TRY
     {
-      long http_rc;
-      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
-      LOG_WARNING("Failed to replicate timer to %s, HTTP error was %d %s",
-                  replication_request->url.c_str(),
-                  http_rc,
-                  curl_easy_strerror(rc));
+      // The customized bits of this request.
+      curl_easy_setopt(curl, CURLOPT_URL, replication_request->url.c_str());
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, replication_request->body.data());
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, replication_request->body.length());
+
+      // Send the request.
+      CURLcode rc = curl_easy_perform(curl);
+      if (rc == CURLE_HTTP_RETURNED_ERROR)
+      {
+        long http_rc;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
+        LOG_WARNING("Failed to replicate timer to %s, HTTP error was %d %s",
+                    replication_request->url.c_str(),
+                    http_rc,
+                    curl_easy_strerror(rc));
+      }
     }
+    CW_EXCEPT(_exception_handler)
+    {
+      // No recovery behaviour needed
+    }
+    CW_END
 
     // Clean up
     delete replication_request;
