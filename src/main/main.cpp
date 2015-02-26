@@ -95,6 +95,11 @@ int main(int argc, char** argv)
 
   // Create components
   HealthChecker* hc = new HealthChecker();
+  pthread_t health_check_thread;
+  pthread_create(&health_check_thread,
+                 NULL,
+                 &HealthChecker::static_main_thread_function,
+                 (void*)hc);
 
   // Create an exception handler. The exception handler doesn't need
   // to quiesce the process before killing it.
@@ -166,6 +171,9 @@ int main(int argc, char** argv)
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
+
+  hc->terminate();
+  pthread_join(health_check_thread, NULL);
   delete hc; hc = NULL;
   delete exception_handler; exception_handler = NULL;
 
