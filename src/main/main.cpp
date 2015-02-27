@@ -11,6 +11,8 @@
 #include "httpstack.h"
 #include "httpstack_utils.h"
 #include "handlers.h"
+#include "health_checker.h"
+#include "exception_handler.h"
 
 #include <iostream>
 #include <cassert>
@@ -18,6 +20,7 @@
 #include "time.h"
 
 static sem_t term_sem;
+ExceptionHandler* exception_handler;
 
 // Signal handler that triggers Chronos termination.
 void terminate_handler(int sig)
@@ -26,20 +29,24 @@ void terminate_handler(int sig)
 }
 
 // Signal handler that simply dumps the stack and then crashes out.
-void exception_handler(int sig)
+void signal_handler(int sig)
 {
   // Reset the signal handlers so that another exception will cause a crash.
   signal(SIGABRT, SIG_DFL);
-  signal(SIGSEGV, SIG_DFL);
+  signal(SIGSEGV, signal_handler);
 
   // Log the signal, along with a backtrace.
-  CL_CHRONOS_CRASHED.log(strsignal(sig));
-  closelog();
   LOG_BACKTRACE("Signal %d caught", sig);
 
   // Ensure the log files are complete - the core file created by abort() below
   // will trigger the log files to be copied to the diags bundle
   LOG_COMMIT();
+
+  // Check if there's a stored jmp_buf on the thread and handle if there is
+  exception_handler->handle_exception();
+
+  CL_CHRONOS_CRASHED.log(strsignal(sig));
+  closelog();
 
   // Dump a core.
   abort();
@@ -53,8 +60,8 @@ int main(int argc, char** argv)
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
   // Set up our exception signal handler for asserts and segfaults.
-  signal(SIGABRT, exception_handler);
-  signal(SIGSEGV, exception_handler);
+  signal(SIGABRT, signal_handler);
+  signal(SIGSEGV, signal_handler);
 
   sem_init(&term_sem, 0, 0);
   signal(SIGTERM, terminate_handler);
@@ -87,9 +94,24 @@ int main(int argc, char** argv)
   }
 
   // Create components
-  TimerStore *store = new TimerStore();
-  Replicator* controller_rep = new Replicator();
-  Replicator* handler_rep = new Replicator();
+  HealthChecker* hc = new HealthChecker();
+  pthread_t health_check_thread;
+  pthread_create(&health_check_thread,
+                 NULL,
+                 &HealthChecker::static_main_thread_function,
+                 (void*)hc);
+
+  // Create an exception handler. The exception handler doesn't need
+  // to quiesce the process before killing it.
+  int ttl;
+  __globals->get_max_ttl(ttl);
+  exception_handler = new ExceptionHandler(ttl,
+                                           false,
+                                           hc);
+
+  TimerStore *store = new TimerStore(hc);
+  Replicator* controller_rep = new Replicator(exception_handler);
+  Replicator* handler_rep = new Replicator(exception_handler);
   HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
   TimerHandler* handler = new TimerHandler(store, callback);
   callback->start(handler);
@@ -114,7 +136,7 @@ int main(int argc, char** argv)
   try
   {
     http_stack->initialize();
-    http_stack->configure(bind_address, bind_port, http_threads, NULL);
+    http_stack->configure(bind_address, bind_port, http_threads, exception_handler);
     http_stack->register_handler((char*)"^/ping$", &ping_handler);
     http_stack->register_handler((char*)"^/timers", &controller_handler);
     http_stack->start();
@@ -149,6 +171,11 @@ int main(int argc, char** argv)
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
+
+  hc->terminate();
+  pthread_join(health_check_thread, NULL);
+  delete hc; hc = NULL;
+  delete exception_handler; exception_handler = NULL;
 
   if (alarms_enabled)
   {

@@ -2,6 +2,7 @@
 #define TIMER_STORE_H__
 
 #include "timer.h"
+#include "health_checker.h"
 
 #include <unordered_set>
 #include <map>
@@ -10,7 +11,7 @@
 class TimerStore
 {
 public:
-  TimerStore();
+  TimerStore(HealthChecker* hc);
   virtual ~TimerStore();
 
   // Add a timer to the store.
@@ -82,6 +83,9 @@ private:
   // A table of all known timers
   std::map<TimerID, Timer *> _timer_lookup_table;
 
+  // Health checker, which is notified when a timer is successfully added.
+  HealthChecker* _health_checker;
+  
   // Constants controlling the size and resolution of the timer wheels.
   static const int SHORT_WHEEL_RESOLUTION_MS = 10;
   static const int SHORT_WHEEL_NUM_BUCKETS = 100;

@@ -45,6 +45,7 @@ public:
   GLOBAL(cluster_addresses, std::vector<std::string>);
   GLOBAL(alarms_enabled, bool);
   GLOBAL(threads, int);
+  GLOBAL(max_ttl, int);
 
 public:
   void update_config();

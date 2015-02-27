@@ -2,6 +2,7 @@
 #include "timer_helper.h"
 #include "test_interposer.hpp"
 #include "base.h"
+#include "health_checker.h"
 
 #include <gtest/gtest.h>
 
@@ -24,7 +25,8 @@ protected:
     // I mark the hours, every one, Nor have I yet outrun the Sun.
     // My use and value, unto you, Are gauged by what you have to do.
     cwtest_completely_control_time();
-    ts = new TimerStore();
+    hc = new HealthChecker();
+    ts = new TimerStore(hc);
 
     // Default some timers to short, mid and long.
     struct timespec ts;
@@ -55,6 +57,7 @@ protected:
   virtual void TearDown()
   {
     delete ts; ts = NULL;
+    delete hc; hc = NULL;
     cwtest_reset_time();
     Base::TearDown();
   }
@@ -63,7 +66,7 @@ protected:
   TimerStore* ts;
   Timer* timers[3];
   Timer* tombstone;
-
+  HealthChecker* hc;
 };
 
 /*****************************************************************************/

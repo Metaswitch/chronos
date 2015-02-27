@@ -8,6 +8,8 @@
 class MockTimerStore : public TimerStore
 {
 public:
+  MockTimerStore(): TimerStore(NULL) {};
+  ~MockTimerStore() {};
   MOCK_METHOD1(add_timer, void(Timer*));
   MOCK_METHOD1(add_timers, void(std::unordered_set<Timer*>&));
   MOCK_METHOD1(delete_timer, void(TimerID));

@@ -24,7 +24,8 @@
                             (T)->callback_url.c_str(),                         \
                             (T)->callback_body.c_str()
 
-TimerStore::TimerStore()
+TimerStore::TimerStore(HealthChecker* hc) :
+  _health_checker(hc)
 {
   _tick_timestamp = to_short_wheel_resolution(wall_time_ms());
 }
@@ -140,6 +141,10 @@ void TimerStore::add_timer(Timer* t)
 
   // Finally, add the timer to the lookup table.
   _timer_lookup_table.insert(std::pair<TimerID, Timer*>(t->id, t));
+
+  // We've successfully added a timer, so confirm to the
+  // health-checker that we're still healthy.
+  _health_checker->health_check_passed();
 }
 
 // Add a collection of timers to the data store.  The collection is emptied by
