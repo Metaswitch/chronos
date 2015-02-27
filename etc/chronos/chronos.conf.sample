@@ -14,5 +14,5 @@ node = localhost
 [alarms]
 enabled = true
 
-[exception]
+[exceptions]
 max_ttl = 600

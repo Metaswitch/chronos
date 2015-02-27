@@ -18,7 +18,7 @@ Chronos's configuration is set up in `/etc/chronos/chronos.conf`, and takes the 
     [alarms]
     enabled = true                 # Whether SNMP alarms are enabled
 
-    [exception]
+    [exceptions]
     max_ttl = 600                  # The maximum time before Chronos exits if it hits an exception
 
 A sample configuration is provided [here](https://github.com/Metaswitch/chronos/blob/dev/etc/chronos/chronos.conf.sample). To use this configuration, copy it to `/etc/chronos/chronos.conf`, and change the bind_address, localhost and node values to the IP of the Chronos node. Details of the configuration changes needed for clustering is [here](https://github.com/Metaswitch/chronos/blob/dev/doc/clustering.md).
