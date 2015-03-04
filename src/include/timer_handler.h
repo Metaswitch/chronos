@@ -16,7 +16,7 @@ class TimerHandler
 {
 public:
   TimerHandler(TimerStore*, Callback*);
-  ~TimerHandler();
+  virtual ~TimerHandler();
   virtual void add_timer(Timer*);
   void run();
 
