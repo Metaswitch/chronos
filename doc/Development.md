@@ -20,7 +20,7 @@ On Ubuntu 14.04,
 
 2.  install the required packages
 
-       sudo apt-get install git debhelper devscripts build-essential libboost-program-options-dev libcurl4-gnutls-dev libevent-dev google-mock libboost-regex-dev libboost-filesystem-dev libtool automake make cmake libzmq3-dev valgrind
+        sudo apt-get install git debhelper devscripts build-essential libboost-program-options-dev libcurl4-gnutls-dev libevent-dev google-mock libboost-regex-dev libboost-filesystem-dev libtool automake make cmake libzmq3-dev valgrind
 
 ## Getting the Code
 
