@@ -37,10 +37,6 @@
 # In case chronos has only just restarted, give it a few seconds to come up.
 sleep 5
 
-# Grab our configuration - we just use the local IP address.
 . /etc/clearwater/config
-
-# For HTTP, we need to wrap IPv6 addresses in square brackets.
-http_ip=$(/usr/share/clearwater/bin/bracket_ipv6_address.py $local_ip):7253
-/usr/share/clearwater/bin/poll-http $http_ip
-exit $rc
+/usr/share/clearwater/bin/poll-http $chronos_hostname
+exit $?
