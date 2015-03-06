@@ -34,10 +34,6 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-# This script uses HTTP to poll a chronos process and check whether it is healthy.
-
-. /etc/clearwater/config
-
 # In case chronos has only just restarted, give it a few seconds to come up.
 sleep 5
 
@@ -46,6 +42,5 @@ sleep 5
 
 # For HTTP, we need to wrap IPv6 addresses in square brackets.
 http_ip=$(/usr/share/clearwater/bin/bracket_ipv6_address.py $local_ip):7253
-
 /usr/share/clearwater/bin/poll-http $http_ip
 exit $rc
