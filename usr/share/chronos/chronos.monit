@@ -17,8 +17,8 @@ check process chronos with pidfile /var/run/chronos.pid
   stop program  = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos stop'"
   restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos restart'"
 
-  # Check the processes resource usage, and abort the process if it's too high. This will
-  # generate a core file and trigger diagnostics collection. Monit will raise an allarm when
+  # Check the service's resource usage, and abort the process if it's too high. This will
+  # generate a core file and trigger diagnostics collection. Monit will raise an alarm when
   # it restarts the process
   if cpu > 80% for 6 cycles then exec "etc/init.d/chronos abort"
   if memory > 80% for 6 cycles then exec "etc/init.d/chronos abort"
