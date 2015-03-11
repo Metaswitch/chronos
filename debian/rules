@@ -13,7 +13,7 @@ override_dh_auto_install:
 	mkdir debian/tmp
  
 override_dh_installinit:
-	dh_installinit -u"defaults 70 30"
+	dh_installinit --no-start -u"defaults 70 30"
 
 override_dh_shlibdeps:
 override_dh_strip:
