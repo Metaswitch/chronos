@@ -35,5 +35,5 @@
 # as those licenses appear in the file LICENSE-OPENSSL.
 
 . /etc/clearwater/config
-/usr/share/clearwater/bin/poll-http $chronos_hostname
+/usr/share/clearwater/bin/poll-http localhost:7253
 exit $?
