@@ -1,6 +1,6 @@
 # Check the Chronos process.
 
-# Monitor the service's PID file, CPU and memory use.
+# Monitor the service's PID file and memory use.
 check process chronos with pidfile /var/run/chronos.pid
 
   # The start, stop and restart commands are linked to alarms
