@@ -34,9 +34,6 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-# In case chronos has only just restarted, give it a few seconds to come up.
-sleep 5
-
 . /etc/clearwater/config
-/usr/share/clearwater/bin/poll-http $chronos_hostname
+/usr/share/clearwater/bin/poll-http localhost:7253
 exit $?
