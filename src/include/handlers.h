@@ -9,6 +9,7 @@
 #include "timer_handler.h"
 #include "replicator.h"
 #include "globals.h"
+#include "chronosconnection.h"
 
 class ControllerTask : public HttpStackUtils::Task
 {
@@ -16,9 +17,11 @@ public:
   struct Config
   {
     Config(Replicator* replicator,
-           TimerHandler* handler) :
+           TimerHandler* handler,
+           TimerStore* store) :
       _replicator(replicator),
-      _handler(handler)
+      _handler(handler),
+      _store(store)
     {}
   
     ~Config()
@@ -26,14 +29,14 @@ public:
 
     Replicator* _replicator;
     TimerHandler* _handler;
+    TimerStore* _store;
   };
 
   ControllerTask(HttpStack::Request& req,
                  const Config* cfg,
                  SAS::TrailId trail = 0) :
     HttpStackUtils::Task(req, trail),
-    _cfg(cfg),
-    _replica_hash(0)
+    _cfg(cfg)
   {};
 
   ~ControllerTask()
@@ -41,11 +44,13 @@ public:
 
   void run();
   HTTPCode parse_request();
+  void add_or_update_timer(int timer_id, int replica_hash);
+  void handle_get();
+  void handle_delete();
+  bool node_is_in_cluster(std::string requesting_node);
 
 protected:
   const Config* _cfg;
-  TimerID _timer_id;
-  uint64_t _replica_hash;
 };
 
 #endif
