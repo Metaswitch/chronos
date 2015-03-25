@@ -1,10 +1,9 @@
 #include "handlers.h"
-#include "fake_timer_handler.h"
+#include "mock_timer_handler.h"
 #include "mock_replicator.h"
 #include "mockhttpstack.hpp"
 #include "base.h"
 #include "test_interposer.hpp"
-#include "mock_timer_store.h"
 #include "timer_handler.h"
 #include "globals.h"
 #include <gtest/gtest.h>
@@ -23,8 +22,7 @@ protected:
     Base::SetUp();
 
     _replicator = new MockReplicator();
-    _th = new FakeTimerHandler();
-    _store = new MockTimerStore();
+    _th = new MockTimerHandler();
     _httpstack = new MockHttpStack();
   }
 
@@ -34,7 +32,6 @@ protected:
     delete _cfg;
 
     delete _httpstack;
-    delete _store;
     delete _th;
     delete _replicator;
 
@@ -53,14 +50,13 @@ protected:
                                       body,
                                       method);
 
-    _cfg = new ControllerTask::Config(_replicator, _th, _store);
+    _cfg = new ControllerTask::Config(_replicator, _th);
     _task = new ControllerTask(*_req, _cfg, 0);
   }
 
   MockReplicator* _replicator;
-  FakeTimerHandler* _th;
+  MockTimerHandler* _th;
   MockHttpStack* _httpstack;
-  MockTimerStore* _store;
 
   MockHttpStack::Request* _req;
   ControllerTask::Config* _cfg;
@@ -98,9 +94,9 @@ TEST_F(TestHandler, ValidTimerReferenceNoEntries)
 // entries returns a 202 and doesn't try to edit the store
 TEST_F(TestHandler, ValidTimerReferenceEntry)
 {
-  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"replica index\": 1}]}", "");
+  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}]}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_store, update_replica_tracker(123, 1));
+  EXPECT_CALL(*_th, update_replica_tracker(123, 1));
   _task->run();
 }
 
@@ -109,10 +105,10 @@ TEST_F(TestHandler, ValidTimerReferenceEntry)
 // the store for valid entries
 TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 {
-  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"replica index\": 1}, {\"NotID\": 234, \"replica index\": 2}, {\"ID\": 345, \"Notreplica index\": 3}, {\"ID\": 456, \"replica index\": 4}]}", "");
+  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}, {\"NotID\": 234, \"ReplicaIndex\": 2}, {\"ID\": 345, \"NotReplicaIndex\": 3}, {\"ID\": 456, \"ReplicaIndex\": 4}]}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_store, update_replica_tracker(123, 1));
-  EXPECT_CALL(*_store, update_replica_tracker(456, 4));
+  EXPECT_CALL(*_th, update_replica_tracker(123, 1));
+  EXPECT_CALL(*_th, update_replica_tracker(456, 4));
   _task->run();
 }
 
@@ -121,7 +117,7 @@ TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 {
   controller_request("/timers?requesting-node=10.0.0.1;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.1;sync-mode=SCALE");
-  EXPECT_CALL(*_store, get_timers_to_recover("10.0.0.1", _, 0)).WillOnce(Return(200));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1", 0, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 }
@@ -132,7 +128,7 @@ TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
 {
   controller_request("/timers?requesting-node=10.0.0.1;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.1;sync-mode=SCALE");
   _req->add_header_to_incoming_req("Range", "100");
-  EXPECT_CALL(*_store, get_timers_to_recover("10.0.0.1", _, 100)).WillOnce(Return(206));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1", 100, _)).WillOnce(Return(206));
   EXPECT_CALL(*_httpstack, send_reply(_, 206, _));
   _task->run();
 }
@@ -150,7 +146,7 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
   __globals->unlock();
 
   controller_request("/timers?requesting-node=10.0.0.4;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.4;sync-mode=SCALE");
-  EXPECT_CALL(*_store, get_timers_to_recover("10.0.0.4", _, _)).WillOnce(Return(200));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4", _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 

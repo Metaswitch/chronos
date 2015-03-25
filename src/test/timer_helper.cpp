@@ -8,5 +8,7 @@ Timer* default_timer(TimerID id)
   timer->replicas = std::vector<std::string>(1, "10.0.0.1");
   timer->callback_url = "localhost:80/callback" + std::to_string(id);
   timer->callback_body = "stuff stuff stuff";
+  timer->_replica_tracker = 1;
+
   return timer;
 }

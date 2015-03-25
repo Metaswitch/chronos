@@ -17,11 +17,9 @@ public:
   struct Config
   {
     Config(Replicator* replicator,
-           TimerHandler* handler,
-           TimerStore* store) :
+           TimerHandler* handler) :
       _replicator(replicator),
-      _handler(handler),
-      _store(store)
+      _handler(handler)
     {}
   
     ~Config()
@@ -29,7 +27,6 @@ public:
 
     Replicator* _replicator;
     TimerHandler* _handler;
-    TimerStore* _store;
   };
 
   ControllerTask(HttpStack::Request& req,

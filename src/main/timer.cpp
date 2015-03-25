@@ -12,7 +12,7 @@
 #include <boost/format.hpp>
 #include <map>
 #include <atomic>
-
+//#include <math.h>
 Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   id(id),
   interval(interval),
@@ -21,7 +21,8 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   replicas(std::vector<std::string>()),
   callback_url(""),
   callback_body(""),
-  _replication_factor(0)
+  _replication_factor(0),
+  _replica_tracker(0)
 {
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
@@ -107,51 +108,67 @@ std::string Timer::url(std::string host)
 // }
 std::string Timer::to_json()
 {
-  rapidjson::Document doc;
-  doc.SetObject();
+  rapidjson::StringBuffer sb;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+  to_json_obj(&writer);
 
-  rapidjson::Value timing(rapidjson::kObjectType);
-  timing.AddMember("start-time", start_time, doc.GetAllocator());
-  timing.AddMember("sequence-number", sequence_number, doc.GetAllocator());
-  timing.AddMember("interval", interval/1000, doc.GetAllocator());
-  timing.AddMember("repeat-for", repeat_for/1000, doc.GetAllocator());
-
-  rapidjson::Value http(rapidjson::kObjectType);
-  rapidjson::Value val;
-  val.SetString(callback_url.c_str(), doc.GetAllocator());
-  http.AddMember("uri", val, doc.GetAllocator());
-  val.SetString(callback_body.c_str(), doc.GetAllocator());
-  http.AddMember("opaque", val, doc.GetAllocator());
-
-  rapidjson::Value callback(rapidjson::kObjectType);
-  callback.AddMember("http", http, doc.GetAllocator());
-
-  rapidjson::Value replicas_array(rapidjson::kArrayType);
-
-  for (std::vector<std::string>::iterator it = replicas.begin(); 
-                                          it != replicas.end(); 
-                                          ++it)
-  {
-    val.SetString((*it).c_str(), doc.GetAllocator());
-    replicas_array.PushBack(val, doc.GetAllocator());
-  }
-
-  rapidjson::Value reliability(rapidjson::kObjectType);
-  reliability.AddMember("replicas", replicas_array, doc.GetAllocator());
-
-  // Create the document.
-  doc.AddMember("timing", timing, doc.GetAllocator());
-  doc.AddMember("callback", callback, doc.GetAllocator());
-  doc.AddMember("reliability", reliability, doc.GetAllocator());
-
-  rapidjson::StringBuffer s;
-  rapidjson::Writer<rapidjson::StringBuffer> w(s);
-  doc.Accept(w);
-  std::string body = s.GetString();
-
+  std::string body = sb.GetString();
   LOG_DEBUG("Built replication body: %s", body.c_str());
 
   return body;
+}
+
+void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
+{
+  writer->StartObject();
+  {
+    writer->String("timing");
+    writer->StartObject();
+    {
+      writer->String("start-time");
+      writer->Int(start_time);
+      writer->String("sequence-number");
+      writer->Int(sequence_number);
+      writer->String("interval");
+      writer->Int(interval/1000);
+      writer->String("repeat-for");
+      writer->Int(repeat_for/1000);
+    }
+    writer->EndObject();
+
+    writer->String("callback");
+    writer->StartObject();
+    {
+      writer->String("http");
+      writer->StartObject();
+      {
+        writer->String("uri");
+        writer->String(callback_url.c_str());
+        writer->String("opaque");
+        writer->String(callback_body.c_str());
+      }
+      writer->EndObject();
+    }
+    writer->EndObject();
+
+    writer->String("reliability");
+    writer->StartObject();
+    {
+      writer->String("replicas");
+      writer->StartArray();
+      {
+        for (std::vector<std::string>::iterator it = replicas.begin();
+                                                it != replicas.end();
+                                                ++it)
+        {
+          writer->String((*it).c_str());
+        }
+      }
+      writer->EndArray();
+    }
+    writer->EndObject();
+  }
+  writer->EndObject();
 }
 
 bool Timer::is_local(std::string host)
@@ -458,6 +475,8 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
     timer->_replication_factor = 2;
   }
 
+  timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;
+
   if (timer->replicas.empty())
   {
     // Replicas not determined above, determine them now.  Note that this implies
@@ -473,4 +492,12 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   }
 
   return timer;
+}
+
+int Timer::update_replica_tracker(int replica_index)
+{
+  _replica_tracker = _replica_tracker % (int)pow(2,replica_index);
+  LOG_DEBUG("New replica tracker value is %d", _replica_tracker);
+
+  return _replica_tracker;
 }

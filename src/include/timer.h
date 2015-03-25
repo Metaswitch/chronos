@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <string>
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
 
 typedef uint64_t TimerID;
 
@@ -23,6 +25,7 @@ public:
 
   // Convert this timer to JSON to be sent to replicas
   std::string to_json();
+  void to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer);
 
   // Check if the timer is owned by the specified node.
   bool is_local(std::string);
@@ -39,6 +42,9 @@ public:
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
 
+  // Mark which replicas have been informed about the timer 
+  int update_replica_tracker(int replica_index);
+
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
   TimerID id;
@@ -52,7 +58,8 @@ public:
   std::string callback_body;
 
 private:
-  unsigned int _replication_factor;
+  uint32_t _replication_factor;
+  uint32_t _replica_tracker;
 
   // Class functions
 public:
