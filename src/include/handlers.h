@@ -9,7 +9,6 @@
 #include "timer_handler.h"
 #include "replicator.h"
 #include "globals.h"
-#include "chronosconnection.h"
 
 class ControllerTask : public HttpStackUtils::Task
 {

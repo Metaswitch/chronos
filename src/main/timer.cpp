@@ -12,7 +12,7 @@
 #include <boost/format.hpp>
 #include <map>
 #include <atomic>
-//#include <math.h>
+
 Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   id(id),
   interval(interval),
