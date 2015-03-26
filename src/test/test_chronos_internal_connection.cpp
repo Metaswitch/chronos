@@ -11,6 +11,7 @@
 using namespace std;
 using ::testing::_;
 using ::testing::Return;
+using ::testing::SaveArg;
 
 /// Fixture for ChronosInternalConnectionTest.
 
@@ -72,11 +73,15 @@ TEST_F(TestChronosInternalConnection, SendTriggerNoResults)
 TEST_F(TestChronosInternalConnection, SendTriggerOneTimer)
 {
   fakecurl_responses["http://10.42.42.42:80/timers?requesting-node=10.0.0.1;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2\", \"10.0.0.3\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1\", \"10.0.0.3\" ] }}}]}";
-  EXPECT_CALL(*_th, add_timer(_));
+  Timer* added_timer;
+
+  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.3"));  // Update
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.2")); // Tombstone
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1");
   EXPECT_EQ(status, 200);
+
+  delete added_timer; added_timer = NULL;
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving)
@@ -91,7 +96,9 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
 
   fakecurl_responses["http://10.42.42.42:80/timers?requesting-node=10.0.0.1;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2\", \"10.0.0.4\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1\", \"10.0.0.3\" ] }}}]}";
   fakecurl_responses["http://10.42.42.42:80/timers/references"] = CURLE_OK;
-  EXPECT_CALL(*_th, add_timer(_));
+  Timer* added_timer;
+
+  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.2")); // Tombstone
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.3")); // Update
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1");
@@ -101,6 +108,8 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
   __globals->lock();
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   __globals->unlock();
+
+  delete added_timer; added_timer = NULL;
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultsInvalidJSON)
