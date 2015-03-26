@@ -66,6 +66,11 @@ public:
   static TimerID generate_timer_id();
   static Timer* create_tombstone(TimerID, uint64_t);
   static Timer* from_json(TimerID, uint64_t, std::string, std::string&, bool&);
+  static Timer* from_json_obj(TimerID id,
+                              uint64_t replica_hash,
+                              std::string& error,
+                              bool& replicated,
+                              rapidjson::Value& doc);
 
   // Class variables
   static uint32_t deployment_id;

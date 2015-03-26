@@ -6,7 +6,7 @@
 void Base::SetUp()
 {
   // Set up globals to something sensible
-  __globals = new Globals();
+  __globals = new Globals("/etc/chronos/chronos.conf");
   __globals->lock();
   std::string localhost = "10.0.0.1";
   __globals->set_cluster_local_ip(localhost);

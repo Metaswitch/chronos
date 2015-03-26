@@ -346,7 +346,11 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // @param json - The JSON representation of the timer.
 // @param error - This will be populated with a descriptive error string if required.
 // @param replicated - This will be set to true if this is a replica of a timer.
-Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std::string& error, bool& replicated)
+Timer* Timer::from_json(TimerID id, 
+                        uint64_t replica_hash, 
+                        std::string json, 
+                        std::string& error, 
+                        bool& replicated)
 {
   Timer* timer = NULL;
   rapidjson::Document doc;
@@ -355,6 +359,16 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   {
     JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s. JSON is: %s") % doc.GetErrorOffset() % doc.GetParseError() % json));
   }
+
+  return from_json_obj(id, replica_hash, error, replicated, doc);  
+}
+Timer* Timer::from_json_obj(TimerID id, 
+                            uint64_t replica_hash, 
+                            std::string& error, 
+                            bool& replicated, 
+                            rapidjson::Value& doc)
+{
+  Timer* timer = NULL;
 
   if (!doc.HasMember("timing"))
     JSON_PARSE_ERROR(("Couldn't find the 'timing' node in the JSON"));

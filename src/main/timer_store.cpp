@@ -532,7 +532,6 @@ bool TimerStore::update_timer(std::string request_node,
 
   // Store the old replica list
   int index = 0;
-  int old_replica_position = 0;
 
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
@@ -542,17 +541,11 @@ bool TimerStore::update_timer(std::string request_node,
                                           ++it, ++index)
   {
     old_replicas.push_back(*it);
-
-    if (*it == localhost)
-    {
-      old_replica_position = index;
-    }
   }
 
   // Calculate whether the new request node is interested in the timer. This
-  // update the replica list in the timer object to be the new replica list
+  // updates the replica list in the timer object to be the new replica list
   index = 0;
-  int new_replica_position = 0;
   timer->calculate_replicas(0); 
   for (std::vector<std::string>::iterator it = timer->replicas.begin();
                                           it != timer->replicas.end();
@@ -560,18 +553,9 @@ bool TimerStore::update_timer(std::string request_node,
   {
     if (*it == request_node)
     {
-      new_replica_position = index;
       timer_is_on_requesting_node = true;
       break;
     }
-  }
- 
-  // Set the start time correctly given the timer's new position in 
-  // the replica list
-  if (timer_is_on_requesting_node)
-  {
-    timer->start_time = timer->start_time + 
-                        (new_replica_position - old_replica_position) * 2000;
   }
  
   return timer_is_on_requesting_node;

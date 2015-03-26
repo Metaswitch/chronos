@@ -12,7 +12,8 @@ namespace po = boost::program_options;
 // terminated before main() returns.
 Globals* __globals;
 
-Globals::Globals()
+Globals::Globals(std::string config_file) :
+  _config_file(config_file)
 {
   pthread_rwlock_init(&_lock, NULL);
 
@@ -48,7 +49,7 @@ void Globals::update_config()
   std::ifstream file;
   boost::program_options::variables_map conf_map;
 
-  file.open(CONFIG_FILE);
+  file.open(_config_file);
   po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
   file.close();
