@@ -12,7 +12,8 @@ namespace po = boost::program_options;
 // terminated before main() returns.
 Globals* __globals;
 
-Globals::Globals()
+Globals::Globals(std::string config_file) :
+  _config_file(config_file)
 {
   pthread_rwlock_init(&_lock, NULL);
 
@@ -20,8 +21,9 @@ Globals::Globals()
   _desc.add_options()
     ("http.bind-address", po::value<std::string>()->default_value("localhost"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
-    ("cluster.localhost", po::value<std::string>()->default_value("localhost"), "The address of the local host")
-    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost"), "HOST"), "The addresses of a node in the cluster")
+    ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
+    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of a node in the cluster")
+    ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, ""), "HOST"), "The addresses of a node in the cluster")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
@@ -47,7 +49,7 @@ void Globals::update_config()
   std::ifstream file;
   boost::program_options::variables_map conf_map;
 
-  file.open(CONFIG_FILE);
+  file.open(_config_file);
   po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
   file.close();
@@ -83,6 +85,9 @@ void Globals::update_config()
     cluster_hashes[*it] = generate_hash(*it);
   }
   set_cluster_hashes(cluster_hashes);
+
+  std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
+  set_cluster_leaving_addresses(cluster_leaving_addresses);
 
   bool alarms_enabled = (conf_map["alarms.enabled"].as<std::string>().compare("true") == 0);
   set_alarms_enabled(alarms_enabled);

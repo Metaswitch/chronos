@@ -84,6 +84,14 @@ void Replicator::replicate(Timer* timer)
   }
 }
 
+// Handle the replication of the given timer to a single node
+void Replicator::replicate_timer_to_node(Timer* timer,
+                                         std::string node)
+{
+  std::string body = timer->to_json();
+  replicate_int(body, timer->url(node));
+}
+
 // The replication worker thread.  This loops, receiving cURL handles off a queue
 // and handling them synchronously.  We run a pool of these threads to mitigate
 // starvation.

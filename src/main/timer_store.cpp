@@ -1,4 +1,4 @@
-
+#include "globals.h"
 #include "timer_store.h"
 #include "log.h"
 #include <algorithm>
@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <time.h>
 #include "chronos_pd_definitions.h"
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "constants.h"
 
 // Macros to help log timer details.
 #define TIMER_LOG_FMT "ID:       %lu\n"                                        \
@@ -420,3 +423,144 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
 }
 // LCOV_EXCL_STOP
 
+void TimerStore::update_replica_tracker_for_timer(TimerID id, 
+                                                  int replica_index)
+{
+  // Check if the timer exists.
+  std::map<TimerID, Timer*>::iterator map_it = _timer_lookup_table.find(id);
+
+  if (map_it != _timer_lookup_table.end())
+  {
+    Timer* timer = map_it->second;
+    
+    if (!timer->is_tombstone())
+    {
+      // Update the replica tracker
+      int remaining_replicas = timer->update_replica_tracker(replica_index);
+
+      // If all the new replicas know about the timer, tombstone it. 
+      // NOTE -> This is currently only valid for scale down. To use
+      // this for other cases, check whether the node is leaving 
+      // before deleting any timers. 
+      if (remaining_replicas == 0)
+      {
+        delete_timer(id);
+      }
+    }
+  }
+}
+
+HTTPCode TimerStore::get_timers_for_node(std::string request_node, 
+                                         int max_responses,
+                                         std::string& get_response)
+{
+  // Create the JSON doc for the Timer information
+  rapidjson::StringBuffer sb;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+  writer.StartObject();
+
+  writer.String("Timers");
+  writer.StartArray();
+
+  int retrieved_timers = 0;
+  for (std::map<TimerID, Timer*>::iterator it = _timer_lookup_table.begin();
+                                           it != _timer_lookup_table.end();                                        
+                                           ++it)
+  {
+    // Take a copy of the timer so we don't change the timer in the wheel
+    Timer* timer_copy = new Timer(*it->second);
+
+    if (!timer_copy->is_tombstone())   
+    {
+      std::vector<std::string> old_replicas;
+
+      if (update_timer(request_node,
+                       timer_copy, 
+                       old_replicas))
+      {
+        writer.StartObject();
+        {
+          // The timer will have a replica on the requesting node. Add this entry 
+          // to the JSON document
+  
+          // Add in Old Timer ID
+          writer.String(JSON_TIMER_ID);
+          writer.Int(timer_copy->id);
+  
+          // Add the old replicas
+          writer.String(JSON_OLD_REPLICAS);
+          writer.StartArray();
+          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
+                                                        i != old_replicas.end();
+                                                      ++i) 
+          {
+            writer.String((*i).c_str());
+          }
+          writer.EndArray();
+
+          // Finally, add the timer itself 
+          writer.String(JSON_TIMER);
+          timer_copy->to_json_obj(&writer);
+        }
+        writer.EndObject();
+
+        retrieved_timers++;
+      }
+    }
+
+    // Tidy up the copy
+    delete timer_copy;
+
+    // Break out of the for loop once we hit the maximum number of 
+    // timers to collect
+    if ((max_responses != 0) && 
+        (retrieved_timers == max_responses))
+    {
+      LOG_DEBUG("Reached the max number of timers to collect");
+      break;
+    }
+  }
+ 
+  writer.EndArray();
+  writer.EndObject(); 
+
+  get_response = sb.GetString();
+
+  return ((max_responses != 0) &&
+          (retrieved_timers == max_responses)) ? HTTP_PARTIAL_CONTENT : 
+                                                 HTTP_OK;
+}
+
+bool TimerStore::update_timer(std::string request_node,
+                              Timer* timer,
+                              std::vector<std::string>& old_replicas)
+{
+  bool timer_is_on_requesting_node = false;
+
+  // Store the old replica list
+  std::string localhost;
+  __globals->get_cluster_local_ip(localhost);
+
+  for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                          it != timer->replicas.end();
+                                          ++it)
+  {
+    old_replicas.push_back(*it);
+  }
+
+  // Calculate whether the new request node is interested in the timer. This
+  // updates the replica list in the timer object to be the new replica list
+  timer->calculate_replicas(0); 
+  for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                          it != timer->replicas.end();
+                                          ++it)
+  {
+    if (*it == request_node)
+    {
+      timer_is_on_requesting_node = true;
+      break;
+    }
+  }
+ 
+  return timer_is_on_requesting_node;
+}

@@ -64,6 +64,26 @@ void TimerHandler::add_timer(Timer* timer)
   pthread_mutex_unlock(&_mutex);
 }
 
+void TimerHandler::update_replica_tracker_for_timer(TimerID id,
+                                                    int replica_index)
+{
+  pthread_mutex_lock(&_mutex);
+  _store->update_replica_tracker_for_timer(id, 
+                                           replica_index);
+  pthread_mutex_unlock(&_mutex);
+}
+
+HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
+                                           int max_responses,
+                                           std::string& get_response)
+{
+  pthread_mutex_lock(&_mutex);
+  HTTPCode rc = _store->get_timers_for_node(request_node, max_responses, get_response);
+  pthread_mutex_unlock(&_mutex);
+
+  return rc;
+}
+
 // The core function in the timer handler, basic principle is to loop around repeatedly
 // retrieving timers from the store, waiting until they need to pop and popping them.
 //

@@ -3,6 +3,7 @@
 
 #include "timer.h"
 #include "health_checker.h"
+#include "httpconnection.h"
 
 #include <unordered_set>
 #include <map>
@@ -23,6 +24,18 @@ public:
 
   // Get the next bucket of timers to pop.
   virtual void get_next_timers(std::unordered_set<Timer*>&);
+
+  // Mark which replicas have been informed for an individual timer. 
+  // If all replicas are informed, then the timer will be tombstoned
+  // NOTE -> This is currently only valid for scale down.
+  virtual void update_replica_tracker_for_timer(TimerID id, 
+                                                int replica_index);
+
+  // Get timer information from the store for timers that where 
+  // request_node should be a replica
+  virtual HTTPCode get_timers_for_node(std::string request_node, 
+                                       int max_responses,
+                                       std::string& get_response);
 
   // Give the UT test fixture access to our member variables
   friend class TestTimerStore;
@@ -155,6 +168,14 @@ private:
   // Pop a single timer bucket into the set.
   void pop_bucket(TimerStore::Bucket* bucket,
                   std::unordered_set<Timer*>& set);
+
+  // Update a timer object with the current cluster configuration. Store off
+  // the old set of replicas, and return whether the requesting node is 
+  // one of the new replicas
+  bool update_timer(std::string request_node,
+                    Timer* timer,
+                    std::vector<std::string>& old_replicas);
+
 };
 
 #endif
