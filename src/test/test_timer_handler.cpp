@@ -46,8 +46,6 @@ protected:
   TimerHandler* _th;
 };
 
-MATCHER(IsTombstone, "is a tombstone") { return arg->is_tombstone(); }
-
 /*****************************************************************************/
 /* Instance function tests                                                   */
 /*****************************************************************************/

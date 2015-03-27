@@ -708,12 +708,12 @@ TEST_F(TestTimerStore, SelectTimers)
   ts->add_timer(timers[1]);
   ts->add_timer(timers[2]);
   std::string get_response;
-  ts->get_timers_for_node("10.0.0.1", 2, get_response);
+  ts->get_timers_for_node("10.0.0.1:9999", 2, get_response);
 
   // Check the GET has the right format. This is two timers out of the three available (as the
   // max number of timers is set to 2). We're using a simple regex here as we use JSON
   // parsing in the code.
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"replicas\":\\\[\"10.0.0.1\"]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"replicas\":\\\[\"10.0.0.1\"]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"replicas\":\\\[\"10.0.0.1:9999\"]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"replicas\":\\\[\"10.0.0.1:9999\"]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
 
   delete tombstone;
@@ -728,7 +728,7 @@ TEST_F(TestTimerStore, SelectTimersNoMatches)
   ts->add_timer(timers[1]);
   ts->add_timer(timers[2]);
   std::string get_response;
-  ts->get_timers_for_node("10.0.0.2", 1, get_response);
+  ts->get_timers_for_node("10.0.0.2:9999", 1, get_response);
 
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 

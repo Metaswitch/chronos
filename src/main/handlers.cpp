@@ -128,7 +128,7 @@ void ControllerTask::handle_delete()
 
   if (doc.HasParseError())
   {
-    LOG_DEBUG("Failed to parse document as JSON");
+    LOG_INFO("Failed to parse document as JSON");
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
@@ -163,14 +163,14 @@ void ControllerTask::handle_delete()
       }
       catch (JsonFormatError err)
       {
-        LOG_DEBUG("JSON entry was invalid (hit error at %s:%d)",
+        LOG_INFO("JSON entry was invalid (hit error at %s:%d)",
                   err._file, err._line);
       }
     }
   }
   catch (JsonFormatError err)
   {
-    LOG_DEBUG("JSON body didn't contain the IDs array"); 
+    LOG_INFO("JSON body didn't contain the IDs array"); 
     send_http_reply(HTTP_BAD_REQUEST);
   }
 }
@@ -186,7 +186,7 @@ void ControllerTask::handle_get()
 
   if ((requesting_node == "") || (sync_mode == ""))
   {
-    LOG_DEBUG("GET request doesn't have mandatory parameters");
+    LOG_INFO("GET request doesn't have mandatory parameters");
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
@@ -257,7 +257,7 @@ bool ControllerTask::node_is_in_cluster(std::string requesting_node)
     {
       if (*it == requesting_node)
       {
-        LOG_DEBUG("Found requesting node in current nodes: %s", 
+        LOG_DEBUG("Found requesting node in leaving nodes: %s", 
                   requesting_node.c_str());
         node_in_cluster = true;
         break;
