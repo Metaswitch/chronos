@@ -58,16 +58,24 @@ std::string Timer::url(std::string host)
 {
   std::stringstream ss;
 
-  int bind_port;
-  __globals->get_bind_port(bind_port);
-
   // Here (and below) we render the timer ID (and replica hash) as 0-padded
   // hex strings so we can parse it back out later easily.
   if (host != "")
   {
-    ss << "http://" << host << ":" << bind_port;
-  }
+    std::string address;
+    int port;
+    if (!Utils::split_host_port(host, address, port))
+    {
+      // Just use the server as the address.
+      address = host;
+      int bind_port;
+      __globals->get_bind_port(bind_port);
+      port = bind_port;
+    }
 
+    ss << "http://" << address << ":" << port;
+  }
+  
   ss << "/timers/";
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
   uint64_t hash = 0;
@@ -126,7 +134,7 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->StartObject();
     {
       writer->String("start-time");
-      writer->Int(start_time);
+      writer->Int64(start_time);
       writer->String("sequence-number");
       writer->Int(sequence_number);
       writer->String("interval");
@@ -346,7 +354,11 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // @param json - The JSON representation of the timer.
 // @param error - This will be populated with a descriptive error string if required.
 // @param replicated - This will be set to true if this is a replica of a timer.
-Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std::string& error, bool& replicated)
+Timer* Timer::from_json(TimerID id, 
+                        uint64_t replica_hash, 
+                        std::string json, 
+                        std::string& error, 
+                        bool& replicated)
 {
   Timer* timer = NULL;
   rapidjson::Document doc;
@@ -355,6 +367,17 @@ Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std
   {
     JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s. JSON is: %s") % doc.GetErrorOffset() % doc.GetParseError() % json));
   }
+
+  return from_json_obj(id, replica_hash, error, replicated, doc);  
+}
+
+Timer* Timer::from_json_obj(TimerID id, 
+                            uint64_t replica_hash, 
+                            std::string& error, 
+                            bool& replicated, 
+                            rapidjson::Value& doc)
+{
+  Timer* timer = NULL;
 
   if (!doc.HasMember("timing"))
     JSON_PARSE_ERROR(("Couldn't find the 'timing' node in the JSON"));

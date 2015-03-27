@@ -13,11 +13,65 @@
 #include "handlers.h"
 #include "health_checker.h"
 #include "exception_handler.h"
+#include <getopt.h>
 
 #include <iostream>
 #include <cassert>
 
 #include "time.h"
+
+struct options
+{
+  std::string config_file;
+};
+
+// Enum for option types not assigned short-forms
+enum OptionTypes
+{
+  CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
+  HELP
+};
+
+const static struct option long_opt[] =
+{
+  {"config-file", required_argument, NULL, CONFIG_FILE},
+  {"help", no_argument, NULL, HELP},
+  {NULL, 0, NULL, 0},
+};
+
+void usage(void)
+{
+  puts("Options:\n"
+       "\n"
+       " --config-file <filename> Specify the configuration file\n"
+       " --help Show this help screen\n");
+}
+
+int init_options(int argc, char**argv, struct options& options)
+{
+  int opt;
+  int long_opt_ind;
+  optind = 0;
+  while ((opt = getopt_long(argc, argv, "", long_opt, &long_opt_ind)) != -1)
+  {
+    switch (opt)
+    {
+    case CONFIG_FILE:
+      LOG_INFO("Configuration file: %s", optarg);
+      options.config_file = std::string(optarg);
+      break;
+
+    case HELP:
+      usage();
+      return -1;
+
+    default:
+      LOG_ERROR("Unknown option. Run with --help for options.\n");
+      return -1;
+    }
+  }
+  return 0;
+}
 
 static sem_t term_sem;
 ExceptionHandler* exception_handler;
@@ -66,8 +120,16 @@ int main(int argc, char** argv)
   sem_init(&term_sem, 0, 0);
   signal(SIGTERM, terminate_handler);
 
+  struct options options;
+  options.config_file = "/etc/chronos/chronos.conf";
+
+  if (init_options(argc, argv, options) != 0)
+  {
+    return 1;
+  }
+
   // Initialize the global configuration.
-  __globals = new Globals();
+  __globals = new Globals(options.config_file);
   __globals->update_config();
 
   boost::filesystem::path p = argv[0];

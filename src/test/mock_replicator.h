@@ -11,6 +11,7 @@ public:
   MockReplicator() : Replicator(NULL) {}
 
   MOCK_METHOD1(replicate, void(Timer*));
+  MOCK_METHOD2(replicate_timer_to_node, void(Timer*, std::string));
 };
 
 #endif

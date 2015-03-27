@@ -1,6 +1,9 @@
 #ifndef CONSTANTS_H__
 #define CONSTANTS_H__
 
+// Maximum number of responses
+static const int MAX_TIMERS_IN_RESPONSE = 100;
+
 // JSON values
 static const char* const JSON_TIMERS = "Timers";
 static const char* const JSON_TIMER = "Timer";

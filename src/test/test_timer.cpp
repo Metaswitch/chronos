@@ -16,8 +16,8 @@ protected:
   {
     Base::SetUp();
     std::vector<std::string> replicas;
-    replicas.push_back("10.0.0.1");
-    replicas.push_back("10.0.0.2");
+    replicas.push_back("10.0.0.1:9999");
+    replicas.push_back("10.0.0.2:9999");
     TimerID id = (TimerID)UINT_MAX + 10;
     uint32_t interval = 100;
     uint32_t repeat_for = 200;
@@ -100,7 +100,7 @@ TEST_F(TestTimer, FromJSONTests)
   std::string custom_repl_factor = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
 
   // Or you can pass specific replicas to use.
-  std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1\", \"10.0.0.2\" ] }}";
+  std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}";
 
   // You can skip the `repeat-for` to set up a one-shot timer.
   std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
@@ -233,6 +233,7 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 
 TEST_F(TestTimer, URL)
 {
+  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
 }
 
@@ -277,8 +278,9 @@ TEST_F(TestTimer, ToJSON)
 
 TEST_F(TestTimer, IsLocal)
 {
-  EXPECT_TRUE(t1->is_local("10.0.0.1"));
-  EXPECT_FALSE(t1->is_local("20.0.0.1"));
+  EXPECT_TRUE(t1->is_local("10.0.0.1:9999"));
+  EXPECT_FALSE(t1->is_local("10.0.0.1:9998"));
+  EXPECT_FALSE(t1->is_local("20.0.0.1:9999"));
 }
 
 TEST_F(TestTimer, IsTombstone)

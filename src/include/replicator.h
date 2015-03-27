@@ -25,6 +25,8 @@ public:
 
   void worker_thread_entry_point();
   virtual void replicate(Timer*);
+  virtual void replicate_timer_to_node(Timer* timer,
+                                       std::string node);
 
   static void* worker_thread_entry_point(void*);
 

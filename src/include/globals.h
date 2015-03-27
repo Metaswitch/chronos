@@ -28,14 +28,10 @@
   private: \
     __VA_ARGS__ _##NAME
 
-// The config filename
-#define CONFIG_DIR "/etc/chronos/"
-#define CONFIG_FILE CONFIG_DIR "chronos.conf"
-
 class Globals
 {
 public:
-  Globals();
+  Globals(std::string config_file);
   ~Globals();
 
   GLOBAL(bind_address, std::string);
@@ -56,7 +52,8 @@ public:
 private:
   uint64_t generate_hash(std::string);
 
-  pthread_rwlock_t _lock;
+  std::string _config_file;
+  pthread_rwlock_t _lock; 
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
 };

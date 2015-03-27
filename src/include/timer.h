@@ -59,6 +59,12 @@ public:
 
 private:
   uint32_t _replication_factor;
+
+  // The replica tracker is used to track which replicas need to be informed
+  // if the replica is being moved off the current node (e.g. during scale
+  // down). Each bit corresponds to a replica in the timer's replica list, 
+  // where the primary replica corresponds to the least significant bit, 
+  // the second replica to the next least significant bit, and so on...
   uint32_t _replica_tracker;
 
   // Class functions
@@ -66,6 +72,11 @@ public:
   static TimerID generate_timer_id();
   static Timer* create_tombstone(TimerID, uint64_t);
   static Timer* from_json(TimerID, uint64_t, std::string, std::string&, bool&);
+  static Timer* from_json_obj(TimerID id,
+                              uint64_t replica_hash,
+                              std::string& error,
+                              bool& replicated,
+                              rapidjson::Value& doc);
 
   // Class variables
   static uint32_t deployment_id;

@@ -13,6 +13,7 @@
 /*****************************************************************************/
 using ::testing::_;
 using ::testing::Return;
+using ::testing::SaveArg;
 
 class TestHandler : public Base
 {
@@ -66,19 +67,29 @@ protected:
 // Tests a valid request to delete an existing timer
 TEST_F(TestHandler, ValidJSONDeleteTimer)
 {
+  Timer* added_timer;
+
   controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
   EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
+
+  delete added_timer; added_timer = NULL;
 }
 
 // Tests a valid request to create a new timer
 TEST_F(TestHandler, ValidJSONCreateTimer)
 {
+  Timer* added_timer;
+
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
   EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
+
+  delete added_timer; added_timer = NULL;
 }
 
 // Tests that a delete request for timer references that doesn't have any 
@@ -90,25 +101,25 @@ TEST_F(TestHandler, ValidTimerReferenceNoEntries)
   _task->run();
 }
 
-// Tests that a delete request for timer references that doesn't have any
-// entries returns a 202 and doesn't try to edit the store
+// Tests that a delete request for timer references that has a single 
+// entry does one update to the store
 TEST_F(TestHandler, ValidTimerReferenceEntry)
 {
   controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}]}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_th, update_replica_tracker(123, 1));
+  EXPECT_CALL(*_th, update_replica_tracker_for_timer(123, 1));
   _task->run();
 }
 
-// Tests that a delete request for timer references that has multiple entries, some of 
+// Tests a delete request for timer references that has multiple entries, some of 
 // which are valid. Check that the request returns a 202 and only updates
 // the store for valid entries
 TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 {
   controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}, {\"NotID\": 234, \"ReplicaIndex\": 2}, {\"ID\": 345, \"NotReplicaIndex\": 3}, {\"ID\": 456, \"ReplicaIndex\": 4}]}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_th, update_replica_tracker(123, 1));
-  EXPECT_CALL(*_th, update_replica_tracker(456, 4));
+  EXPECT_CALL(*_th, update_replica_tracker_for_timer(123, 1));
+  EXPECT_CALL(*_th, update_replica_tracker_for_timer(456, 4));
   _task->run();
 }
 
@@ -116,8 +127,8 @@ TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 // lead to the store being queried, using the range header if set. 
 TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 {
-  controller_request("/timers?requesting-node=10.0.0.1;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.1;sync-mode=SCALE");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1", 0, _)).WillOnce(Return(200));
+  controller_request("/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.1:9999;sync-mode=SCALE");
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 0, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 }
@@ -126,9 +137,9 @@ TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 // lead to the store being queried, using the range header if set.
 TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
 {
-  controller_request("/timers?requesting-node=10.0.0.1;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.1;sync-mode=SCALE");
+  controller_request("/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.1:9999;sync-mode=SCALE");
   _req->add_header_to_incoming_req("Range", "100");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1", 100, _)).WillOnce(Return(206));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 100, _)).WillOnce(Return(206));
   EXPECT_CALL(*_httpstack, send_reply(_, 206, _));
   _task->run();
 }
@@ -139,14 +150,14 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
 {
   // Set leaving addresses in globals so that we look there as well.
   std::vector<std::string> leaving_cluster_addresses;
-  leaving_cluster_addresses.push_back("10.0.0.4");
+  leaving_cluster_addresses.push_back("10.0.0.4:9999");
 
   __globals->lock();
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   __globals->unlock();
 
-  controller_request("/timers?requesting-node=10.0.0.4;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.4;sync-mode=SCALE");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4", _, _)).WillOnce(Return(200));
+  controller_request("/timers?requesting-node=10.0.0.4:9999;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.4:9999;sync-mode=SCALE");
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 
@@ -241,7 +252,7 @@ TEST_F(TestHandler, InvalidTimerGetMissingRequestNode)
 // missing sync-mode parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetMissingSyncMode)
 {
-  controller_request("/timers?requesting-node=10.0.0.1", htp_method_GET, "", "requesting-node=10.0.0.1");
+  controller_request("/timers?requesting-node=10.0.0.1:9999", htp_method_GET, "", "requesting-node=10.0.0.1:9999");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
@@ -250,7 +261,7 @@ TEST_F(TestHandler, InvalidTimerGetMissingSyncMode)
 // invalid requesting-node parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetInvalidRequestNode)
 {
-  controller_request("/timers?requesting-node=10.0.0.5;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.5;sync-mode=SCALE");
+  controller_request("/timers?requesting-node=10.0.0.5:9999;sync-mode=SCALE", htp_method_GET, "", "requesting-node=10.0.0.5:9999;sync-mode=SCALE");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
@@ -259,7 +270,7 @@ TEST_F(TestHandler, InvalidTimerGetInvalidRequestNode)
 // invalid sync-mode parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetInvalidSyncMode)
 {
-  controller_request("/timers?requesting-node=10.0.0.1;sync-mode=NOTSCALE", htp_method_GET, "", "requesting-node=10.0.0.1;sync-mode=NOTSCALE");
+  controller_request("/timers?requesting-node=10.0.0.1:9999;sync-mode=NOTSCALE", htp_method_GET, "", "requesting-node=10.0.0.1:9999;sync-mode=NOTSCALE");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
