@@ -18,8 +18,8 @@ public:
   TimerHandler(TimerStore*, Callback*);
   ~TimerHandler();
   virtual void add_timer(Timer*);
-  virtual void update_replica_tracker(TimerID id,
-                                      int replica_index);
+  virtual void update_replica_tracker_for_timer(TimerID id,
+                                                int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
                                        int max_responses,
                                        std::string& get_response);

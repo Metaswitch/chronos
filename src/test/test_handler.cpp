@@ -107,7 +107,7 @@ TEST_F(TestHandler, ValidTimerReferenceEntry)
 {
   controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}]}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_th, update_replica_tracker(123, 1));
+  EXPECT_CALL(*_th, update_replica_tracker_for_timer(123, 1));
   _task->run();
 }
 
@@ -118,8 +118,8 @@ TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 {
   controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}, {\"NotID\": 234, \"ReplicaIndex\": 2}, {\"ID\": 345, \"NotReplicaIndex\": 3}, {\"ID\": 456, \"ReplicaIndex\": 4}]}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_th, update_replica_tracker(123, 1));
-  EXPECT_CALL(*_th, update_replica_tracker(456, 4));
+  EXPECT_CALL(*_th, update_replica_tracker_for_timer(123, 1));
+  EXPECT_CALL(*_th, update_replica_tracker_for_timer(456, 4));
   _task->run();
 }
 

@@ -27,12 +27,12 @@ public:
 
   // Mark which replicas have been informed for an individual timer. 
   // If all replicas are informed, then the timer will be tombstoned
-  virtual void update_replica_tracker(TimerID id, 
-                                      int replica_index);
+  // NOTE -> This is currently only valid for scale down.
+  virtual void update_replica_tracker_for_timer(TimerID id, 
+                                                int replica_index);
 
-  // Get timer information from the store for timers that have a replica
-  // on the requesting node. The current cluster configuration is used
-  // to calculate which nodes are replicas. 
+  // Get timer information from the store for timers that where 
+  // request_node should be a replica
   virtual HTTPCode get_timers_for_node(std::string request_node, 
                                        int max_responses,
                                        std::string& get_response);

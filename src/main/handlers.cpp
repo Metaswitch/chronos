@@ -135,9 +135,11 @@ void ControllerTask::handle_delete()
 
   // Now loop through the body, pulling out the IDs/replica numbers
   // The JSON body should have the format:
-  //  {"IDs": [{"ID": id1, "replica index": replica_index},
-  //           {"ID": id2, "replica index": replica_index}, 
+  //  {"IDs": [{"ID": 123, "ReplicaIndex": 0},
+  //           {"ID": 456, "ReplicaIndex": 2}, 
   //          ...]
+  // The replica_index is zero-indexed (so the primary replica has an 
+  // index of 0). 
   try
   {
     JSON_ASSERT_CONTAINS(doc, JSON_IDS);
@@ -159,7 +161,12 @@ void ControllerTask::handle_delete()
         JSON_GET_INT_MEMBER(*ids_it, JSON_ID, id);
         JSON_GET_INT_MEMBER(*ids_it, JSON_REPLICA_INDEX, replica_index);
 
-        _cfg->_handler->update_replica_tracker(id, replica_index);
+        // Update the timer's replica_tracker to show that the replicas
+        // at level 'replica_index' and higher have been informed 
+        // about the timer. This will tombstone the timer if all 
+        // replicas have been informed. 
+        _cfg->_handler->update_replica_tracker_for_timer(id, 
+                                                         replica_index);
       }
       catch (JsonFormatError err)
       {

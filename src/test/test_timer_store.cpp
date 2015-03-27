@@ -669,7 +669,7 @@ TEST_F(TestTimerStore, UpdateReplicaTrackerValue)
   std::unordered_set<Timer*> next_timers;
   timers[0]->_replica_tracker = 15;
   ts->add_timer(timers[0]);
-  ts->update_replica_tracker(1u, 3);
+  ts->update_replica_tracker_for_timer(1u, 3);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
@@ -689,7 +689,7 @@ TEST_F(TestTimerStore, UpdateReplicaValueCheckTombstone)
   cwtest_advance_time_ms(500);
   std::unordered_set<Timer*> next_timers;
   ts->add_timer(timers[0]);
-  ts->update_replica_tracker(1u, 0);
+  ts->update_replica_tracker_for_timer(1u, 0);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(0u, next_timers.size());

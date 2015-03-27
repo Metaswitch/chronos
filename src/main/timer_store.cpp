@@ -423,7 +423,8 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
 }
 // LCOV_EXCL_STOP
 
-void TimerStore::update_replica_tracker(TimerID id, int replica_number)
+void TimerStore::update_replica_tracker_for_timer(TimerID id, 
+                                                  int replica_index)
 {
   // Check if the timer exists.
   std::map<TimerID, Timer*>::iterator map_it = _timer_lookup_table.find(id);
@@ -435,9 +436,12 @@ void TimerStore::update_replica_tracker(TimerID id, int replica_number)
     if (!timer->is_tombstone())
     {
       // Update the replica tracker
-      int remaining_replicas = timer->update_replica_tracker(replica_number);
+      int remaining_replicas = timer->update_replica_tracker(replica_index);
 
       // If all the new replicas know about the timer, tombstone it. 
+      // NOTE -> This is currently only valid for scale down. To use
+      // this for other cases, check whether the node is leaving 
+      // before deleting any timers. 
       if (remaining_replicas == 0)
       {
         delete_timer(id);

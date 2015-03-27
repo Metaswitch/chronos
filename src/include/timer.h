@@ -59,6 +59,12 @@ public:
 
 private:
   uint32_t _replication_factor;
+
+  // The replica tracker is used to track which replicas need to be informed
+  // if the replica is being moved off the current node (e.g. during scale
+  // down). Each bit corresponds to a replica in the timer's replica list, 
+  // where the primary replica corresponds to the least significant bit, 
+  // the second replica to the next least significant bit, and so on...
   uint32_t _replica_tracker;
 
   // Class functions

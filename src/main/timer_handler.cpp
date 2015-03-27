@@ -64,11 +64,12 @@ void TimerHandler::add_timer(Timer* timer)
   pthread_mutex_unlock(&_mutex);
 }
 
-void TimerHandler::update_replica_tracker(TimerID id,
-                                          int replica_index)
+void TimerHandler::update_replica_tracker_for_timer(TimerID id,
+                                                    int replica_index)
 {
   pthread_mutex_lock(&_mutex);
-  _store->update_replica_tracker(id, replica_index);
+  _store->update_replica_tracker_for_timer(id, 
+                                           replica_index);
   pthread_mutex_unlock(&_mutex);
 }
 
