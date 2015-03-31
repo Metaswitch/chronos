@@ -24,9 +24,15 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   _replication_factor(0),
   _replica_tracker(0)
 {
+  // Set the start time to now (using REALTIME)
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
   start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+
+  // Get the cluster ID from global configuration
+  std::string global_cluster_id;
+  __globals->get_cluster_id(global_cluster_id);
+  cluster_id = global_cluster_id; 
 }
 
 Timer::~Timer()
@@ -109,6 +115,7 @@ std::string Timer::url(std::string host)
 //         }
 //     },
 //     "reliability": {
+//         "cluster-id": "string",
 //         "replicas": [
 //             <comma separated "string"s>
 //         ]
@@ -162,6 +169,8 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->String("reliability");
     writer->StartObject();
     {
+      writer->String("cluster-id");
+      writer->String(cluster_id.c_str());
       writer->String("replicas");
       writer->StartArray();
       {
@@ -204,6 +213,11 @@ void Timer::become_tombstone()
   // Since we're not bringing the start-time forward we have to extend the
   // repeat-for to ensure the tombstone gets added to the replica's store.
   repeat_for = interval * (sequence_number + 1);
+}
+
+bool Timer::is_matching_cluster_id(std::string cluster_id_to_match)
+{
+  return (cluster_id_to_match == cluster_id);
 }
 
 void Timer::calculate_replicas(uint64_t replica_hash)
@@ -456,6 +470,13 @@ Timer* Timer::from_json_obj(TimerID id,
     rapidjson::Value& reliability = doc["reliability"];
 
     JSON_ASSERT_OBJECT(reliability, "reliability");
+
+    if (reliability.HasMember("cluster-id"))
+    {
+      rapidjson::Value& cluster_id = reliability["cluster-id"];
+      JSON_ASSERT_STRING(cluster_id, "cluster-id");
+      timer->cluster_id = cluster_id.GetString();
+    }
 
     if (reliability.HasMember("replicas"))
     {

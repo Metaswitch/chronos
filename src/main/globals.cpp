@@ -74,17 +74,24 @@ void Globals::update_config()
 
   std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
-  std::map<std::string, uint64_t> cluster_hashes;
+
   LOG_STATUS("Cluster nodes:");
+  std::map<std::string, uint64_t> cluster_hashes;
+  uint64_t cluster_id;
 
   for (std::vector<std::string>::iterator it = cluster_addresses.begin();
                                           it != cluster_addresses.end();
                                           ++it)
   {
     LOG_STATUS(" - %s", it->c_str());
-    cluster_hashes[*it] = generate_hash(*it);
+    uint64_t cluster_hash = generate_hash(*it);
+    cluster_hashes[*it] = cluster_hash;
+    cluster_id |= cluster_hash;
   }
+ 
   set_cluster_hashes(cluster_hashes);
+  std::string cluster_id_str = std::to_string(cluster_id);
+  set_cluster_id(cluster_id_str);
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);

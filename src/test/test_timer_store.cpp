@@ -3,6 +3,7 @@
 #include "test_interposer.hpp"
 #include "base.h"
 #include "health_checker.h"
+#include "globals.h"
 
 #include <gtest/gtest.h>
 #include "gmock/gmock.h"
@@ -703,32 +704,60 @@ TEST_F(TestTimerStore, UpdateReplicaValueCheckTombstone)
 // (up to the maximum requested)
 TEST_F(TestTimerStore, SelectTimers)
 {
+
   std::unordered_set<Timer*> next_timers;
   ts->add_timer(timers[0]);
   ts->add_timer(timers[1]);
   ts->add_timer(timers[2]);
   std::string get_response;
-  ts->get_timers_for_node("10.0.0.1:9999", 2, get_response);
+
+  std::string updated_cluster_id = "updated-cluster-id";
+  __globals->lock();
+  __globals->set_cluster_id(updated_cluster_id);
+  __globals->unlock();
+
+  ts->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_id, get_response);
 
   // Check the GET has the right format. This is two timers out of the three available (as the
   // max number of timers is set to 2). We're using a simple regex here as we use JSON
   // parsing in the code.
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"replicas\":\\\[\"10.0.0.1:9999\"]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"replicas\":\\\[\"10.0.0.1:9999\"]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-id\":\"updated-cluster-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-id\":\"updated-cluster-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+
+  std::string cluster_id = "cluster-id";
+  __globals->lock();
+  __globals->set_cluster_id(cluster_id);
+  __globals->unlock();
 
   delete tombstone;
 }
 
 // Test that if there are no timers for the requesting node, 
-// that trying to get the timers returning an empty list
-TEST_F(TestTimerStore, SelectTimersNoMatches)
+// that trying to get the timers returns an empty list
+TEST_F(TestTimerStore, SelectTimersNoMatchesReqNode)
 {
   std::unordered_set<Timer*> next_timers;
   ts->add_timer(timers[0]);
   ts->add_timer(timers[1]);
   ts->add_timer(timers[2]);
   std::string get_response;
-  ts->get_timers_for_node("10.0.0.2:9999", 1, get_response);
+  ts->get_timers_for_node("10.0.0.2:9999", 1, "updated-cluster-id", get_response);
+
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  delete tombstone;
+}
+
+// Test that if there are no timers with an out of date cluster
+// ID then trying to get the timers returns an empty list
+TEST_F(TestTimerStore, SelectTimersNoMatchesClusterID)
+{
+  std::unordered_set<Timer*> next_timers;
+  ts->add_timer(timers[0]);
+  ts->add_timer(timers[1]);
+  ts->add_timer(timers[2]);
+  std::string get_response;
+  ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-id", get_response);
 
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 

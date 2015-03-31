@@ -67,22 +67,22 @@ TEST_F(TestChronosInternalConnection, SendDelete)
 
 TEST_F(TestChronosInternalConnection, SendGet)
 {
-  fakecurl_responses["http://10.42.42.42:80/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = CURLE_OK;
+  fakecurl_responses["http://10.42.42.42:80/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = CURLE_OK;
   std::string response;
-  HTTPCode status = _chronos->send_get("10.42.42.42:80", "10.0.0.1:9999", "SCALE", 0, response);
+  HTTPCode status = _chronos->send_get("10.42.42.42:80", "10.0.0.1:9999", "SCALE", "cluster-id", 0, response);
   EXPECT_EQ(status, 200);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerNoResults)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 200);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerOneTimer)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}";
   Timer* added_timer;
 
   EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
@@ -105,7 +105,7 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   __globals->unlock();
 
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.4:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.4:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}";
   fakecurl_responses["http://10.42.42.42:9999/timers/references"] = CURLE_OK;
   Timer* added_timer;
 
@@ -125,42 +125,42 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultsInvalidJSON)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 400);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultsNoTimers)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timer\":[]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timer\":[]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 400);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidEntryNoTimerObject)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[\"Timer\"]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[\"Timer\"]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 200);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidEntryNoReplicas)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4}]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[{\"TimerID\":4}]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 200);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultNoTimer)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"]}]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"]}]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 200);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultInvalidTimer)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {}}]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-id=cluster-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {}}]}";
   HTTPCode status = _chronos->trigger_move_for_one_server("10.0.0.1:9999");
   EXPECT_EQ(status, 200);
 }

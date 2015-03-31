@@ -184,14 +184,18 @@ void ControllerTask::handle_delete()
 
 void ControllerTask::handle_get()
 {
-  // Check the request is valid. It must have the requesting-node 
-  // and sync-mode parameters set, the sync-mode parameter must be SCALE 
-  // (this will be extended later) and the request-node must correspond 
-  // to a node in the Chronos cluster (it can be a leaving node).
+  // Check the request is valid. It must have the requesting-node, 
+  // sync-mode and cluster-id parameters set, the sync-mode parameter 
+  // must be SCALE (this will be extended later) and the request-node 
+  // must correspond to a node in the Chronos cluster (it can be a 
+  // leaving node).
   std::string requesting_node = _req.param(PARAM_REQUESTING_NODE);
   std::string sync_mode = _req.param(PARAM_SYNC_MODE);  
+  std::string cluster_id = _req.param(PARAM_CLUSTER_ID);
 
-  if ((requesting_node == "") || (sync_mode == ""))
+  if ((requesting_node == "") || 
+      (sync_mode == "") ||
+      (cluster_id == ""))
   {
     LOG_INFO("GET request doesn't have mandatory parameters");
     send_http_reply(HTTP_BAD_REQUEST);
@@ -215,6 +219,7 @@ void ControllerTask::handle_get()
     std::string get_response;
     HTTPCode rc = _cfg->_handler->get_timers_for_node(requesting_node, 
                                                       max_timers_to_get,
+                                                      cluster_id,
                                                       get_response);
     _req.add_content(get_response);
     

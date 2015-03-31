@@ -75,10 +75,14 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
 
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            int max_responses,
+                                           std::string cluster_id,
                                            std::string& get_response)
 {
   pthread_mutex_lock(&_mutex);
-  HTTPCode rc = _store->get_timers_for_node(request_node, max_responses, get_response);
+  HTTPCode rc = _store->get_timers_for_node(request_node, 
+                                            max_responses, 
+                                            cluster_id, 
+                                            get_response);
   pthread_mutex_unlock(&_mutex);
 
   return rc;

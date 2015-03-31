@@ -31,10 +31,11 @@ public:
   virtual void update_replica_tracker_for_timer(TimerID id, 
                                                 int replica_index);
 
-  // Get timer information from the store for timers that where 
+  // Get timer information from the store for timers where 
   // request_node should be a replica
   virtual HTTPCode get_timers_for_node(std::string request_node, 
                                        int max_responses,
+                                       std::string cluster_id,
                                        std::string& get_response);
 
   // Give the UT test fixture access to our member variables
@@ -172,9 +173,10 @@ private:
   // Update a timer object with the current cluster configuration. Store off
   // the old set of replicas, and return whether the requesting node is 
   // one of the new replicas
-  bool update_timer(std::string request_node,
-                    Timer* timer,
-                    std::vector<std::string>& old_replicas);
+  bool timer_is_on_node(std::string request_node,
+                        std::string cluster_id,
+                        Timer* timer,
+                        std::vector<std::string>& old_replicas);
 
 };
 

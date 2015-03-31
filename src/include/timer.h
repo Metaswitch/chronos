@@ -39,6 +39,9 @@ public:
   // Convert this timer to its own tombstone.
   void become_tombstone();
 
+  // Check if the timer has a matching cluster ID
+  bool is_matching_cluster_id(std::string cluster_id_to_match);
+
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
 
@@ -52,6 +55,7 @@ public:
   uint32_t interval;
   uint32_t repeat_for;
   uint32_t sequence_number;
+  std::string cluster_id;
   std::vector<std::string> replicas;
   std::vector<std::string> extra_replicas;
   std::string callback_url;

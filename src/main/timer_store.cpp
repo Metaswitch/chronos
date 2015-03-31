@@ -452,6 +452,7 @@ void TimerStore::update_replica_tracker_for_timer(TimerID id,
 
 HTTPCode TimerStore::get_timers_for_node(std::string request_node, 
                                          int max_responses,
+                                         std::string cluster_id,
                                          std::string& get_response)
 {
   // Create the JSON doc for the Timer information
@@ -474,9 +475,10 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
     {
       std::vector<std::string> old_replicas;
 
-      if (update_timer(request_node,
-                       timer_copy, 
-                       old_replicas))
+      if (timer_is_on_node(request_node,
+                           cluster_id,
+                           timer_copy, 
+                           old_replicas))
       {
         writer.StartObject();
         {
@@ -531,36 +533,48 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
                                                  HTTP_OK;
 }
 
-bool TimerStore::update_timer(std::string request_node,
-                              Timer* timer,
-                              std::vector<std::string>& old_replicas)
+bool TimerStore::timer_is_on_node(std::string request_node,
+                                  std::string cluster_id,
+                                  Timer* timer,
+                                  std::vector<std::string>& old_replicas)
 {
   bool timer_is_on_requesting_node = false;
-
-  // Store the old replica list
-  std::string localhost;
-  __globals->get_cluster_local_ip(localhost);
-
-  for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                          it != timer->replicas.end();
-                                          ++it)
+  
+  if (!timer->is_matching_cluster_id(cluster_id)) 
   {
-    old_replicas.push_back(*it);
-  }
+    // Store the old replica list
+    std::string localhost;
+    __globals->get_cluster_local_ip(localhost);
 
-  // Calculate whether the new request node is interested in the timer. This
-  // updates the replica list in the timer object to be the new replica list
-  timer->calculate_replicas(0); 
-  for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                          it != timer->replicas.end();
-                                          ++it)
-  {
-    if (*it == request_node)
+    for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                            it != timer->replicas.end();
+                                            ++it)
     {
-      timer_is_on_requesting_node = true;
-      break;
+      old_replicas.push_back(*it);
     }
+
+    // Calculate whether the new request node is interested in the timer. This
+    // updates the replica list in the timer object to be the new replica list
+    timer->calculate_replicas(0); 
+    for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                            it != timer->replicas.end();
+                                            ++it)
+    {
+      if (*it == request_node)
+      {
+        timer_is_on_requesting_node = true;
+        
+        // Update the cluster ID as well
+        std::string global_cluster_id;
+        __globals->get_cluster_id(global_cluster_id);
+        timer->cluster_id = global_cluster_id;
+
+        break;
+      }
+    }
+
+    
   }
- 
+
   return timer_is_on_requesting_node;
 }

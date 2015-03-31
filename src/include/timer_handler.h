@@ -22,6 +22,7 @@ public:
                                                 int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
                                        int max_responses,
+                                       std::string cluster_id,
                                        std::string& get_response);
   void run();
 
