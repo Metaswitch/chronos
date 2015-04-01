@@ -12,7 +12,7 @@ public:
   MOCK_METHOD2(update_replica_tracker_for_timer, void(TimerID, int));
   MOCK_METHOD4(get_timers_for_node, HTTPCode(std::string request_node,
                                              int max_responses,
-                                             std::string cluster_id,
+                                             std::string cluster_view_id,
                                              std::string& get_response));
 };
 

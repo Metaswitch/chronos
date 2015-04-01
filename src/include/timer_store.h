@@ -17,7 +17,6 @@ public:
 
   // Add a timer to the store.
   virtual void add_timer(Timer*);
-  virtual void add_timers(std::unordered_set<Timer*>&);
 
   // Remove a timer by ID from the store.
   virtual void delete_timer(TimerID);
@@ -35,7 +34,7 @@ public:
   // request_node should be a replica
   virtual HTTPCode get_timers_for_node(std::string request_node, 
                                        int max_responses,
-                                       std::string cluster_id,
+                                       std::string cluster_view_id,
                                        std::string& get_response);
 
   // Give the UT test fixture access to our member variables
@@ -95,7 +94,7 @@ private:
   // only one of them (and the heap is searched last for efficiency).
 
   // A table of all known timers
-  std::map<TimerID, Timer *> _timer_lookup_table;
+  std::map<TimerID, std::vector<Timer*>> _timer_lookup_table;
 
   // Health checker, which is notified when a timer is successfully added.
   HealthChecker* _health_checker;
@@ -112,7 +111,7 @@ private:
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
 
   // Type of a single timer bucket.
-  typedef std::unordered_set<Timer *> Bucket;
+  typedef std::unordered_set<Timer*> Bucket;
 
   // Bucket for timers that are added after they were supposed to pop.
   Bucket _overdue_timers;
@@ -124,7 +123,7 @@ private:
   Bucket _long_wheel[LONG_WHEEL_NUM_BUCKETS];
 
   // Heap of longer-lived timers (> 1hr)
-  std::vector<Timer *> _extra_heap;
+  std::vector<Timer*> _extra_heap;
 
   // Timestamp of the next tick to process. This is stored in ms, and is always
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.
@@ -174,9 +173,15 @@ private:
   // the old set of replicas, and return whether the requesting node is 
   // one of the new replicas
   bool timer_is_on_node(std::string request_node,
-                        std::string cluster_id,
+                        std::string cluster_view_id,
                         Timer* timer,
                         std::vector<std::string>& old_replicas);
+
+  // Delete a timer from the timer wheel
+  void delete_timer_from_timer_wheel(Timer* timer);
+
+  // Save the tombstone values from an existing timer
+  void set_tombstone_values(Timer* t, Timer* existing);
 
 };
 

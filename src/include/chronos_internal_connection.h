@@ -33,7 +33,7 @@ private:
   virtual HTTPCode send_get(const std::string server,
                             const std::string requesting_node,
                             const std::string sync_mode,
-                            std::string cluster_id,
+                            std::string cluster_view_id,
                             int max_timers,
                             std::string& response);
 };

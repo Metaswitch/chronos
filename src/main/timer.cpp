@@ -29,10 +29,10 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   clock_gettime(CLOCK_REALTIME, &ts);
   start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 
-  // Get the cluster ID from global configuration
-  std::string global_cluster_id;
-  __globals->get_cluster_id(global_cluster_id);
-  cluster_id = global_cluster_id; 
+  // Get the cluster view ID from global configuration
+  std::string global_cluster_view_id;
+  __globals->get_cluster_view_id(global_cluster_view_id);
+  cluster_view_id = global_cluster_view_id; 
 }
 
 Timer::~Timer()
@@ -115,7 +115,7 @@ std::string Timer::url(std::string host)
 //         }
 //     },
 //     "reliability": {
-//         "cluster-id": "string",
+//         "cluster-view-id": "string",
 //         "replicas": [
 //             <comma separated "string"s>
 //         ]
@@ -169,8 +169,8 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->String("reliability");
     writer->StartObject();
     {
-      writer->String("cluster-id");
-      writer->String(cluster_id.c_str());
+      writer->String("cluster-view-id");
+      writer->String(cluster_view_id.c_str());
       writer->String("replicas");
       writer->StartArray();
       {
@@ -215,9 +215,9 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
-bool Timer::is_matching_cluster_id(std::string cluster_id_to_match)
+bool Timer::is_matching_cluster_view_id(std::string cluster_view_id_to_match)
 {
-  return (cluster_id_to_match == cluster_id);
+  return (cluster_view_id_to_match == cluster_view_id);
 }
 
 void Timer::calculate_replicas(uint64_t replica_hash)
@@ -471,11 +471,11 @@ Timer* Timer::from_json_obj(TimerID id,
 
     JSON_ASSERT_OBJECT(reliability, "reliability");
 
-    if (reliability.HasMember("cluster-id"))
+    if (reliability.HasMember("cluster-view-id"))
     {
-      rapidjson::Value& cluster_id = reliability["cluster-id"];
-      JSON_ASSERT_STRING(cluster_id, "cluster-id");
-      timer->cluster_id = cluster_id.GetString();
+      rapidjson::Value& cluster_view_id = reliability["cluster-view-id"];
+      JSON_ASSERT_STRING(cluster_view_id, "cluster-view-id");
+      timer->cluster_view_id = cluster_view_id.GetString();
     }
 
     if (reliability.HasMember("replicas"))
@@ -541,7 +541,22 @@ Timer* Timer::from_json_obj(TimerID id,
 int Timer::update_replica_tracker(int replica_index)
 {
   _replica_tracker = _replica_tracker % (int)pow(2,replica_index);
-  LOG_DEBUG("New replica tracker value is %d", _replica_tracker);
-
   return _replica_tracker;
 }
+
+bool Timer::has_replica_been_informed(int replica_index)
+{
+  return ((_replica_tracker & (int)pow(2, replica_index)) == 0);
+}
+
+void Timer::update_cluster_information()
+{
+  // Update the replica list
+  calculate_replicas(0);
+
+  // Update the cluster view ID 
+  std::string global_cluster_view_id;
+  __globals->get_cluster_view_id(global_cluster_view_id);
+ cluster_view_id = global_cluster_view_id;
+}
+

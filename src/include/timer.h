@@ -39,14 +39,21 @@ public:
   // Convert this timer to its own tombstone.
   void become_tombstone();
 
-  // Check if the timer has a matching cluster ID
-  bool is_matching_cluster_id(std::string cluster_id_to_match);
+  // Check if the timer has a matching cluster view ID
+  bool is_matching_cluster_view_id(std::string cluster_view_id_to_match);
 
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
 
   // Mark which replicas have been informed about the timer 
   int update_replica_tracker(int replica_index);
+
+  // Return whether a particular replica has been informed about a timer  
+  bool has_replica_been_informed(int replica_index);
+
+  // Update the cluster information stored in the timer (replica list and 
+  // cluster view ID)
+  void update_cluster_information();
 
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
@@ -55,7 +62,7 @@ public:
   uint32_t interval;
   uint32_t repeat_for;
   uint32_t sequence_number;
-  std::string cluster_id;
+  std::string cluster_view_id;
   std::vector<std::string> replicas;
   std::vector<std::string> extra_replicas;
   std::string callback_url;

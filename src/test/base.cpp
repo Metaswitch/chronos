@@ -22,8 +22,8 @@ void Base::SetUp()
   cluster_hashes["10.0.0.2:9999"] = 0x10001000001000;
   cluster_hashes["10.0.0.3:9999"] = 0x01000100000100;
   __globals->set_cluster_hashes(cluster_hashes);
-  std::string cluster_id = "cluster-id";
-  __globals->set_cluster_id(cluster_id);
+  std::string cluster_view_id = "cluster-view-id";
+  __globals->set_cluster_view_id(cluster_view_id);
   int bind_port = 9999;
   __globals->set_bind_port(bind_port);
   __globals->unlock();
