@@ -172,6 +172,7 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
           writer->String((*it).c_str());
         }
       }
+
       writer->EndArray();
     }
     writer->EndObject();
@@ -206,6 +207,104 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
+static void calculate_standard_hash(std::vector<std::string> cluster,
+                                    TimerID id,
+                                    uint32_t replication_factor,
+                                    std::vector<std::string>& replicas)
+{
+  // Pick replication-factor replicas from the cluster, using a hash of the ID
+  // to balance the choices.
+  uint32_t hash;
+  MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
+  unsigned int first_replica = hash % cluster.size();
+  for (unsigned int ii = 0;
+       ii < replication_factor && ii < cluster.size();
+       ++ii)
+  {
+    replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
+  }
+}
+
+
+static void calculate_rendezvous_hash(std::vector<std::string> cluster,
+                                      TimerID id,
+                                      uint32_t replication_factor,
+                                      std::vector<std::string>& replicas)
+{
+  if (replication_factor == 0u)
+  {
+    return;
+  }
+
+  std::map<uint32_t, size_t> hash_to_idx;
+  std::vector<std::string> ordered_cluster;
+  for (unsigned int ii = 0;
+       ii < cluster.size();
+       ++ii)
+  {
+    uint32_t server_hash;
+    MurmurHash3_x86_32(cluster[ii].data(), cluster[ii].length(), 0, &server_hash);
+    uint32_t hash;
+
+    MurmurHash3_x86_32(&id, sizeof(TimerID), server_hash, &hash);
+
+    // Deal with hash collisions by decrementing the hash. For
+    // example, if I have servers A, B, C, D which hash to
+    // 10, 4, 10, 3:
+    // hash_to_idx[10] = 0 (A's index)
+    // hash_to_idx[4] = 1 (B's index)
+    // hash_to_idx[10] exists, decrement C's hash
+    // hash_to_idx[9] = 2 (C's index)
+    // hash_to_idx[3] = 3 (D's index)
+    //
+    // Iterating over hash_to_idx then gives (10, 0), (9, 2), (4, 1)
+    // and (3, 3), so the ordered list is A, C, B, D. Effectively, the
+    // first entry in the original list consistently wins.
+    //
+    // This doesn't work perfectly in the edge case 
+    // If I have servers A, B, C, D which hash to
+    // 10, 9, 10, 9:
+    // hash_to_idx[10] = 0 (A's index)
+    // hash_to_idx[9] = 1 (B's index)
+    // hash_to_idx[10] exists, decrement C's hash
+    // hash_to_idx[9] exists, decrement C's hash
+    // hash_to_idx[8] = 2 (C's index)
+    // hash_to_idx[9] exists, decrement D's hash
+    // hash_to_idx[8] exists, decrement D's hash
+    // hash_to_idx[7] = 3 (D's index)
+    //
+    // Iterating over hash_to_idx then gives (10, 0), (9, 1), (8, 2)
+    // and (7, 3), so the ordered list is A, B, C, D. This is wrong,
+    // but deterministic 
+    while (hash_to_idx.find(hash) != hash_to_idx.end())
+    {
+      hash--;
+    }
+    
+    hash_to_idx[hash] = ii;
+  }
+
+  for (std::map<uint32_t, size_t>::iterator ii = hash_to_idx.begin();
+       ii != hash_to_idx.end();
+       ii++)
+  {
+    ordered_cluster.push_back(cluster[ii->second]);
+  }
+  
+  replicas.push_back(ordered_cluster.front());
+  
+  replication_factor = replication_factor > ordered_cluster.size() ?
+                       ordered_cluster.size() : replication_factor;
+
+  for (size_t jj = 1;
+       jj < replication_factor;
+       jj++)
+  {
+    replicas.push_back(ordered_cluster.back());
+    ordered_cluster.pop_back();
+  }
+}
+
 void Timer::calculate_replicas(TimerID id,
                                uint64_t replica_hash,
                                std::map<std::string, uint64_t> cluster_hashes,
@@ -237,17 +336,14 @@ void Timer::calculate_replicas(TimerID id,
     // otherwise use the size of the existing replicas.
     replication_factor = replication_factor > 0 ?
                          replication_factor : hash_replicas.size();
-    uint32_t hash;
-    MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-    unsigned int first_replica = hash % cluster.size();
+  }
 
-    for (unsigned int ii = 0;
-         ii < replication_factor && ii < cluster.size();
-         ++ii)
-    {
-      replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
-    }
+  // Pick replication-factor replicas from the cluster.
+  calculate_standard_hash(cluster, id, replication_factor, replicas);
+  //calculate_rendezvous_hash(cluster, id, replication_factor, replicas);
 
+  if (replica_hash)
+  {
     // Finally, add any replicas that were in hash_replicas but aren't in
     // replicas to the extra_replicas vector.
     for (unsigned int ii = 0;
@@ -258,21 +354,6 @@ void Timer::calculate_replicas(TimerID id,
       {
         extra_replicas.push_back(hash_replicas[ii]);
       }
-    }
-  }
-  else
-  {
-    // Pick replication-factor replicas from the cluster, using a hash of the ID
-    // to balance the choices.
-    uint32_t hash;
-    MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-    unsigned int first_replica = hash % cluster.size();
-    LOG_DEBUG("ID %u, hash %u, first_replica %u", id, hash, first_replica);
-    for (unsigned int ii = 0;
-         ii < replication_factor && ii < cluster.size();
-         ++ii)
-    {
-      replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
     }
   }
 
