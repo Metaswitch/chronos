@@ -206,14 +206,18 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
-void Timer::calculate_replicas(uint64_t replica_hash)
+void Timer::calculate_replicas(TimerID id,
+                               uint64_t replica_hash,
+                               std::map<std::string, uint64_t> cluster_hashes,
+                               std::vector<std::string> cluster,
+                               uint32_t replication_factor,
+                               std::vector<std::string>& replicas,
+                               std::vector<std::string>& extra_replicas)
 {
   std::vector<std::string> hash_replicas;
   if (replica_hash)
   {
     // Compare the hash to all the known replicas looking for matches.
-    std::map<std::string, uint64_t> cluster_hashes;
-    __globals->get_cluster_hashes(cluster_hashes);
 
     for (std::map<std::string, uint64_t>::iterator it = cluster_hashes.begin();
          it != cluster_hashes.end();
@@ -231,16 +235,14 @@ void Timer::calculate_replicas(uint64_t replica_hash)
 
     // Recreate the vector of replicas. Use the replication factor if it's set,
     // otherwise use the size of the existing replicas.
-    _replication_factor = _replication_factor > 0 ?
-                          _replication_factor : hash_replicas.size();
+    replication_factor = replication_factor > 0 ?
+                         replication_factor : hash_replicas.size();
     uint32_t hash;
     MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-    std::vector<std::string> cluster;
-    __globals->get_cluster_addresses(cluster);
     unsigned int first_replica = hash % cluster.size();
 
     for (unsigned int ii = 0;
-         ii < _replication_factor && ii < cluster.size();
+         ii < replication_factor && ii < cluster.size();
          ++ii)
     {
       replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
@@ -264,11 +266,10 @@ void Timer::calculate_replicas(uint64_t replica_hash)
     // to balance the choices.
     uint32_t hash;
     MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-    std::vector<std::string> cluster;
-    __globals->get_cluster_addresses(cluster);
     unsigned int first_replica = hash % cluster.size();
+    LOG_DEBUG("ID %u, hash %u, first_replica %u", id, hash, first_replica);
     for (unsigned int ii = 0;
-         ii < _replication_factor && ii < cluster.size();
+         ii < replication_factor && ii < cluster.size();
          ++ii)
     {
       replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
@@ -282,6 +283,24 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   {
     LOG_DEBUG(" - %s", it->c_str());
   }
+}
+
+void Timer::calculate_replicas(uint64_t replica_hash)
+{
+  std::map<std::string, uint64_t> cluster_hashes;
+  __globals->get_cluster_hashes(cluster_hashes);
+  
+  
+  std::vector<std::string> cluster;
+  __globals->get_cluster_addresses(cluster);
+
+  Timer::calculate_replicas(id,
+                            replica_hash,
+                            cluster_hashes,
+                            cluster,
+                            _replication_factor,
+                            replicas,
+                            extra_replicas);
 }
 
 uint32_t Timer::deployment_id = 0;

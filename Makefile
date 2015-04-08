@@ -62,9 +62,18 @@ deb: build deb-only
 .PHONY: build
 build: ${SUBMODULES} ${TARGET_BIN}
 
+# Define JUSTTEST=<testname> to test just that test.  Easier than
+# passing the --gtest_filter in EXTRA_TEST_ARGS.
+ifdef JUSTTEST
+  EXTRA_TEST_ARGS ?= --gtest_filter=$(JUSTTEST)
+endif
+
 .PHONY: test
-test: ${SUBMODULES} ${TARGET_BIN_TEST}
-	${TARGET_BIN_TEST}
+test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test
+
+.PHONY: run_test
+run_test: ${TARGET_BIN_TEST}
+	${TARGET_BIN_TEST} $(EXTRA_TEST_ARGS)
 
 .PHONY: debug
 debug: ${TARGET_BIN_TEST}

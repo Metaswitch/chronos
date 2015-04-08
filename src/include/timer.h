@@ -2,6 +2,7 @@
 #define TIMER_H__
 
 #include <vector>
+#include <map>
 #include <string>
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
@@ -41,6 +42,14 @@ public:
 
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
+
+  static void calculate_replicas(TimerID id,
+                                 uint64_t replica_hash,
+                                 std::map<std::string, uint64_t> cluster_hashes,
+                                 std::vector<std::string> cluster,
+                                 uint32_t replication_factor,
+                                 std::vector<std::string>& replicas,
+                                 std::vector<std::string>& extra_replicas);
 
   // Mark which replicas have been informed about the timer 
   int update_replica_tracker(int replica_index);
