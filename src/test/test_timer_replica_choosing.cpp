@@ -10,13 +10,18 @@
 /* Test fixture                                                              */
 /*****************************************************************************/
 
+static uint32_t REPLICATION_FACTOR = 2u;
+static int MAX_TIMERS = 4096;
+
 class TestTimerReplicaChoosing : public Base
 {
 protected:
   virtual void SetUp()
   {
     Base::SetUp();
-    id = (TimerID)7;
+    cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
+    new_cluster = cluster;
+    new_cluster.push_back("10.0.0.100:7253");
   }
 
   virtual void TearDown()
@@ -24,87 +29,124 @@ protected:
     Base::TearDown();
   }
 
-  TimerID id;
+  void calculate_timers_for_id(TimerID id)
+  {
+    std::map<std::string, uint64_t> cluster_hashes;
+    old_replicas.clear();
+    new_replicas.clear();
+    Timer::calculate_replicas(id,
+                              0u,
+                              cluster_hashes,
+                              cluster,
+                              REPLICATION_FACTOR,
+                              old_replicas,
+                              extra_replicas);
+
+    Timer::calculate_replicas(id,
+                              0u,
+                              cluster_hashes,
+                              new_cluster,
+                              REPLICATION_FACTOR,
+                              new_replicas,
+                              extra_replicas);
+  }
+
+  std::vector<std::string> cluster;
+  std::vector<std::string> new_cluster;
+  
+  std::vector<std::string> old_replicas;
+  std::vector<std::string> new_replicas;
+  std::vector<std::string> extra_replicas;
 };
 
 /*****************************************************************************/
 /* Class functions                                                           */
 /*****************************************************************************/
 
-TEST_F(TestTimerReplicaChoosing, UnderHalfOfTimersMove)
+TEST_F(TestTimerReplicaChoosing, ClusteringIsBalanced)
 {
-  std::map<std::string, uint64_t> cluster_hashes;
-  std::vector<std::string> cluster = {"A", "B", "C"};
-  std::vector<std::string> cluster2 = {"A", "B", "C", "D"};
+  std::map<std::string, uint32_t> cluster_counts;
 
-  std::vector<std::string> replicas;
-  std::vector<std::string> replicas2;
-  std::vector<std::string> extra_replicas;
-  int different = 0;
-  int max_timers = 65536;
-  for (TimerID id = (TimerID)1;
-       id < (TimerID)max_timers;
+  for (TimerID id = (TimerID)0;
+       id < (TimerID)MAX_TIMERS;
        id++)
   {
-    replicas.clear();
-    replicas2.clear();
-    Timer::calculate_replicas(id,
-                              0u,
-                              cluster_hashes,
-                              cluster,
-                              2u,
-                              replicas,
-                              extra_replicas);
+    calculate_timers_for_id(id);
+    cluster_counts[old_replicas[0]]++;
+  }
 
-    Timer::calculate_replicas(id,
-                              0u,
-                              cluster_hashes,
-                              cluster2,
-                              2u,
-                              replicas2,
-                              extra_replicas);
-    if ((replicas[0] != replicas2[0]) ||
-        (replicas[1] != replicas2[1]))
+  uint32_t expected_max = MAX_TIMERS / (cluster.size() - 1);
+  uint32_t expected_min = MAX_TIMERS / (cluster.size() + 1);
+  
+  for (std::vector<std::string>::iterator ii = cluster.begin();
+      ii != cluster.end();
+      ii++)
+  {
+    EXPECT_GT(cluster_counts[*ii], expected_min);
+    EXPECT_LT(cluster_counts[*ii], expected_max);
+  }
+}
+
+TEST_F(TestTimerReplicaChoosing, MinimumTimersMovePrimary)
+{
+  int different = 0;
+  for (TimerID id = (TimerID)0;
+       id < (TimerID)MAX_TIMERS;
+       id++)
+  {
+    calculate_timers_for_id(id);
+    
+    if ((old_replicas[0] != new_replicas[0]))
     {
+      ASSERT_EQ(old_replicas[1], new_replicas[1]);
+
+      // Timers should only move onto the newly-added replica
+      ASSERT_EQ(new_replicas[0], "10.0.0.100:7253");
       different++;
     }
   }
-  printf("%d of %d timers changed replica on scale-up\n", different, max_timers);
-  EXPECT_THAT(different, ::testing::Lt(max_timers / 2));
+
+  //printf("%d of %d timers changed primary replica on scale-up (expected around %ld, won't accept more than %ld)\n", different, MAX_TIMERS, MAX_TIMERS / new_cluster.size(), (uint32_t)((MAX_TIMERS / new_cluster.size()) * 1.15));
+
+  // To balance the cluster when we moved from 5 replicas to 6, approximately
+  // 1/6th of existing timers should have moved. Allow a 15% difference to account for randomness.
+  EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / new_cluster.size()) * 1.15));
+}
+
+TEST_F(TestTimerReplicaChoosing, MinimumTimersMoveBackup)
+{
+  int different = 0;
+  for (TimerID id = (TimerID)0;
+       id < (TimerID)MAX_TIMERS;
+       id++)
+  {
+    calculate_timers_for_id(id);
+
+    if ((old_replicas[1] != new_replicas[1]))
+    {
+      ASSERT_EQ(old_replicas[0], new_replicas[0]);
+
+      // Timers should only move onto the newly-added replica
+      ASSERT_EQ(new_replicas[1], "10.0.0.100:7253");
+      different++;
+    }
+  }
+
+  //printf("%d of %d timers changed first backup replica on scale-up (expected around %ld, won't accept more than %ld)\n", different, MAX_TIMERS, MAX_TIMERS / new_cluster.size(), (uint32_t)((MAX_TIMERS / new_cluster.size()) * 1.15));
+
+  // To balance the cluster when we moved from 5 replicas to 6, approximately
+  // 1/6th of existing timers should have moved. Allow a 15% difference to account for randomness.
+  EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / new_cluster.size()) * 1.15));
 }
 
 TEST_F(TestTimerReplicaChoosing, NoPrimaryBackupSwap)
 {
-  std::map<std::string, uint64_t> cluster_hashes;
-  std::vector<std::string> cluster = {"A", "B", "C"};
-  std::vector<std::string> cluster2 = {"A", "B", "C", "D"};
-
-  std::vector<std::string> replicas;
-  std::vector<std::string> replicas2;
-  std::vector<std::string> extra_replicas;
-  int max_timers = 65536;
-  for (TimerID id = (TimerID)1;
-       id < (TimerID)max_timers;
+  for (TimerID id = (TimerID)0;
+       id < (TimerID)MAX_TIMERS;
        id++)
   {
-    replicas.clear();
-    replicas2.clear();
-    Timer::calculate_replicas(id,
-                              0u,
-                              cluster_hashes,
-                              cluster,
-                              2u,
-                              replicas,
-                              extra_replicas);
-
-    Timer::calculate_replicas(id,
-                              0u,
-                              cluster_hashes,
-                              cluster2,
-                              2u,
-                              replicas2,
-                              extra_replicas);
-    ASSERT_NE(replicas[0], replicas2[1]);
-    ASSERT_THAT(replicas[1], ::testing::Ne(replicas2[0]));
+    calculate_timers_for_id(id);
+    ASSERT_TRUE((old_replicas[0] != new_replicas[1]));
+    ASSERT_TRUE((old_replicas[1] != new_replicas[0]));
   }
 }
