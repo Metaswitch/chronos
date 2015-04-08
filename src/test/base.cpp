@@ -17,11 +17,11 @@ void Base::SetUp()
   cluster_addresses.push_back("10.0.0.2:9999");
   cluster_addresses.push_back("10.0.0.3:9999");
   __globals->set_cluster_addresses(cluster_addresses);
-  std::map<std::string, uint64_t> cluster_hashes;
-  cluster_hashes["10.0.0.1:9999"] = 0x00010000010001;
-  cluster_hashes["10.0.0.2:9999"] = 0x10001000001000;
-  cluster_hashes["10.0.0.3:9999"] = 0x01000100000100;
-  __globals->set_cluster_hashes(cluster_hashes);
+  std::map<std::string, uint64_t> cluster_bloom_filters;
+  cluster_bloom_filters["10.0.0.1:9999"] = 0x00010000010001;
+  cluster_bloom_filters["10.0.0.2:9999"] = 0x10001000001000;
+  cluster_bloom_filters["10.0.0.3:9999"] = 0x01000100000100;
+  __globals->set_cluster_bloom_filters(cluster_bloom_filters);
   int bind_port = 9999;
   __globals->set_bind_port(bind_port);
   __globals->unlock();

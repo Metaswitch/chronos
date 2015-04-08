@@ -74,7 +74,7 @@ void Globals::update_config()
 
   std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
-  std::map<std::string, uint64_t> cluster_hashes;
+  std::map<std::string, uint64_t> cluster_bloom_filters;
   LOG_STATUS("Cluster nodes:");
 
   for (std::vector<std::string>::iterator it = cluster_addresses.begin();
@@ -82,9 +82,9 @@ void Globals::update_config()
                                           ++it)
   {
     LOG_STATUS(" - %s", it->c_str());
-    cluster_hashes[*it] = generate_hash(*it);
+    cluster_bloom_filters[*it] = generate_bloom_filter(*it);
   }
-  set_cluster_hashes(cluster_hashes);
+  set_cluster_bloom_filters(cluster_bloom_filters);
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
@@ -109,7 +109,7 @@ void Globals::update_config()
 // Create 3 128-bit hashes, modulo each half down to 0..63 and set those
 // bits in the returned value.  In general this will set ~6 bits in the
 // returned hash.
-uint64_t Globals::generate_hash(std::string data)
+uint64_t Globals::generate_bloom_filter(std::string data)
 {
   uint64_t hash[2];
   uint64_t rc = 0;

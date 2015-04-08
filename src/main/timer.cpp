@@ -95,14 +95,14 @@ std::string Timer::url(std::string host)
   ss << "/timers/";
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
   uint64_t hash = 0;
-  std::map<std::string, uint64_t> cluster_hashes;
-  __globals->get_cluster_hashes(cluster_hashes);
+  std::map<std::string, uint64_t> cluster_bloom_filters;
+  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
 
   for (std::vector<std::string>::iterator it = replicas.begin(); 
                                           it != replicas.end(); 
                                           ++it)
   {
-    hash |= cluster_hashes[*it];
+    hash |= cluster_bloom_filters[*it];
   }
   ss << std::setfill('0') << std::setw(16) << std::hex << hash;
 
@@ -302,53 +302,53 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
 }
 
 void Timer::calculate_replicas(TimerID id,
-                               uint64_t replica_hash,
-                               std::map<std::string, uint64_t> cluster_hashes,
+                               uint64_t replica_bloom_filter,
+                               std::map<std::string, uint64_t> cluster_bloom_filters,
                                std::vector<std::string> cluster,
                                uint32_t replication_factor,
                                std::vector<std::string>& replicas,
                                std::vector<std::string>& extra_replicas,
                                Hasher* hasher)
 {
-  std::vector<std::string> hash_replicas;
-  if (replica_hash)
+  std::vector<std::string> bloom_replicas;
+  if (replica_bloom_filter)
   {
     // Compare the hash to all the known replicas looking for matches.
 
-    for (std::map<std::string, uint64_t>::iterator it = cluster_hashes.begin();
-         it != cluster_hashes.end();
+    for (std::map<std::string, uint64_t>::iterator it = cluster_bloom_filters.begin();
+         it != cluster_bloom_filters.end();
          ++it)
     {
       // Quickly check if this replica might be one of the replicas for the
       // given timer (i.e. if the replica's individual hash collides with the
       // bloom filter we calculated when we created the hash (see `url()`).
-      if ((replica_hash & it->second) == it->second)
+      if ((replica_bloom_filter & it->second) == it->second)
       {
         // This is probably a replica.
-        hash_replicas.push_back(it->first);
+        bloom_replicas.push_back(it->first);
       }
     }
 
     // Recreate the vector of replicas. Use the replication factor if it's set,
     // otherwise use the size of the existing replicas.
     replication_factor = replication_factor > 0 ?
-                         replication_factor : hash_replicas.size();
+                         replication_factor : bloom_replicas.size();
   }
 
   // Pick replication-factor replicas from the cluster.
   calculate_rendezvous_hash(cluster, id, replication_factor, replicas, hasher);
 
-  if (replica_hash)
+  if (replica_bloom_filter)
   {
     // Finally, add any replicas that were in hash_replicas but aren't in
     // replicas to the extra_replicas vector.
     for (unsigned int ii = 0;
-         ii < hash_replicas.size();
+         ii < bloom_replicas.size();
          ++ii)
     {
-      if (std::find(replicas.begin(), replicas.end(), hash_replicas[ii]) == replicas.end())
+      if (std::find(replicas.begin(), replicas.end(), bloom_replicas[ii]) == replicas.end())
       {
-        extra_replicas.push_back(hash_replicas[ii]);
+        extra_replicas.push_back(bloom_replicas[ii]);
       }
     }
   }
@@ -364,8 +364,8 @@ void Timer::calculate_replicas(TimerID id,
 
 void Timer::calculate_replicas(uint64_t replica_hash)
 {
-  std::map<std::string, uint64_t> cluster_hashes;
-  __globals->get_cluster_hashes(cluster_hashes);
+  std::map<std::string, uint64_t> cluster_bloom_filters;
+  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
   
   
   std::vector<std::string> cluster;
@@ -373,7 +373,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
 
   Timer::calculate_replicas(id,
                             replica_hash,
-                            cluster_hashes,
+                            cluster_bloom_filters,
                             cluster,
                             _replication_factor,
                             replicas,
