@@ -44,6 +44,7 @@ public:
   GLOBAL(alarms_enabled, bool);
   GLOBAL(threads, int);
   GLOBAL(max_ttl, int);
+  GLOBAL(dns_servers, std::vector<std::string>);
 
 public:
   void update_config();

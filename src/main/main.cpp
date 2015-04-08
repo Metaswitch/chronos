@@ -14,6 +14,7 @@
 #include "health_checker.h"
 #include "exception_handler.h"
 #include <getopt.h>
+#include "chronos_internal_connection.h"
 
 #include <iostream>
 #include <cassert>
@@ -109,6 +110,7 @@ void signal_handler(int sig)
 int main(int argc, char** argv)
 {
   Alarm* timer_pop_alarm = NULL;
+  Alarm* scale_operation_alarm = NULL;
 
   // Initialize cURL before creating threads
   curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -149,16 +151,17 @@ int main(int argc, char** argv)
   {
     // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
     // in the alarm definition JSON file exactly.
-
     timer_pop_alarm = new Alarm("chronos", AlarmDef::CHRONOS_TIMER_POP_ERROR,
                                             AlarmDef::MAJOR);
+    scale_operation_alarm = new Alarm("chronos", AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
+                                                 AlarmDef::MINOR);
 
     // Start the alarm request agent
     AlarmReqAgent::get_instance().start();
     AlarmState::clear_all("chronos");
   }
 
-  // Create components
+  // Now create the Chronos components
   HealthChecker* hc = new HealthChecker();
   pthread_t health_check_thread;
   pthread_create(&health_check_thread,
@@ -174,6 +177,7 @@ int main(int argc, char** argv)
                                            false,
                                            hc);
 
+  // Create the timer store, handlers, replicators...
   TimerStore *store = new TimerStore(hc);
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
@@ -181,11 +185,42 @@ int main(int argc, char** argv)
   TimerHandler* handler = new TimerHandler(store, callback);
   callback->start(handler);
 
-  HttpStack* http_stack = HttpStack::get_instance();
+  // Create a Chronos internal connection class for scaling operations. 
+  // This uses HTTPConnection from cpp-common so needs various 
+  // resolvers
+  std::vector<std::string> dns_servers;
+  __globals->get_dns_servers(dns_servers);
+
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers);
+
+  int af = AF_INET;
+  struct in6_addr dummy_addr;
   std::string bind_address;
+  __globals->get_bind_address(bind_address);
+
+  if (inet_pton(AF_INET6, bind_address.c_str(), &dummy_addr) == 1)
+  {
+    LOG_DEBUG("Local host is an IPv6 address");
+    af = AF_INET6;
+  }
+
+  HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
+
+  std::string stats[] = {"chronos_scale_nodes_to_query",
+                         "chronos_scale_timers_processed"};
+  LastValueCache* lvc = new LastValueCache(2, stats, "chronos");
+
+  ChronosInternalConnection* chronos_internal_connection =
+            new ChronosInternalConnection(http_resolver, 
+                                          handler, 
+                                          handler_rep, 
+                                          lvc,
+                                          scale_operation_alarm);
+
+  // Finally, set up the HTTPStack and handlers
+  HttpStack* http_stack = HttpStack::get_instance();
   int bind_port;
   int http_threads;
-  __globals->get_bind_address(bind_address);
   __globals->get_bind_port(bind_port);
   __globals->get_threads(http_threads);
 
@@ -231,6 +266,9 @@ int main(int argc, char** argv)
     std::cerr << "Caught HttpStack::Exception" << std::endl;
   }
 
+  delete chronos_internal_connection; chronos_internal_connection = NULL;
+  delete http_resolver; http_resolver = NULL;
+  delete dns_resolver; dns_resolver = NULL;
   delete handler; handler = NULL;
   // Callback is deleted by the handler
   delete handler_rep; handler_rep = NULL;
@@ -249,6 +287,7 @@ int main(int argc, char** argv)
 
     // Delete Chronos's alarm objects
     delete timer_pop_alarm;
+    delete scale_operation_alarm;
   }
 
   sem_destroy(&term_sem);

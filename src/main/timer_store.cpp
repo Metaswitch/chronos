@@ -500,28 +500,17 @@ void TimerStore::update_replica_tracker_for_timer(TimerID id,
       timer_in_wheel = false;
     }
 
-    if (!timer->is_tombstone())
-    {
-      std::vector<std::string> leaving_nodes;
-      __globals->get_cluster_leaving_addresses(leaving_nodes);
-      std::string localhost;
-      __globals->get_cluster_local_ip(localhost);
-      bool is_leaving_node = (std::find(leaving_nodes.begin(),
-                                        leaving_nodes.end(),
-                                        localhost) != leaving_nodes.end());
+    std::string cluster_view_id;
+    __globals->get_cluster_view_id(cluster_view_id);
 
-      // Update the replica tracker
+    if (!timer->is_matching_cluster_view_id(cluster_view_id))
+    {
+      // The cluster view ID is out of date, so update the tracker. 
       int remaining_replicas = timer->update_replica_tracker(replica_index);
 
       if (remaining_replicas == 0)
       {
-        if (is_leaving_node)
-        {
-          // The node is leaving, and all the new replicas have been 
-          // informed about the timer. Delete the timer from this node. 
-          delete_timer(id);
-        } 
-        else if (!timer_in_wheel)
+        if (!timer_in_wheel)
         {
           // All the new replicas have been told about the timer. We don't
           // need to store the information about the timer anymore. 
