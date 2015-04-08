@@ -207,25 +207,6 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
-static void calculate_standard_hash(std::vector<std::string> cluster,
-                                    TimerID id,
-                                    uint32_t replication_factor,
-                                    std::vector<std::string>& replicas)
-{
-  // Pick replication-factor replicas from the cluster, using a hash of the ID
-  // to balance the choices.
-  uint32_t hash;
-  MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-  unsigned int first_replica = hash % cluster.size();
-  for (unsigned int ii = 0;
-       ii < replication_factor && ii < cluster.size();
-       ++ii)
-  {
-    replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
-  }
-}
-
-
 static void calculate_rendezvous_hash(std::vector<std::string> cluster,
                                       TimerID id,
                                       uint32_t replication_factor,
@@ -339,8 +320,7 @@ void Timer::calculate_replicas(TimerID id,
   }
 
   // Pick replication-factor replicas from the cluster.
-  calculate_standard_hash(cluster, id, replication_factor, replicas);
-  //calculate_rendezvous_hash(cluster, id, replication_factor, replicas);
+  calculate_rendezvous_hash(cluster, id, replication_factor, replicas);
 
   if (replica_hash)
   {
