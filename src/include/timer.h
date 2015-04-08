@@ -9,6 +9,13 @@
 
 typedef uint64_t TimerID;
 
+class Hasher
+{
+public:
+  virtual uint32_t do_hash(TimerID data, uint32_t seed);
+  virtual uint32_t do_hash(std::string data, uint32_t seed);
+};
+
 class Timer
 {
 public:
@@ -49,7 +56,8 @@ public:
                                  std::vector<std::string> cluster,
                                  uint32_t replication_factor,
                                  std::vector<std::string>& replicas,
-                                 std::vector<std::string>& extra_replicas);
+                                 std::vector<std::string>& extra_replicas,
+                                 Hasher* hasher);
 
   // Mark which replicas have been informed about the timer 
   int update_replica_tracker(int replica_index);

@@ -12,6 +12,7 @@
 
 static uint32_t REPLICATION_FACTOR = 2u;
 static int MAX_TIMERS = 4096;
+static Hasher normal_hasher;
 
 class TestTimerReplicaChoosing : public Base
 {
@@ -40,7 +41,8 @@ protected:
                               cluster,
                               REPLICATION_FACTOR,
                               old_replicas,
-                              extra_replicas);
+                              extra_replicas,
+                              &normal_hasher);
 
     Timer::calculate_replicas(id,
                               0u,
@@ -48,7 +50,8 @@ protected:
                               new_cluster,
                               REPLICATION_FACTOR,
                               new_replicas,
-                              extra_replicas);
+                              extra_replicas,
+                              &normal_hasher);
   }
 
   std::vector<std::string> cluster;
@@ -150,3 +153,5 @@ TEST_F(TestTimerReplicaChoosing, NoPrimaryBackupSwap)
     ASSERT_TRUE((old_replicas[1] != new_replicas[0]));
   }
 }
+
+

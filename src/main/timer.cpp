@@ -13,6 +13,22 @@
 #include <map>
 #include <atomic>
 
+uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
+{
+    uint32_t hash;
+    MurmurHash3_x86_32(&data, sizeof(TimerID), seed, &hash);
+    return hash;
+}
+
+uint32_t Hasher::do_hash(std::string data, uint32_t seed)
+{
+    uint32_t hash;
+    MurmurHash3_x86_32(data.data(), data.length(), seed, &hash);
+    return hash;
+}
+
+static Hasher hasher;
+
 Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   id(id),
   interval(interval),
@@ -210,7 +226,8 @@ void Timer::become_tombstone()
 static void calculate_rendezvous_hash(std::vector<std::string> cluster,
                                       TimerID id,
                                       uint32_t replication_factor,
-                                      std::vector<std::string>& replicas)
+                                      std::vector<std::string>& replicas,
+                                      Hasher* hasher)
 {
   if (replication_factor == 0u)
   {
@@ -223,11 +240,8 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
        ii < cluster.size();
        ++ii)
   {
-    uint32_t server_hash;
-    MurmurHash3_x86_32(cluster[ii].data(), cluster[ii].length(), 0, &server_hash);
-    uint32_t hash;
-
-    MurmurHash3_x86_32(&id, sizeof(TimerID), server_hash, &hash);
+    uint32_t server_hash = hasher->do_hash(cluster[ii], 0);
+    uint32_t hash = hasher->do_hash(id, server_hash);
 
     // Deal with hash collisions by decrementing the hash. For
     // example, if I have servers A, B, C, D which hash to
@@ -259,7 +273,8 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
     // but deterministic 
     while (hash_to_idx.find(hash) != hash_to_idx.end())
     {
-      hash--;
+      printf("Found collision!\n");
+      hash++;
     }
     
     hash_to_idx[hash] = ii;
@@ -292,7 +307,8 @@ void Timer::calculate_replicas(TimerID id,
                                std::vector<std::string> cluster,
                                uint32_t replication_factor,
                                std::vector<std::string>& replicas,
-                               std::vector<std::string>& extra_replicas)
+                               std::vector<std::string>& extra_replicas,
+                               Hasher* hasher)
 {
   std::vector<std::string> hash_replicas;
   if (replica_hash)
@@ -320,7 +336,7 @@ void Timer::calculate_replicas(TimerID id,
   }
 
   // Pick replication-factor replicas from the cluster.
-  calculate_rendezvous_hash(cluster, id, replication_factor, replicas);
+  calculate_rendezvous_hash(cluster, id, replication_factor, replicas, hasher);
 
   if (replica_hash)
   {
@@ -361,7 +377,8 @@ void Timer::calculate_replicas(uint64_t replica_hash)
                             cluster,
                             _replication_factor,
                             replicas,
-                            extra_replicas);
+                            extra_replicas,
+                            &hasher);
 }
 
 uint32_t Timer::deployment_id = 0;
