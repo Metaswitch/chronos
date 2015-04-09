@@ -217,7 +217,7 @@ void TimerStore::delete_timer(TimerID id)
     // The timer(s) are still present in the store.
     // Delete the first timer from the timer wheel, delete any 
     // other timers in the timer list, then erase the entry from
-    // the timer wheel. 
+    // the timer map. 
     Timer* timer = it->second.front(); 
     delete_timer_from_timer_wheel(timer);
 

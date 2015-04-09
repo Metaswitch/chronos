@@ -49,9 +49,9 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
 
 ChronosInternalConnection::~ChronosInternalConnection()
 {
+  delete _updater; _updater = NULL;
   delete _timers_processed_stat; _timers_processed_stat = NULL;
   delete _nodes_to_query_stat; _nodes_to_query_stat = NULL;
-  delete _updater; _updater = NULL;
   delete _http; _http = NULL;
 }
 

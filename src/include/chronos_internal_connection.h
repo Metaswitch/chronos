@@ -20,7 +20,7 @@ public:
                             Alarm* alarm);
   virtual ~ChronosInternalConnection();
 
-  // Performs a scale-up/down operation by resynchronisind
+  // Performs a scale-up/down operation by resynchronising
   // the timers on this node with all the other Chronos nodes
   virtual void scale_operation();
 
