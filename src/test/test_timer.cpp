@@ -28,6 +28,7 @@ protected:
     t1->replicas = replicas;
     t1->callback_url = "http://localhost:80/callback";
     t1->callback_body = "stuff stuff stuff";
+    t1->cluster_view_id = "cluster-view-id";
   }
 
   virtual void TearDown()
@@ -100,7 +101,7 @@ TEST_F(TestTimer, FromJSONTests)
   std::string custom_repl_factor = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
 
   // Or you can pass specific replicas to use.
-  std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}";
+  std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"cluster-view-id\": \"cluster-view-id\", \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}";
 
   // You can skip the `repeat-for` to set up a one-shot timer.
   std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
@@ -254,7 +255,7 @@ TEST_F(TestTimer, ToJSON)
   t2->replicas = t1->replicas;
   t2->callback_url = "http://localhost:80/callback";
   t2->callback_body = "{\"stuff\": \"stuff\"}";
-
+  t2->cluster_view_id = "cluster-view-id";
   std::string json = t2->to_json();
   std::string err;
   bool replicated;
@@ -270,6 +271,7 @@ TEST_F(TestTimer, ToJSON)
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
   EXPECT_EQ(t2->replicas, t3->replicas) << json;
+  EXPECT_EQ(t2->cluster_view_id, t3->cluster_view_id) << json;
   EXPECT_EQ("http://localhost:80/callback", t3->callback_url) << json;
   EXPECT_EQ("{\"stuff\": \"stuff\"}", t3->callback_body) << json;
   delete t2;
@@ -299,4 +301,10 @@ TEST_F(TestTimer, BecomeTombstone)
   EXPECT_EQ(1000000u, t1->start_time);
   EXPECT_EQ(100u, t1->interval);
   EXPECT_EQ(100u, t1->repeat_for);
+}
+
+TEST_F(TestTimer, MatchingClusterID)
+{
+  EXPECT_TRUE(t1->is_matching_cluster_view_id("cluster-view-id"));
+  EXPECT_FALSE(t1->is_matching_cluster_view_id("not-clustser-id"));
 }

@@ -41,6 +41,7 @@ public:
   GLOBAL(cluster_addresses, std::vector<std::string>);
   GLOBAL(cluster_hashes, std::vector<uint32_t>);
   GLOBAL(cluster_leaving_addresses, std::vector<std::string>);
+  GLOBAL(cluster_view_id, std::string);
   GLOBAL(alarms_enabled, bool);
   GLOBAL(threads, int);
   GLOBAL(max_ttl, int);

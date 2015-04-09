@@ -43,12 +43,14 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string server,
 HTTPCode ChronosInternalConnection::send_get(const std::string server,
                                              const std::string request_node_param,
                                              const std::string sync_mode_param,
+                                             std::string cluster_view_id_param,
                                              int max_timers,
                                              std::string& response)
 {
   std::string path = std::string("/timers?") + 
                      PARAM_REQUESTING_NODE + "="  + request_node_param + ";" +
-                     PARAM_SYNC_MODE + "=" + sync_mode_param;
+                     PARAM_SYNC_MODE + "=" + sync_mode_param + ";" +
+                     PARAM_CLUSTER_VIEW_ID + "="  + cluster_view_id_param;
 
   std::string range_header = std::string(HEADER_RANGE) + ":" + 
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
@@ -60,12 +62,14 @@ HTTPCode ChronosInternalConnection::send_get(const std::string server,
 
 HTTPCode ChronosInternalConnection::trigger_move_for_one_server(const std::string server_to_ask)
 {
-  // Get the current node and any leaving nodes from 
-  // the global configuration
+  // Get the current node, any leaving nodes, and the 
+  // cluster view ID from the global configuration
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
   std::vector<std::string> leaving_nodes;
   __globals->get_cluster_leaving_addresses(leaving_nodes);
+  std::string cluster_view_id;
+  __globals->get_cluster_view_id(cluster_view_id);
 
   std::string response;
   HTTPCode rc;
@@ -78,6 +82,7 @@ HTTPCode ChronosInternalConnection::trigger_move_for_one_server(const std::strin
     rc = send_get(server_to_ask, 
                   localhost, 
                   PARAM_SYNC_MODE_VALUE_SCALE, 
+                  cluster_view_id,
                   MAX_TIMERS_IN_RESPONSE, 
                   response);
 

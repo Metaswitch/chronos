@@ -74,20 +74,27 @@ void Globals::update_config()
 
   std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
+  
+  std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
+  set_cluster_hashes(cluster_rendezvous_hashes);
+ 
   std::map<std::string, uint64_t> cluster_bloom_filters;
-  LOG_STATUS("Cluster nodes:");
+  uint64_t cluster_view_id;
 
+  LOG_STATUS("Cluster nodes:");
   for (std::vector<std::string>::iterator it = cluster_addresses.begin();
                                           it != cluster_addresses.end();
                                           ++it)
   {
     LOG_STATUS(" - %s", it->c_str());
-    cluster_bloom_filters[*it] = generate_bloom_filter(*it);
+    uint64_t bloom = generate_bloom_filter(*it);
+    cluster_bloom_filters[*it] = bloom;
+    cluster_view_id |= bloom;
   }
   set_cluster_bloom_filters(cluster_bloom_filters);
 
-  std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
-  set_cluster_hashes(cluster_rendezvous_hashes);
+  std::string cluster_view_id_str = std::to_string(cluster_view_id);
+  set_cluster_view_id(cluster_view_id_str);
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);

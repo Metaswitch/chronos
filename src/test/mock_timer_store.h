@@ -11,7 +11,6 @@ public:
   MockTimerStore(): TimerStore(NULL) {};
   ~MockTimerStore() {};
   MOCK_METHOD1(add_timer, void(Timer*));
-  MOCK_METHOD1(add_timers, void(std::unordered_set<Timer*>&));
   MOCK_METHOD1(delete_timer, void(TimerID));
   MOCK_METHOD1(get_next_timers, void(std::unordered_set<Timer*>&));
   MOCK_METHOD2(update_replica_tracker_for_timer, void(TimerID, int));
