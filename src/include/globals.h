@@ -36,6 +36,7 @@ public:
 
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
+  GLOBAL(default_bind_port, int);
   GLOBAL(cluster_local_ip, std::string);
   GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
   GLOBAL(cluster_addresses, std::vector<std::string>);
@@ -45,6 +46,7 @@ public:
   GLOBAL(alarms_enabled, bool);
   GLOBAL(threads, int);
   GLOBAL(max_ttl, int);
+  GLOBAL(dns_servers, std::vector<std::string>);
 
 public:
   void update_config();

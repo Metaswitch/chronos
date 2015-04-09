@@ -662,9 +662,9 @@ TEST_F(TestTimerStore, DeleteOverdueTimer)
 }
 
 // Test that marking some of the replicas as being informed 
-// doesn't tombstone the timer (so it does pop), and that 
-// when it does pop it has the correct replica tracker value
-TEST_F(TestTimerStore, UpdateReplicaTrackerValue)
+// doesn't change the timer if it's got an up-to-date 
+// cluster view ID
+TEST_F(TestTimerStore, UpdateReplicaTrackerValueForNewTimer)
 {
   cwtest_advance_time_ms(500);
   std::unordered_set<Timer*> next_timers;
@@ -675,7 +675,7 @@ TEST_F(TestTimerStore, UpdateReplicaTrackerValue)
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
   timers[0] = *next_timers.begin();
-  ASSERT_EQ(7u, timers[0]->_replica_tracker);
+  ASSERT_EQ(15u, timers[0]->_replica_tracker);
 
   delete timers[0];
   delete timers[1];
@@ -683,49 +683,22 @@ TEST_F(TestTimerStore, UpdateReplicaTrackerValue)
   delete tombstone;
 }
 
-// Test that marking all replicas as being informed when the node is 
-// a leaving node causes the timer to be tombstoned (so doesn't pop)
-TEST_F(TestTimerStore, UpdateReplicaValueCheckTombstone)
-{
-  std::vector<std::string> leaving_cluster_addresses;
-  leaving_cluster_addresses.push_back("10.0.0.1:9999");
-
-  __globals->lock();
-  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
-  __globals->unlock();
-
-  cwtest_advance_time_ms(500);
-  std::unordered_set<Timer*> next_timers;
-  ts->add_timer(timers[0]);
-  ts->update_replica_tracker_for_timer(1u, 0);
-
-  ts->get_next_timers(next_timers);
-  ASSERT_EQ(0u, next_timers.size());
-
-  delete timers[1];
-  delete timers[2];
-  delete tombstone;
-
-  leaving_cluster_addresses.clear();
-  __globals->lock();
-  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
-  __globals->unlock();
-}
-
-// Test that marking all replicas as being informed when the node is
-// a not leaving node doesn't cause the timer to be tombstoned
-// (so does pop)
-TEST_F(TestTimerStore, UpdateReplicaValueCheckNotTombstone)
+// Test that marking some of the replicas as being informed
+// changes the replica tracker if the cluster view ID is
+// different
+TEST_F(TestTimerStore, UpdateReplicaTrackerValueForOldTimer)
 {
   cwtest_advance_time_ms(500);
   std::unordered_set<Timer*> next_timers;
+  timers[0]->_replica_tracker = 15;
+  timers[0]->cluster_view_id = "different-id";
   ts->add_timer(timers[0]);
-  ts->update_replica_tracker_for_timer(1u, 0);
+  ts->update_replica_tracker_for_timer(1u, 3);
 
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
   timers[0] = *next_timers.begin();
-  ASSERT_EQ(0u, timers[0]->_replica_tracker);
+  ASSERT_EQ(7u, timers[0]->_replica_tracker);
 
   delete timers[0];
   delete timers[1];

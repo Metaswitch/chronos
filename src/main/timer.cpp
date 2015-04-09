@@ -90,9 +90,7 @@ std::string Timer::url(std::string host)
     {
       // Just use the server as the address.
       address = host;
-      int bind_port;
-      __globals->get_bind_port(bind_port);
-      port = bind_port;
+      __globals->get_default_bind_port(port);
     }
 
     ss << "http://" << address << ":" << port;

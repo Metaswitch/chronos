@@ -217,7 +217,7 @@ void TimerStore::delete_timer(TimerID id)
     // The timer(s) are still present in the store.
     // Delete the first timer from the timer wheel, delete any 
     // other timers in the timer list, then erase the entry from
-    // the timer wheel. 
+    // the timer map. 
     Timer* timer = it->second.front(); 
     delete_timer_from_timer_wheel(timer);
 
@@ -500,28 +500,17 @@ void TimerStore::update_replica_tracker_for_timer(TimerID id,
       timer_in_wheel = false;
     }
 
-    if (!timer->is_tombstone())
-    {
-      std::vector<std::string> leaving_nodes;
-      __globals->get_cluster_leaving_addresses(leaving_nodes);
-      std::string localhost;
-      __globals->get_cluster_local_ip(localhost);
-      bool is_leaving_node = (std::find(leaving_nodes.begin(),
-                                        leaving_nodes.end(),
-                                        localhost) != leaving_nodes.end());
+    std::string cluster_view_id;
+    __globals->get_cluster_view_id(cluster_view_id);
 
-      // Update the replica tracker
+    if (!timer->is_matching_cluster_view_id(cluster_view_id))
+    {
+      // The cluster view ID is out of date, so update the tracker. 
       int remaining_replicas = timer->update_replica_tracker(replica_index);
 
       if (remaining_replicas == 0)
       {
-        if (is_leaving_node)
-        {
-          // The node is leaving, and all the new replicas have been 
-          // informed about the timer. Delete the timer from this node. 
-          delete_timer(id);
-        } 
-        else if (!timer_in_wheel)
+        if (!timer_in_wheel)
         {
           // All the new replicas have been told about the timer. We don't
           // need to store the information about the timer anymore. 
@@ -546,6 +535,8 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
                                          std::string cluster_view_id,
                                          std::string& get_response)
 {
+  LOG_DEBUG("Get timers for %s", request_node.c_str());
+
   // Create the JSON doc for the Timer information
   rapidjson::StringBuffer sb;
   rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
@@ -630,6 +621,7 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
 
   get_response = sb.GetString();
 
+  LOG_DEBUG("Retrieved %d timers", retrieved_timers);
   return ((max_responses != 0) &&
           (retrieved_timers == max_responses)) ? HTTP_PARTIAL_CONTENT : 
                                                  HTTP_OK;

@@ -208,7 +208,9 @@ void ControllerTask::handle_get()
 
   if (cluster_view_id != global_cluster_view_id)
   {
-    LOG_INFO("GET request is for an out of date cluster");
+    LOG_INFO("GET request is for an out of date cluster (%s and %s)", 
+             cluster_view_id.c_str(),
+             global_cluster_view_id.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }

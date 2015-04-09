@@ -129,4 +129,39 @@ static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL
   "No action required."
 );
 
+const static PDLog CL_CHRONOS_START_SCALE
+(
+  PDLog::CL_CHRONOS_ID + 10,
+  PDLOG_INFO,
+  "Chronos has started a resync operation",
+  "Chronos has detected an on-going cluster resize and is proactively "
+    "resynchronising timers between cluster members.",
+  "Timers are being resynced across the Chronos cluster.",
+  "Wait until the current resync operation has completed before continuing "
+    "with the cluster resize."
+);
+
+const static PDLog CL_CHRONOS_COMPLETE_SCALE
+(
+  PDLog::CL_CHRONOS_ID + 11,
+  PDLOG_INFO,
+  "Chronos has completed a resync operation",
+  "Chronos has synchronised all available data to the local node.",
+  "The scale operation may be completed once all other Chronos instances have "
+    "completed their resync operations.",
+  "Once all other Chronos instances have completed their resync operations "
+    "you may continue the cluster resize"
+);
+
+const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
+(
+  PDLog::CL_CHRONOS_ID + 12,
+  PDLOG_ERR,
+  "Chronos has failed to synchronise some data.",
+  "Chronos was unable to fully synchronize with the Chronos node at %s.",
+  "Not all timers have been resynchronised, completing the scaling action now "
+    "may result in loss of timers or loss of redundancy",
+  "Check the status of the Chronos cluster and ensure network connectivity "
+    "is possible between all nodes."
+);
 #endif

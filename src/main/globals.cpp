@@ -21,14 +21,16 @@ Globals::Globals(std::string config_file) :
   _desc.add_options()
     ("http.bind-address", po::value<std::string>()->default_value("localhost"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
+    ("http.default-bind-port", po::value<int>()->default_value(7253), "Port to send requests to other Chronos nodes (if not specified in the cluster settings")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
-    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of a node in the cluster")
-    ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, ""), "HOST"), "The addresses of a node in the cluster")
+    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster")
+    ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
+    ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
     ;
 
 #ifndef UNITTEST
@@ -68,6 +70,10 @@ void Globals::update_config()
   set_bind_port(bind_port);
   LOG_STATUS("Bind port: %d", bind_port);
 
+  int default_bind_port = conf_map["http.default-bind-port"].as<int>();
+  set_default_bind_port(default_bind_port);
+  LOG_STATUS("Default bind port: %d", default_bind_port);
+
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
   LOG_STATUS("Cluster local address: %s", cluster_local_address.c_str());
@@ -79,7 +85,7 @@ void Globals::update_config()
   set_cluster_hashes(cluster_rendezvous_hashes);
  
   std::map<std::string, uint64_t> cluster_bloom_filters;
-  uint64_t cluster_view_id;
+  uint64_t cluster_view_id = 0;
 
   LOG_STATUS("Cluster nodes:");
   for (std::vector<std::string>::iterator it = cluster_addresses.begin();
@@ -95,6 +101,7 @@ void Globals::update_config()
 
   std::string cluster_view_id_str = std::to_string(cluster_view_id);
   set_cluster_view_id(cluster_view_id_str);
+  LOG_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
@@ -110,6 +117,9 @@ void Globals::update_config()
   int ttl = conf_map["exceptions.max_ttl"].as<int>();
   set_max_ttl(ttl);
   LOG_STATUS("Maximum post-exception TTL: %d", ttl);
+
+  std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
+  set_dns_servers(dns_servers);
 
   unlock();
 }

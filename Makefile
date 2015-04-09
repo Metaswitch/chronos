@@ -16,11 +16,11 @@ TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := src/main/main.cpp
 TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
-TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp
+TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp
 TARGET_EXTRA_OBJS_TEST := gmock-all.o gtest-all.o
 INCLUDE_DIR := ${ROOT}/src/include
 LIB_DIR := ${INSTALL_DIR}/lib
-CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror
+CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror -DUNIT_TEST 
 CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
 LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp \
@@ -51,7 +51,7 @@ DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
 EXTRA_CLEANS := ${ROOT}/gcov ${OBJ_DIR_TEST}/chronos.memcheck
 
-SUBMODULES := c-ares curl libevhtp sas-client
+SUBMODULES := c-ares curl libevhtp sas-client cpp-common
 
 include build-infra/cw-deb.mk
 include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
