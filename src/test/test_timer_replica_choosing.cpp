@@ -262,6 +262,13 @@ TEST_F(TestTimerReplicaChoosingWithCollision, MinimumTimersMovePrimary)
     
     if ((old_replicas[0] != new_replicas[0]))
     {
+
+      // Timers should only move off the removed server to the server whose
+      // hash has replaced it, or off the server whose hash has changed to any
+      // remaining server
+      
+      ASSERT_TRUE(((old_replicas[0] == "10.0.0.1:7253") && (new_replicas[0] == "10.0.0.2:7253")) ||
+                  ((old_replicas[0] == "10.0.0.2:7253") && (new_replicas[0] != "10.0.0.1:7253")));
       different++;
     }
   }
