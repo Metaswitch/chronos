@@ -28,7 +28,9 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                            NULL)),
   _handler(handler),
   _replicator(replicator),
-  _alarm(alarm)
+  _alarm(alarm),
+  _nodes_to_query_stat(new Statistic("chronos_scale_nodes_to_query", lvc)),
+  _timers_processed_stat(new StatisticCounter("chronos_scale_timers_processed", lvc))
 {
   // Create an updater to control when Chronos should resynchronise. This uses 
   // SIGUSR1 rather than the default SIGHUP, and we shouldn't resynchronise
@@ -39,11 +41,10 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                    &_sigusr1_handler, 
                    false);
   
-  // Create the statistics
-  _nodes_to_query_stat = new Statistic("chronos_scale_nodes_to_query", lvc);
+  // Zero the statistic to start with
   std::vector<std::string> no_stats;
+  no_stats.push_back(std::to_string(0));
   _nodes_to_query_stat->report_change(no_stats);
-  _timers_processed_stat = new StatisticCounter("chronos_scale_timers_processed", lvc);
 }
 
 ChronosInternalConnection::~ChronosInternalConnection()
@@ -61,9 +62,13 @@ void ChronosInternalConnection::scale_operation()
   __globals->get_cluster_addresses(cluster_nodes);
   std::vector<std::string> leaving_nodes;
   __globals->get_cluster_leaving_addresses(leaving_nodes);
-  cluster_nodes.insert(leaving_nodes.end(), 
-                       leaving_nodes.begin(), 
-                       leaving_nodes.end());
+
+  if (leaving_nodes.size() > 0)
+  {
+    cluster_nodes.insert(leaving_nodes.end(), 
+                         leaving_nodes.begin(), 
+                         leaving_nodes.end());
+  }
 
   // Shuffle the lists (so the same Chronos node doesn't get queried by
   // all the other nodes at the same time) and remove the local node
@@ -92,19 +97,30 @@ void ChronosInternalConnection::scale_operation()
     _nodes_to_query_stat->report_change(updated_values);
     updated_values.clear();
 
-    HTTPCode rc = resynchronise_with_single_node(*it, 
+    std::string address;
+    int port;
+    if (!Utils::split_host_port(*it, address, port))
+    {
+      // Just use the server as the address.
+      address = *it;
+      __globals->get_default_bind_port(port);
+    }
+    
+    std::string server_to_sync = address + ":" + std::to_string(port);
+    HTTPCode rc = resynchronise_with_single_node(server_to_sync, 
                                                  cluster_nodes,
                                                  localhost);
     if (rc != HTTP_OK)
     {
       LOG_WARNING("Resynchronisation with node %s failed with rc %d",
-                  (*it).c_str(), 
+                  server_to_sync.c_str(), 
                   rc);
-      CL_CHRONOS_RESYNC_ERROR.log((*it).c_str());
+      CL_CHRONOS_RESYNC_ERROR.log(server_to_sync.c_str());
     }
   }
 
   // The scaling operation is now complete.
+  LOG_DEBUG("Finished scaling operation");
   CL_CHRONOS_COMPLETE_SCALE.log();
   updated_values.push_back(std::to_string(0));
   _nodes_to_query_stat->report_change(updated_values);

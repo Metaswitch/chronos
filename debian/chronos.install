@@ -1,4 +1,5 @@
 build/bin/chronos /usr/bin
+modules/cpp-common/scripts/stats-c/cw_stat usr/share/chronos
 build/usr/lib/*.so /usr/share/chronos/lib
 build/usr/lib/*.so.* /usr/share/chronos/lib
 etc /

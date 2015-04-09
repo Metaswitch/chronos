@@ -37,7 +37,7 @@ DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
 EXTRA_CLEANS := ${ROOT}/gcov ${OBJ_DIR_TEST}/chronos.memcheck
 
-SUBMODULES := c-ares curl libevhtp sas-client
+SUBMODULES := c-ares curl libevhtp sas-client cpp-common
 
 include build-infra/cw-deb.mk
 include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})

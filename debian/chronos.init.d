@@ -77,7 +77,7 @@ do_abort()
 #
 do_scale_operation()
 {
-  start-stop-daemon --stop --signal 16 --quiet --pidfile $PIDFILE --name $EXECNAME
+  start-stop-daemon --stop --signal 10 --quiet --pidfile $PIDFILE --name $EXECNAME
   return 0
 }
 
@@ -90,21 +90,20 @@ do_wait_sync() {
 
   # Query Chronos via the 0MQ socket, parse out the number of Chronos nodes
   # still needing to be queried, and check if it's 0. 
-  #If not, wait for 5s and try again.
+  # If not, wait for 5s and try again.
   while true
   do
     # Retrieve the statistics.
-    nodes="`/usr/share/clearwater/bin/cw_stat chronos chronos_scale_nodes_to_query`"
+    nodes=`/usr/share/clearwater/bin/cw_stat chronos chronos_scale_nodes_to_query`
 
-    # If the nodes left to query is 0, we're finished
-    if [ "$nodes" = "0" ]
+    # If the nodes left to query is 0 or unset, we're finished
+    if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]
     then
       break
     fi
 
-    # Indicate that we're still waiting, and how many nodes are left. Then
-    # sleep for 5 secs and repeat
-    echo -n "Nodes remaining $nodes ..."
+    # Indicate that we're still waiting, then sleep for 5 secs and repeat
+    echo -n "..."
     sleep 5
   done
   return 0
@@ -137,7 +136,7 @@ case "$1" in
         do_scale_operation
         ;;
   wait-sync)
-        log_daemon_msg "Waiting for synchronization - $DESC" "$NAME"
+        log_daemon_msg "Waiting for synchronization - $DESC"
         do_wait_sync
         ;;
   restart)

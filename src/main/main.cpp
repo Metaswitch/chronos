@@ -130,9 +130,9 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  // Initialize the global configuration.
+  // Initialize the global configuration. Creating the __globals object
+  // updates the global configuration
   __globals = new Globals(options.config_file);
-  __globals->update_config();
 
   boost::filesystem::path p = argv[0];
   // Copy the filename to a string so that we can be sure of its lifespan -

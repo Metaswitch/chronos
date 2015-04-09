@@ -29,9 +29,9 @@ private:
   TimerHandler* _handler;
   Replicator* _replicator;
   Alarm* _alarm;
-  Updater<void, ChronosInternalConnection>* _updater;
-  Counter* _timers_processed_stat; 
   Statistic* _nodes_to_query_stat;
+  StatisticCounter* _timers_processed_stat;
+  Updater<void, ChronosInternalConnection>* _updater;
 
   // Creates the body to use in a delete request. This is a JSON
   // encoded string of the format:

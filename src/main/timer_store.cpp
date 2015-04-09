@@ -535,6 +535,8 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
                                          std::string cluster_view_id,
                                          std::string& get_response)
 {
+  LOG_DEBUG("Get timers for %s", request_node.c_str());
+
   // Create the JSON doc for the Timer information
   rapidjson::StringBuffer sb;
   rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
@@ -619,6 +621,7 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
 
   get_response = sb.GetString();
 
+  LOG_DEBUG("Retrieved %d timers", retrieved_timers);
   return ((max_responses != 0) &&
           (retrieved_timers == max_responses)) ? HTTP_PARTIAL_CONTENT : 
                                                  HTTP_OK;
