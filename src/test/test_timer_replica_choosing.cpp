@@ -122,7 +122,7 @@ TEST_F(TestTimerReplicaChoosing, MinimumTimersMovePrimary)
   }
 
   // To balance the cluster when we moved from N replicas to N+1, approximately
-  // 1/N+1th of existing timers should have moved. Allow a 15% difference to account for randomness.
+  // 1/N+1th of existing timers should have moved. Allow a 5% difference to account for randomness.
   EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / new_cluster.size()) * 1.05));
 }
 
@@ -148,7 +148,7 @@ TEST_F(TestTimerReplicaChoosing, MinimumTimersMoveBackup)
 
 
   // To balance the cluster when we moved from N replicas to N+1, approximately
-  // 1/N+1th of existing timers should have moved. Allow a 15% difference to account for randomness.
+  // 1/N+1th of existing timers should have moved. Allow a 5% difference to account for randomness.
   EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / new_cluster.size()) * 1.05));
 }
 
@@ -241,15 +241,14 @@ TEST_F(TestTimerReplicaChoosingWithCollision, MinimumTimersMovePrimary)
     }
   }
 
-  //printf("%d of %d timers changed primary replica on scale-up (expected around %ld, won't accept more than %ld)\n", different, MAX_TIMERS, MAX_TIMERS / new_cluster.size(), (uint32_t)((MAX_TIMERS / new_cluster.size()) * 1.05));
-
   // If we have a cluster of size N shringing to size M, we remove A, and that resolves a hash collision so B's hash changes:
   //  - B's hash is now A's former hash, so all A's timers (1/N) move to B
   //  - B's hash has disappeared, so all B's timers (1/N) get rehashed
   //  - Of those 1/N timers, M-1/M move to other nodes, and 1/M stay on B
   //  - Overall, 1/N + (M-1/MN) of the total timers movetimers move = (M/MN + M-1/MN) = 2M-1/MN
-  //
   int expected_to_move = MAX_TIMERS * ((2 * new_cluster.size()) - 1) / (new_cluster.size() * cluster.size());
+
+  // Allow a 5% deviation from the expected value (as our subset of timers won't necessarily be perfectly distributed).
   EXPECT_THAT(different, ::testing::Lt(expected_to_move * 1.05));
 }
 
