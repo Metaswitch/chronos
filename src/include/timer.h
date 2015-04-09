@@ -9,6 +9,9 @@
 
 typedef uint64_t TimerID;
 
+// Separate class implementing the hash approach for rendezvous hashing -
+// allows the hashing to be changed in UT (e.g. to force collisions).
+
 class Hasher
 {
 public:
@@ -50,6 +53,7 @@ public:
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
 
+  // Class method for calculating replicas, for easy UT.
   static void calculate_replicas(TimerID id,
                                  uint64_t replica_hash,
                                  std::map<std::string, uint64_t> cluster_hashes,

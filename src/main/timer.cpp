@@ -237,6 +237,11 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
 
   std::map<uint32_t, size_t> hash_to_idx;
   std::vector<std::string> ordered_cluster;
+
+  // Do a rendezvous hash, by hashing this timer repeatedly, seeded by a
+  // different per-server value each time. Rank the servers for this timer
+  // based on this hash output.
+
   for (unsigned int ii = 0;
        ii < cluster.size();
        ++ii)
@@ -244,43 +249,44 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
     uint32_t server_hash = cluster_rendezvous_hashes[ii];
     uint32_t hash = hasher->do_hash(id, server_hash);
 
-    // Deal with hash collisions by decrementing the hash. For
-    // example, if I have servers A, B, C, D which hash to
-    // 10, 4, 10, 3:
+    // Deal with hash collisions by incrementing the hash. For
+    // example, if I have server hashes A, B, C, D which cause
+    // this timer to hash to 10, 40, 10, 30:
     // hash_to_idx[10] = 0 (A's index)
-    // hash_to_idx[4] = 1 (B's index)
-    // hash_to_idx[10] exists, decrement C's hash
-    // hash_to_idx[9] = 2 (C's index)
-    // hash_to_idx[3] = 3 (D's index)
+    // hash_to_idx[40] = 1 (B's index)
+    // hash_to_idx[10] exists, increment C's hash
+    // hash_to_idx[11] = 2 (C's index)
+    // hash_to_idx[30] = 3 (D's index)
     //
-    // Iterating over hash_to_idx then gives (10, 0), (9, 2), (4, 1)
-    // and (3, 3), so the ordered list is A, C, B, D. Effectively, the
+    // Iterating over hash_to_idx then gives (10, 0), (11, 2), (40, 1)
+    // and (30, 3), so the ordered list is A, C, B, D. Effectively, the
     // first entry in the original list consistently wins.
     //
     // This doesn't work perfectly in the edge case 
-    // If I have servers A, B, C, D which hash to
-    // 10, 9, 10, 9:
+    // If I have servers A, B, C, D which cause this
+    // timer to hash to 10, 11, 10, 11:
     // hash_to_idx[10] = 0 (A's index)
-    // hash_to_idx[9] = 1 (B's index)
-    // hash_to_idx[10] exists, decrement C's hash
-    // hash_to_idx[9] exists, decrement C's hash
-    // hash_to_idx[8] = 2 (C's index)
-    // hash_to_idx[9] exists, decrement D's hash
-    // hash_to_idx[8] exists, decrement D's hash
-    // hash_to_idx[7] = 3 (D's index)
+    // hash_to_idx[11] = 1 (B's index)
+    // hash_to_idx[10] exists, increment C's hash
+    // hash_to_idx[11] exists, increment C's hash
+    // hash_to_idx[12] = 2 (C's index)
+    // hash_to_idx[11] exists, increment D's hash
+    // hash_to_idx[12] exists, increment D's hash
+    // hash_to_idx[13] = 3 (D's index)
     //
-    // Iterating over hash_to_idx then gives (10, 0), (9, 1), (8, 2)
-    // and (7, 3), so the ordered list is A, B, C, D. This is wrong,
-    // but deterministic 
+    // Iterating over hash_to_idx then gives (10, 0), (11, 1), (12, 2)
+    // and (13, 3), so the ordered list is A, B, C, D. This is wrong,
+    // but deterministic - the only problem in this very rare case is that
+    // more timers will be moved around when scaling.
     while (hash_to_idx.find(hash) != hash_to_idx.end())
     {
-      printf("Found collision!\n");
       hash++;
     }
     
     hash_to_idx[hash] = ii;
   }
 
+  // Pick the lowest hash value as the primary replica.
   for (std::map<uint32_t, size_t>::iterator ii = hash_to_idx.begin();
        ii != hash_to_idx.end();
        ii++)
@@ -289,7 +295,8 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
   }
   
   replicas.push_back(ordered_cluster.front());
-  
+
+  // Pick the (N-1) highest hash values as the backup replicas.  
   replication_factor = replication_factor > ordered_cluster.size() ?
                        ordered_cluster.size() : replication_factor;
 
@@ -342,7 +349,7 @@ void Timer::calculate_replicas(TimerID id,
 
   if (replica_bloom_filter)
   {
-    // Finally, add any replicas that were in hash_replicas but aren't in
+    // Finally, add any replicas that were in the bloom filter but aren't in
     // replicas to the extra_replicas vector.
     for (unsigned int ii = 0;
          ii < bloom_replicas.size();

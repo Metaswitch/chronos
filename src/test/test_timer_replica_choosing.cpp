@@ -67,9 +67,8 @@ protected:
 };
 
 
-/*****************************************************************************/
-/* Class functions                                                           */
-/*****************************************************************************/
+// The algorithm used to choose replicas should balance timers fairly - e.g. in
+// cluster of 10 nodes, each should have 10% of the timers.
 
 TEST_F(TestTimerReplicaChoosing, ClusteringIsBalanced)
 {
@@ -95,6 +94,10 @@ TEST_F(TestTimerReplicaChoosing, ClusteringIsBalanced)
   }
 }
 
+// The algorithm used to choose replicas should move as few timers as possible
+// on scale-up - if we have "A, B, C" and scale up to "A, B, C, D", D needs to end
+// up with 25% of timers - so only 25% of timers should move primary, and only
+// to D (e.g. no moves from B to C).
 TEST_F(TestTimerReplicaChoosing, MinimumTimersMovePrimary)
 {
   int different = 0;
@@ -114,13 +117,12 @@ TEST_F(TestTimerReplicaChoosing, MinimumTimersMovePrimary)
     }
   }
 
-  //printf("%d of %d timers changed primary replica on scale-up (expected around %ld, won't accept more than %ld)\n", different, MAX_TIMERS, MAX_TIMERS / new_cluster.size(), (uint32_t)((MAX_TIMERS / new_cluster.size()) * 1.15));
-
-  // To balance the cluster when we moved from 5 replicas to 6, approximately
-  // 1/6th of existing timers should have moved. Allow a 15% difference to account for randomness.
+  // To balance the cluster when we moved from N replicas to N+1, approximately
+  // 1/N+1th of existing timers should have moved. Allow a 15% difference to account for randomness.
   EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / new_cluster.size()) * 1.15));
 }
 
+// Same logic as previous test, but checking backup instead of primary.
 TEST_F(TestTimerReplicaChoosing, MinimumTimersMoveBackup)
 {
   int different = 0;
@@ -140,13 +142,14 @@ TEST_F(TestTimerReplicaChoosing, MinimumTimersMoveBackup)
     }
   }
 
-  //printf("%d of %d timers changed first backup replica on scale-up (expected around %ld, won't accept more than %ld)\n", different, MAX_TIMERS, MAX_TIMERS / new_cluster.size(), (uint32_t)((MAX_TIMERS / new_cluster.size()) * 1.15));
 
-  // To balance the cluster when we moved from 5 replicas to 6, approximately
-  // 1/6th of existing timers should have moved. Allow a 15% difference to account for randomness.
+  // To balance the cluster when we moved from N replicas to N+1, approximately
+  // 1/N+1th of existing timers should have moved. Allow a 15% difference to account for randomness.
   EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / new_cluster.size()) * 1.15));
 }
 
+// The algorithm used to distribute timers should ensure that no primary nodes
+// become backup nodes on scale-up, and that no backup nodes become primary.
 TEST_F(TestTimerReplicaChoosing, NoPrimaryBackupSwap)
 {
   for (TimerID id = (TimerID)0;
@@ -159,6 +162,7 @@ TEST_F(TestTimerReplicaChoosing, NoPrimaryBackupSwap)
   }
 }
 
+// Test behaviour when the hashes of two servers collide, and the collision is resolved by removing one.
 class TestTimerReplicaChoosingWithCollision : public Base
 {
 protected:
@@ -167,6 +171,11 @@ protected:
     Base::SetUp();
     cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
     new_cluster = {"10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
+
+    // Emulate behaviour if "10.0.0.1:7253" and "10.0.0.2:7253" both hashed to 100.
+    //  - On the initial collision, "10.0.0.2:7253"'s hash would be decremented to 99.
+    //  - Once "10.0.0.1:7253" was removed, "10.0.0.2:7253"'s hash would no longer need
+    //    to be decremented, and would change to 100.
     cluster_rendezvous_hashes = {100, 99, 4, 5};
     new_cluster_rendezvous_hashes = {100, 4, 5};
   }
@@ -213,7 +222,7 @@ protected:
   std::vector<std::string> extra_replicas;
 };
 
-
+// The collision algorithm should keep timers balanced across all the nodes.
 TEST_F(TestTimerReplicaChoosingWithCollision, ClusteringIsBalanced)
 {
   std::map<std::string, uint32_t> cluster_counts;
@@ -237,6 +246,10 @@ TEST_F(TestTimerReplicaChoosingWithCollision, ClusteringIsBalanced)
     EXPECT_LT(cluster_counts[*ii], expected_max);
   }
 }
+
+// When a collision is resolved, slightly more timers than normal will move.
+// Check that the number that move does not exceed the expectations we've
+// calculated.
 
 TEST_F(TestTimerReplicaChoosingWithCollision, MinimumTimersMovePrimary)
 {
