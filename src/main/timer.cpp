@@ -224,6 +224,7 @@ void Timer::become_tombstone()
 }
 
 static void calculate_rendezvous_hash(std::vector<std::string> cluster,
+                                      std::vector<uint32_t> cluster_rendezvous_hashes,
                                       TimerID id,
                                       uint32_t replication_factor,
                                       std::vector<std::string>& replicas,
@@ -240,7 +241,7 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
        ii < cluster.size();
        ++ii)
   {
-    uint32_t server_hash = hasher->do_hash(cluster[ii], 0);
+    uint32_t server_hash = cluster_rendezvous_hashes[ii];
     uint32_t hash = hasher->do_hash(id, server_hash);
 
     // Deal with hash collisions by decrementing the hash. For
@@ -305,6 +306,7 @@ void Timer::calculate_replicas(TimerID id,
                                uint64_t replica_bloom_filter,
                                std::map<std::string, uint64_t> cluster_bloom_filters,
                                std::vector<std::string> cluster,
+                               std::vector<uint32_t> cluster_rendezvous_hashes,
                                uint32_t replication_factor,
                                std::vector<std::string>& replicas,
                                std::vector<std::string>& extra_replicas,
@@ -336,7 +338,7 @@ void Timer::calculate_replicas(TimerID id,
   }
 
   // Pick replication-factor replicas from the cluster.
-  calculate_rendezvous_hash(cluster, id, replication_factor, replicas, hasher);
+  calculate_rendezvous_hash(cluster, cluster_rendezvous_hashes, id, replication_factor, replicas, hasher);
 
   if (replica_bloom_filter)
   {
@@ -367,14 +369,17 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   std::map<std::string, uint64_t> cluster_bloom_filters;
   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
   
-  
   std::vector<std::string> cluster;
   __globals->get_cluster_addresses(cluster);
+
+  std::vector<uint32_t> cluster_rendezvous_hashes;
+  __globals->get_cluster_hashes(cluster_rendezvous_hashes);
 
   Timer::calculate_replicas(id,
                             replica_hash,
                             cluster_bloom_filters,
                             cluster,
+                            cluster_rendezvous_hashes,
                             _replication_factor,
                             replicas,
                             extra_replicas,

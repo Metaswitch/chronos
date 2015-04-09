@@ -22,6 +22,9 @@ void Base::SetUp()
   cluster_bloom_filters["10.0.0.2:9999"] = 0x10001000001000;
   cluster_bloom_filters["10.0.0.3:9999"] = 0x01000100000100;
   __globals->set_cluster_bloom_filters(cluster_bloom_filters);
+  std::vector<uint32_t> cluster_rendezvous_hashes = __globals->generate_hashes(cluster_addresses);
+  __globals->set_cluster_hashes(cluster_rendezvous_hashes);
+
   int bind_port = 9999;
   __globals->set_bind_port(bind_port);
   __globals->unlock();

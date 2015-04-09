@@ -86,6 +86,9 @@ void Globals::update_config()
   }
   set_cluster_bloom_filters(cluster_bloom_filters);
 
+  std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
+  set_cluster_hashes(cluster_rendezvous_hashes);
+
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
 
@@ -125,3 +128,20 @@ uint64_t Globals::generate_bloom_filter(std::string data)
 
   return rc;
 }
+
+std::vector<uint32_t> Globals::generate_hashes(std::vector<std::string> data)
+{
+  std::vector<uint32_t> ret;
+  for (size_t ii = 0; ii < data.size(); ++ii)
+  {
+    uint32_t hash;
+    MurmurHash3_x86_32(data[ii].c_str(), data[ii].length(), 0, &hash);
+    while (std::find(ret.begin(), ret.end(), hash) != ret.end()) {
+      hash--;
+    }
+    ret.push_back(hash);
+  }
+
+  return ret;
+}
+

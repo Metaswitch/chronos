@@ -54,6 +54,7 @@ public:
                                  uint64_t replica_hash,
                                  std::map<std::string, uint64_t> cluster_hashes,
                                  std::vector<std::string> cluster,
+                                 std::vector<uint32_t> cluster_rendezvous_hashes,
                                  uint32_t replication_factor,
                                  std::vector<std::string>& replicas,
                                  std::vector<std::string>& extra_replicas,
