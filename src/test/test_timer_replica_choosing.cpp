@@ -23,6 +23,9 @@ protected:
     cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
     new_cluster = cluster;
     new_cluster.push_back("10.0.0.100:7253");
+    
+    cluster_rendezvous_hashes = __globals->generate_hashes(cluster);
+    new_cluster_rendezvous_hashes = __globals->generate_hashes(new_cluster);
   }
 
   virtual void TearDown()
@@ -33,8 +36,6 @@ protected:
   void calculate_timers_for_id(TimerID id)
   {
     std::map<std::string, uint64_t> cluster_bloom_filters;
-    std::vector<uint32_t> cluster_rendezvous_hashes = __globals->generate_hashes(cluster);
-    std::vector<uint32_t> new_cluster_rendezvous_hashes = __globals->generate_hashes(new_cluster);
     old_replicas.clear();
     new_replicas.clear();
     Timer::calculate_replicas(id,
@@ -61,6 +62,9 @@ protected:
   std::vector<std::string> cluster;
   std::vector<std::string> new_cluster;
   
+  std::vector<uint32_t> cluster_rendezvous_hashes;
+  std::vector<uint32_t> new_cluster_rendezvous_hashes;
+
   std::vector<std::string> old_replicas;
   std::vector<std::string> new_replicas;
   std::vector<std::string> extra_replicas;
@@ -163,7 +167,7 @@ TEST_F(TestTimerReplicaChoosing, NoPrimaryBackupSwap)
 }
 
 // Test behaviour when the hashes of two servers collide, and the collision is resolved by removing one.
-class TestTimerReplicaChoosingWithCollision : public Base
+class TestTimerReplicaChoosingWithCollision : public TestTimerReplicaChoosing
 {
 protected:
   virtual void SetUp()
@@ -184,42 +188,6 @@ protected:
   {
     Base::TearDown();
   }
-
-  void calculate_timers_for_id(TimerID id)
-  {
-    std::map<std::string, uint64_t> cluster_bloom_filters;
-    old_replicas.clear();
-    new_replicas.clear();
-    Timer::calculate_replicas(id,
-                              0u,
-                              cluster_bloom_filters,
-                              cluster,
-                              cluster_rendezvous_hashes,
-                              REPLICATION_FACTOR,
-                              old_replicas,
-                              extra_replicas,
-                              &normal_hasher);
-
-    Timer::calculate_replicas(id,
-                              0u,
-                              cluster_bloom_filters,
-                              new_cluster,
-                              new_cluster_rendezvous_hashes,
-                              REPLICATION_FACTOR,
-                              new_replicas,
-                              extra_replicas,
-                              &normal_hasher);
-  }
-
-  std::vector<std::string> cluster;
-  std::vector<std::string> new_cluster;
-  
-  std::vector<uint32_t> cluster_rendezvous_hashes;
-  std::vector<uint32_t> new_cluster_rendezvous_hashes;
-  
-  std::vector<std::string> old_replicas;
-  std::vector<std::string> new_replicas;
-  std::vector<std::string> extra_replicas;
 };
 
 // The collision algorithm should keep timers balanced across all the nodes.
