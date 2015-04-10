@@ -16,7 +16,7 @@ class TimerHandler
 {
 public:
   TimerHandler(TimerStore*, Callback*);
-  ~TimerHandler();
+  virtual ~TimerHandler();
   virtual void add_timer(Timer*);
   virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);

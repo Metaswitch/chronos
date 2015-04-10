@@ -80,22 +80,24 @@ void Globals::update_config()
 
   std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
-
-  LOG_STATUS("Cluster nodes:");
-  std::map<std::string, uint64_t> cluster_hashes;
+  
+  std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
+  set_cluster_hashes(cluster_rendezvous_hashes);
+ 
+  std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 
+  LOG_STATUS("Cluster nodes:");
   for (std::vector<std::string>::iterator it = cluster_addresses.begin();
                                           it != cluster_addresses.end();
                                           ++it)
   {
     LOG_STATUS(" - %s", it->c_str());
-    uint64_t cluster_hash = generate_hash(*it);
-    cluster_hashes[*it] = cluster_hash;
-    cluster_view_id |= cluster_hash;
+    uint64_t bloom = generate_bloom_filter(*it);
+    cluster_bloom_filters[*it] = bloom;
+    cluster_view_id |= bloom;
   }
- 
-  set_cluster_hashes(cluster_hashes);
+  set_cluster_bloom_filters(cluster_bloom_filters);
 
   std::string cluster_view_id_str = std::to_string(cluster_view_id);
   set_cluster_view_id(cluster_view_id_str);
@@ -127,7 +129,7 @@ void Globals::update_config()
 // Create 3 128-bit hashes, modulo each half down to 0..63 and set those
 // bits in the returned value.  In general this will set ~6 bits in the
 // returned hash.
-uint64_t Globals::generate_hash(std::string data)
+uint64_t Globals::generate_bloom_filter(std::string data)
 {
   uint64_t hash[2];
   uint64_t rc = 0;
@@ -143,3 +145,23 @@ uint64_t Globals::generate_hash(std::string data)
 
   return rc;
 }
+
+std::vector<uint32_t> Globals::generate_hashes(std::vector<std::string> data)
+{
+  std::vector<uint32_t> ret;
+  for (size_t ii = 0; ii < data.size(); ++ii)
+  {
+    uint32_t hash;
+    MurmurHash3_x86_32(data[ii].c_str(), data[ii].length(), 0, &hash);
+
+    // If we have hash collisions, modify the hash (we decrement it,
+    // but any arbitrary modification is valid) until it is unique.
+    while (std::find(ret.begin(), ret.end(), hash) != ret.end()) {
+      hash--;
+    }
+    ret.push_back(hash);
+  }
+
+  return ret;
+}
+

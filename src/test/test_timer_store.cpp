@@ -675,7 +675,7 @@ TEST_F(TestTimerStore, UpdateReplicaTrackerValueForNewTimer)
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
   timers[0] = *next_timers.begin();
-  ASSERT_EQ(15, timers[0]->_replica_tracker);
+  ASSERT_EQ(15u, timers[0]->_replica_tracker);
 
   delete timers[0];
   delete timers[1];
@@ -698,7 +698,7 @@ TEST_F(TestTimerStore, UpdateReplicaTrackerValueForOldTimer)
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
   timers[0] = *next_timers.begin();
-  ASSERT_EQ(7, timers[0]->_replica_tracker);
+  ASSERT_EQ(7u, timers[0]->_replica_tracker);
 
   delete timers[0];
   delete timers[1];
@@ -786,7 +786,7 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
                                                     ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
   EXPECT_EQ(1u, map_it->second.size());
-  EXPECT_EQ(1, map_it->second.front()->id);
+  EXPECT_EQ(1u, map_it->second.front()->id);
 
   // Add a new timer with the same ID, and an updated Cluster View ID
   timers[1]->id = 1; 
@@ -798,9 +798,9 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
   map_it = ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
   EXPECT_EQ(2u, map_it->second.size());
-  EXPECT_EQ(1, map_it->second.front()->id);
+  EXPECT_EQ(1u, map_it->second.front()->id);
   EXPECT_EQ("updated-cluster-view-id", map_it->second.front()->cluster_view_id);
-  EXPECT_EQ(1, map_it->second.back()->id);
+  EXPECT_EQ(1u, map_it->second.back()->id);
   EXPECT_EQ("cluster-view-id", map_it->second.back()->cluster_view_id);
 
   // Add a new timer with the same ID, an updated Cluster View ID, 
@@ -815,10 +815,10 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
   map_it = ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
   EXPECT_EQ(2u, map_it->second.size());
-  EXPECT_EQ(1, map_it->second.front()->id);
+  EXPECT_EQ(1u, map_it->second.front()->id);
   EXPECT_EQ("updated-again-cluster-view-id", map_it->second.front()->cluster_view_id);
   EXPECT_TRUE(map_it->second.front()->is_tombstone());
-  EXPECT_EQ(1, map_it->second.back()->id);
+  EXPECT_EQ(1u, map_it->second.back()->id);
   EXPECT_EQ("updated-cluster-view-id", map_it->second.back()->cluster_view_id);
   EXPECT_FALSE(map_it->second.back()->is_tombstone());
 
@@ -857,8 +857,8 @@ TEST_F(TestTimerStore, ModifySavedTimers)
                                                     ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
   EXPECT_EQ(2u, map_it->second.size());
-  EXPECT_EQ(7, map_it->second.front()->_replica_tracker);
-  EXPECT_EQ(3, map_it->second.back()->_replica_tracker);
+  EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
+  EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
 
   // Check which replicas are told about this timer. The first replica (and 
   // second, but this isn't tested) should be told, the third replica 

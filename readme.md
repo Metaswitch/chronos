@@ -22,15 +22,7 @@ To develop on Chronos, you'll need to install a few dependencies first.
 
 On Ubuntu most of these can be installed with:
 
-    sudo apt-get install git build-essential devscripts debhelper libcurl4-gnutls-dev libboost-program-options-dev libboost-regex-dev libevent-dev google-mock
-
-The only part that doesn't install is the actual `gtest` library, it does however install the library code to `/usr/src`.  You can build this into the correct library with:
-
-    sudo apt-get install cmake
-    cd /usr/src/gtest
-    sudo cmake -f CMakeCache.txt
-    sudo make
-    sudo mv libgtest.a libgtest_main.a /usr/lib/
+    sudo apt-get install git build-essential devscripts debhelper libcurl4-gnutls-dev libboost-program-options-dev libboost-regex-dev libevent-dev
 
 ### Building
 
