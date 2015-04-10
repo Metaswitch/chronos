@@ -153,6 +153,9 @@ std::vector<uint32_t> Globals::generate_hashes(std::vector<std::string> data)
   {
     uint32_t hash;
     MurmurHash3_x86_32(data[ii].c_str(), data[ii].length(), 0, &hash);
+
+    // If we have hash collisions, modify the hash (we decrement it,
+    // but any arbitrary modification is valid) until it is unique.
     while (std::find(ret.begin(), ret.end(), hash) != ret.end()) {
       hash--;
     }
