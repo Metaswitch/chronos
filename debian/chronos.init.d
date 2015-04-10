@@ -30,14 +30,18 @@ DAEMON=/usr/bin/chronos
 # Load LSB functions
 . /lib/lsb/init-functions
 
-do_start()
+setup_environment()
 {
   # Allow chronos to write out core files.
   ulimit -c unlimited
 
   # Include the libraries that come with chronos.
   export LD_LIBRARY_PATH=/usr/share/chronos/lib:$LD_LIBRARY_PATH
+}
 
+do_start()
+{
+  setup_environment
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
   $start_prefix start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON || return 2
 }
@@ -49,6 +53,12 @@ do_stop()
   [ "$RETVAL" = 2 ] && return 2
   rm -f $PIDFILE
   return $RETVAL
+}
+
+do_run()
+{
+  setup_environment
+  $start_prefix start-stop-daemon --start --quiet --exec $DAEMON || return 2
 }
 
 do_reload()
@@ -89,6 +99,14 @@ case "$1" in
                 2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
         esac
         ;;
+  run)
+        [ "$VERBOSE" != no ] && log_daemon_msg "Running $DESC" "$NAME"
+        do_run
+        case "$?" in
+                0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+                2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+        esac
+        ;;
   status)
         status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
         ;;
@@ -122,7 +140,7 @@ case "$1" in
         esac
         ;;
   *)
-        echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload}" >&2
         exit 3
         ;;
 esac
