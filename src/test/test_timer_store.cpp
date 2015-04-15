@@ -674,7 +674,7 @@ TEST_F(TestTimerStore, UpdateReplicaTrackerValue)
   ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
   timers[0] = *next_timers.begin();
-  ASSERT_EQ(7, timers[0]->_replica_tracker);
+  ASSERT_EQ(7u, timers[0]->_replica_tracker);
 
   delete timers[0];
   delete timers[1];
