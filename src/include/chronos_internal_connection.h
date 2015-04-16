@@ -22,7 +22,7 @@ public:
 
   // Performs a scale-up/down operation by resynchronising
   // the timers on this node with all the other Chronos nodes
-  virtual void scale_operation();
+  virtual void resynchronize();
 
 private:
   HttpConnection* _http;

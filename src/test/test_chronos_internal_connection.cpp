@@ -128,9 +128,16 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
   delete added_timer; added_timer = NULL;
 }
 
-TEST_F(TestChronosInternalConnection, ScaleOperationsWithTimers)
+TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
 {
-  // Timers from 10.0.0.2/10.0.0.3 - One timer that's having its replica list reordered
+  std::vector<std::string> leaving_cluster_addresses;
+  leaving_cluster_addresses.push_back("10.0.0.4:9999");
+
+  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
+  _cluster_addresses.push_back("10.0.0.4:9999");
+
+  // Timers from 10.0.0.2/10.0.0.3/10.0.0.4 - One timer that's having its replica list reordered. 
+  // This isn't a valid response (as it should be different for .2/.3/.4), but it's sufficient
   fakecurl_responses["http://10.42.42.42:9999/timers?requesting-node=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.1:9999\", \"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.3:9999\", \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}}]}";
 
   // Delete response
@@ -141,9 +148,13 @@ TEST_F(TestChronosInternalConnection, ScaleOperationsWithTimers)
   EXPECT_CALL(*_th, add_timer(_)).Times(0);
   // There are no calls to replicate to 10.0.0.3 as it is lower in the replica list
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.3:9999")).Times(0);
-  // There are two calls to replicate to 10.0.0.2 as it is lower/equal in the old/new replica lists
-  EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.2:9999")).Times(2);
-  _chronos->scale_operation();
+  // There are three calls to replicate to 10.0.0.2 as it is lower/equal in the old/new replica lists
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.2:9999")).Times(3);
+  _chronos->resynchronize();
+
+  _cluster_addresses.pop_back();
+  leaving_cluster_addresses.clear();
+  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultsInvalidJSON)

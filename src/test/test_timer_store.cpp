@@ -717,7 +717,10 @@ TEST_F(TestTimerStore, SelectTimers)
   std::string get_response;
 
   std::string updated_cluster_view_id = "updated-cluster-view-id";
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
+  __globals->set_cluster_addresses(cluster_addresses);
   __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 
@@ -730,8 +733,11 @@ TEST_F(TestTimerStore, SelectTimers)
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
 
   std::string cluster_view_id = "cluster-view-id";
+  cluster_addresses.push_back("10.0.0.2:9999");
+  cluster_addresses.push_back("10.0.0.3:9999");
   __globals->lock();
   __globals->set_cluster_view_id(cluster_view_id);
+  __globals->set_cluster_addresses(cluster_addresses);
   __globals->unlock();
 
   delete tombstone;
@@ -746,7 +752,7 @@ TEST_F(TestTimerStore, SelectTimersNoMatchesReqNode)
   ts->add_timer(timers[1]);
   ts->add_timer(timers[2]);
   std::string get_response;
-  ts->get_timers_for_node("10.0.0.2:9999", 1, "updated-cluster-view-id", get_response);
+  ts->get_timers_for_node("10.0.0.4:9999", 1, "updated-cluster-view-id", get_response);
 
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 
@@ -860,16 +866,6 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
   EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
 
-  // Check which replicas are told about this timer. The first replica (and 
-  // second, but this isn't tested) should be told, the third replica 
-  // shouldn't be
-  std::string get_response;
-  ts->get_timers_for_node("10.0.0.3:9999", 1, "cluster-view-id", get_response);
-  EXPECT_EQ(get_response, "{\"Timers\":[]}");
-  ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\",\"10.0.0.2:9999\",\"10.0.0.3:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\",\"10.0.0.2:9999\",\"10.0.0.3:9999\"]}}}]}";
-  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
-
   // Finally, update the replica tracker to mark all replicas
   // as having been informed for Timer ID 1. This should 
   // delete the saved timer. 
@@ -877,6 +873,7 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   map_it = ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
   EXPECT_EQ(1u, map_it->second.size());
+  std::string get_response;
   ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 

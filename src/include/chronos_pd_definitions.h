@@ -157,8 +157,8 @@ const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
 (
   PDLog::CL_CHRONOS_ID + 12,
   PDLOG_ERR,
-  "Chronos has failed to synchronise some data.",
-  "Chronos was unable to fully synchronize with the Chronos node at %s.",
+  "Chronos has failed to synchronise some data with the Chronos node at %s.",
+  "Chronos was unable to fully synchronize with another Chronos.",
   "Not all timers have been resynchronised, completing the scaling action now "
     "may result in loss of timers or loss of redundancy",
   "Check the status of the Chronos cluster and ensure network connectivity "

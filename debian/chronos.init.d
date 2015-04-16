@@ -94,7 +94,7 @@ do_wait_sync() {
   while true
   do
     # Retrieve the statistics.
-    nodes=`/usr/share/clearwater/bin/cw_stat chronos chronos_scale_nodes_to_query`
+    nodes=`/usr/share/clearwater/bin/chronos/cw_stat chronos chronos_scale_nodes_to_query`
 
     # If the nodes left to query is 0 or unset, we're finished
     if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]

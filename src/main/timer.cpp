@@ -659,6 +659,7 @@ bool Timer::has_replica_been_informed(int replica_index)
 void Timer::update_cluster_information()
 {
   // Update the replica list
+  replicas.clear();
   calculate_replicas(0);
 
   // Update the cluster view ID 

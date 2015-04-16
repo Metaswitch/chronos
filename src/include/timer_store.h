@@ -93,7 +93,9 @@ private:
   // the heap may need to be searched, although the timer is guaranteed to be in
   // only one of them (and the heap is searched last for efficiency).
 
-  // A table of all known timers
+  // A table of all known timers. Only the first timer in the timer list
+  // is in the timer wheel - any other timers are stored for use when
+  // resynchronising between Chronos's. 
   std::map<TimerID, std::vector<Timer*>> _timer_lookup_table;
 
   // Health checker, which is notified when a timer is successfully added.

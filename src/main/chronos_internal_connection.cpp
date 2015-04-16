@@ -37,7 +37,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   // on start up (note this may change in future work)
   _updater = new Updater<void, ChronosInternalConnection>
                    (this, 
-                   std::mem_fun(&ChronosInternalConnection::scale_operation), 
+                   std::mem_fun(&ChronosInternalConnection::resynchronize), 
                    &_sigusr1_handler, 
                    false);
   
@@ -55,7 +55,7 @@ ChronosInternalConnection::~ChronosInternalConnection()
   delete _http; _http = NULL;
 }
 
-void ChronosInternalConnection::scale_operation()
+void ChronosInternalConnection::resynchronize()
 {
   // Get the cluster nodes
   std::vector<std::string> cluster_nodes;
@@ -65,7 +65,7 @@ void ChronosInternalConnection::scale_operation()
 
   if (leaving_nodes.size() > 0)
   {
-    cluster_nodes.insert(leaving_nodes.end(), 
+    cluster_nodes.insert(cluster_nodes.end(), 
                          leaving_nodes.begin(), 
                          leaving_nodes.end());
   }
@@ -86,13 +86,13 @@ void ChronosInternalConnection::scale_operation()
   LOG_DEBUG("Starting scaling operation");
 
   int nodes_remaining = cluster_nodes.size();
-  std::vector<std::string> updated_values;
 
   for (std::vector<std::string>::iterator it = cluster_nodes.begin();
                                           it != cluster_nodes.end();
                                           ++it, --nodes_remaining)
   {
     // Update the number of nodes to query
+    std::vector<std::string> updated_values;
     updated_values.push_back(std::to_string(nodes_remaining));
     _nodes_to_query_stat->report_change(updated_values);
     updated_values.clear();
@@ -122,8 +122,9 @@ void ChronosInternalConnection::scale_operation()
   // The scaling operation is now complete.
   LOG_DEBUG("Finished scaling operation");
   CL_CHRONOS_COMPLETE_SCALE.log();
-  updated_values.push_back(std::to_string(0));
-  _nodes_to_query_stat->report_change(updated_values);
+  std::vector<std::string> finished_value;
+  finished_value.push_back(std::to_string(0));
+  _nodes_to_query_stat->report_change(finished_value);
 }
 
 HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
@@ -377,7 +378,9 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             // been retried). A failed DELETE won't prevent the scaling operation
             // from finishing, it just means that we'll tell other nodes
             // about timers inefficiently. 
-            LOG_INFO("Error response (%d) to DELETE request", delete_rc);
+            LOG_INFO("Error response (%d) to DELETE request to %s", 
+                     delete_rc,
+                    (*it).c_str());
           }
         }
       }
@@ -387,7 +390,9 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
       // We've received an error response to the GET request. A timeout
       // will already have been retried by the underlying HTTPConnection, 
       // so don't retry again
-      LOG_WARNING("Error response (%d) to GET request", rc);
+      LOG_WARNING("Error response (%d) to GET request to %s", 
+                  rc, 
+                  server_to_sync.c_str());
     }
   }
   while (rc == HTTP_PARTIAL_CONTENT);

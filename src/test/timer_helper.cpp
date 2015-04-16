@@ -9,6 +9,7 @@ Timer* default_timer(TimerID id)
   timer->callback_url = "localhost:80/callback" + std::to_string(id);
   timer->callback_body = "stuff stuff stuff";
   timer->_replica_tracker = 1;
+  timer->_replication_factor = 1;
   timer->cluster_view_id = "cluster-view-id";
 
   return timer;

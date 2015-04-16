@@ -112,7 +112,8 @@ void TimerStore::add_timer(Timer* t)
           // a scaling operation has been started before an old scaling operation
           // finished, or there was a node failure during a scaling operation. 
           // Either way, the saved timer information is out of date, and is 
-          // deleted. 
+          // deleted (by not saving a copy of it when we delete the entire Timer 
+          // ID in the next step) 
           LOG_WARNING("Deleting out of date timer from timer map");
         }
 
@@ -567,7 +568,6 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
     if (!timer_copy->is_tombstone())   
     {
       std::vector<std::string> old_replicas;
-
       if (timer_is_on_node(request_node,
                            cluster_view_id,
                            timer_copy, 
@@ -633,19 +633,13 @@ bool TimerStore::timer_is_on_node(std::string request_node,
                                   std::vector<std::string>& old_replicas)
 {
   bool timer_is_on_requesting_node = false;
-  
+ 
   if (!timer->is_matching_cluster_view_id(cluster_view_id)) 
   {
     // Store the old replica list
     std::string localhost;
     __globals->get_cluster_local_ip(localhost);
-
-    for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                            it != timer->replicas.end();
-                                            ++it)
-    {
-      old_replicas.push_back(*it);
-    }
+    old_replicas = timer->replicas;
 
     // Calculate whether the new request node is interested in the timer. This
     // updates the replica list in the timer object to be the new replica list
