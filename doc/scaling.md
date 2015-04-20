@@ -41,11 +41,11 @@ When a Chronos cluster scales up/down then we want to rebalance the timers, so t
 can take over some of the load, and leaving Chronos nodes can be safely removed from the cluster. 
 
 After the Chronos cluster configuration changes, new, updated and popped timers are rebalanced to 
-the correct Chronos nodes, given the new configuration. This process is described [below](scaling#rebalancing-timers---passive-method).
+the correct Chronos nodes, given the new configuration. This process is described [below](scaling.md#rebalancing-timers---passive-method).
 
 Once all the existing timers have been modified in some way (e.g. they've popped or been updated by a
 client) then the timers will be correctly balanced across the new Chronos cluster. There is also an 
-active process to rebalance Chronos timers (so you don't need to wait), this is described [below](scaling#rebalancing-timers---active-method)
+active process to rebalance Chronos timers (so you don't need to wait), this is described [below](scaling.md#rebalancing-timers---active-method)
 as well. 
 
 ### Rebalancing timers - passive method
@@ -79,7 +79,7 @@ that node A matches the bloom filter passed by the client so he sends update mes
 D.
 
  * Node A sees an update request
-     * Node A is not included as a replica so it deletes it's local record
+     * Node A is not included as a replica so it deletes its local record
 
  * Node B sees an update request
      * Node B updates its local store.
