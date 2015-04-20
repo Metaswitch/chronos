@@ -4,7 +4,7 @@ This document describes the resynchronization process in more detail.
 
 ## Handling a resynchronization GET request
 
-When a node receives a GET request as part of resynchronization (see [here](doc/api#Request (GET)) for the API) it does the following processing:
+When a node receives a GET request as part of resynchronization (see [here](../api.md#request-get)) for the API) it does the following processing:
 
 The node loops through their timer wheel. For each timer it does the following processing
 
@@ -26,7 +26,7 @@ When the requesting node receives the response to a GET (sent as part of resynch
 
 ## Handling a resynchronization DELETE request
 
-A node that receives a DELETE request as part of resynchronization (see [here](doc/api.md#Request (DELETE)) for the API) request loops through each ID/replica number pairing in the DELETE body, and tries to find the timer with the ID in its timer wheel. 
+A node that receives a DELETE request as part of resynchronization (see [here](../api.md#request-delete) for the API) request loops through each ID/replica number pairing in the DELETE body, and tries to find the timer with the ID in its timer wheel. 
 
 * If the node finds a single timer with the ID, it uses that timer. If the node finds a list of timers, it uses the informational timer (see [informational timers]() below). 
 * The node then checks whether the timer has an out of date cluster view ID. If it's up to date then no further processing is done. 
