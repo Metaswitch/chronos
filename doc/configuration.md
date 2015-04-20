@@ -11,9 +11,9 @@ Chronos's configuration is set up in `/etc/chronos/chronos.conf`, and takes the 
     localhost = 1.2.3.4            # The address of the local host
     node = 1.2.3.4                 # The addresses of all nodes in the cluster. If the 
     node = 1.2.3.5                 # address doesn't include a port, then the default-bind-port
-                                   # value is used. 
+    node = 1.2.3.6                 # value is used. 
     leaving = 2.3.4.5              # The addresses of all nodes that are leaving
-                                   # the cluster (only used during scale-down)
+    leaving = 2.3.4.6              # the cluster (only used during scale-down)
     default-bind-port = 7253       # Default port to connect to other Chronos servers on
 
     [logging]

@@ -113,13 +113,13 @@ During a net-split, the timer may pop multiple times, once on each partition.  O
 
 The timer service supports two types of request to allow Chronos nodes to resynchronize timers. 
 
-Resynchronizing timers between nodes is carried out by each Chronos node sending a series of GETs and DELETEs to all the other Chronos nodes in the Chronos cluster. The resynchronization process is described in more detail [here](doc/resynchronization.md).
+Resynchronizing timers between nodes is carried out by each Chronos node sending a series of GETs and DELETEs to all the other Chronos nodes in the Chronos cluster. The resynchronization process is described in more detail [here](doc/scaling.md).
 
 #### Request (GET)
 
     GET /timers
 
-This URL requests information about timers that are on the receiving node that the requesting node will be a replica for. 
+This URL requests information about timers that are on the receiving node that the requesting node will be a replica for under new cluster configuration. 
  
 It takes three mandatory parameters
 

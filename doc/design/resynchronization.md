@@ -4,16 +4,13 @@ This document describes the resynchronization process in more detail.
 
 ## Handling a resynchronization GET request
 
-When a node receives a GET request as part of resynchronization (see [here](docs/api#Request (GET)) for the API) it does the following processing:
+When a node receives a GET request as part of resynchronization (see [here](doc/api#Request (GET)) for the API) it does the following processing:
 
 The node loops through their timer wheel. For each timer it does the following processing
 
-* It compares the cluster-view-id on the GET request to the stored cluster-view-id in the timer(s). If these are the same, then the nodes stops checking the timer and moves onto the next timer.  
-* The node then calculates the replicas for the timer given the new cluster configuration.
-* If the timer will have a replica on the requesting node under the new configuration, the node pulls out the information for the timer, and adds it to the response.
-* The timer information is in the response has the new replicas, and the cluster-view-id represents the new cluster configuration. 
-
-The GET request will have a Range header indicating how many timers should be in the response (100). If there are more than this number of timers, then the node responds with a 206 Partial content, and the 100 timers in the response body. For fewer than 100 timers, the response is a 200 OK with the timers in the response body again. 
+* It compares the `cluster-view-id` on the GET request to the stored `cluster-view-id` in the timer(s). If these are the same, then the nodes stops checking the timer and moves onto the next timer.  
+* The node then calculates the replicas for the timer given the new cluster configuration. If the timer will have a replica on the requesting node under the new configuration, the node pulls out the information for the timer, and adds it to the response.
+* The timer information in the response has the new replicas, and the cluster-view-id represents the new cluster configuration. 
 
 ## Processing a resynchronization GET response
 
@@ -25,11 +22,11 @@ When the requesting node receives the response to a GET (sent as part of resynch
     * The new replica position of the node is higher than the requesting nodes position
     * The old replica position of the node is equal/higher than the requesting nodes position (where not being involved previously counts as high).   
     * The node then sends tombstone requests for the old timer to any replica on the old replica list that is equal to its level or higher, so long as the replica isn't a leaving node, and the replica is no longer involved in the timer - e.g. if the requesting node is the 1st backup, it can potentially send tombstones to the old 1st backup, old 2nd backup, etc.. If the node that used to be the old 1st backup is still involved with the timer (say it's moved to be the 2nd backup replica) then the requesting node won't send a tombstone to it.
-* The requesting node then sends a DELETE containing the IDs of the old timers that it just dealt with to all leaving nodes (described in more detail [below](docs/design/resynchronization.md#Timer store - informational timers)). 
+* The requesting node then sends a DELETE containing the IDs of the old timers that it just dealt with to all leaving nodes (described in more detail [below](doc/design/resynchronization.md#Timer store - informational timers)). 
 
 ## Handling a resynchronization DELETE request
 
-A node that receives a DELETE request as part of resynchronization (see [here](docs/api.md#Request (DELETE)) for the API) request loops through each ID/replica number pairing in the DELETE body, and tries to find the timer with the ID in its timer wheel. 
+A node that receives a DELETE request as part of resynchronization (see [here](doc/api.md#Request (DELETE)) for the API) request loops through each ID/replica number pairing in the DELETE body, and tries to find the timer with the ID in its timer wheel. 
 
 * If the node finds a single timer with the ID, it uses that timer. If the node finds a list of timers, it uses the informational timer (see [informational timers]() below). 
 * The node then checks whether the timer has an out of date cluster view ID. If it's up to date then no further processing is done. 

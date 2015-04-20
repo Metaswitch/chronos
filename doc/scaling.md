@@ -33,7 +33,7 @@ created so it could repeat the algorithm to determine the correct replica list.
 
 Chronos's solution involves encoding the list of replicas into the ID returned to the user when they
 create/update a timer. The user then uses this ID when they want to update/delete the timer later. 
-ID creation and processing is described in more detail [here](docs/design/hashing.md).
+ID creation and processing is described in more detail [here](doc/design/hashing.md).
 
 ## Rebalancing timers
 
@@ -41,11 +41,11 @@ When a Chronos cluster scales up/down then we want to rebalance the timers, so t
 can take over some of the load, and leaving Chronos nodes can be safely removed from the cluster. 
 
 After the Chronos cluster configuration changes, new, updated and popped timers are rebalanced to 
-the correct Chronos nodes, given the new configuration. This process is described [below](docs/scaling#Rebalancing timers - passive method).
+the correct Chronos nodes, given the new configuration. This process is described [below](doc/scaling#Rebalancing timers - passive method).
 
 Once all the existing timers have been modified in some way (e.g. they've popped or been updated by a
 client) then the timers will be correctly balanced across the new Chronos cluster. There is also an 
-active process to rebalance Chronos timers (so you don't need to wait), this is described [below](docs/scaling#Rebalancing timers - active method)
+active process to rebalance Chronos timers (so you don't need to wait), this is described [below](doc/scaling#Rebalancing timers - active method)
 as well. 
 
 ### Rebalancing timers - passive method
@@ -98,7 +98,7 @@ The active resynchronization process has three steps:
 
 #### Step 1
 
-Add the new scaling configuration to the chronos configuration file (see [here](docs/clustering.md) for more details) and reload Chronos (`service chronos reload`). This triggers Chronos to update its cluster information. 
+Add the new scaling configuration to the chronos configuration file (see [here](doc/clustering.md) for more details) and reload Chronos (`service chronos reload`). This triggers Chronos to update its cluster information. 
 
 Any timers that pop on/are updated on/are added to a node that has the new configuration during this step will have the correct replicas (given the new configuration). Timers that pop/update/are added to nodes that have the old configuration are moved to the correct replicas in Step 2. 
 
@@ -106,7 +106,7 @@ Any timers that pop on/are updated on/are added to a node that has the new confi
 
 To trigger the scaling process, run `service chronos <scale-down/scale-up>` on all Chronos nodes that will remain in the cluster (i.e. not on any nodes that are being scaled down). 
 
-In both cases this sends a SIGUSR1 to the Chronos process, which triggers it to contact the other nodes in the cluster and run the resynchronization. The resynchronization process is described below, and more detail about the GET/DELETE requests is available [here](docs/api.md).
+In both cases this sends a SIGUSR1 to the Chronos process, which triggers it to contact the other nodes in the cluster and run the resynchronization. The resynchronization process is described below, and more detail about the GET/DELETE requests is available [here](doc/api.md).
 
 * Each node sends a GET request to every other Chronos node. 
 * The receiving node calculates which of its timers the requesting node will be interested in after the scale operation down is complete (excluding any timers that have already been updated), and responds with enough information that the requesting node can add the timer to their store.
@@ -122,7 +122,7 @@ If there are many timers, then the GET responses are batched into groups of 100 
 
 This process means that at each point in the scale down, each timer has a single node acting as the primary replica for the primary in its replica list (with small windows of time between the GET response, and any replication requests/DELETE requests being processed).  
 
-An even more detailed look what happens to timers during the resynchronization process is [here](docs/design/resynchronization.md)
+An even more detailed look what happens to timers during the resynchronization process is [here](doc/design/resynchronization.md)
 
 #### Step 3
 
