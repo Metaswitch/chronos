@@ -164,7 +164,7 @@ The JSON body in the response has the format:
                ]
     }
 
-This JSON body contains enough information for the requesting node to add the timer to their timer wheel, and to optionally replicate the timer to other nodes. 
+This JSON body contains enough information for the requesting node to add the timer to their timer wheel, and to optionally replicate the timer to other nodes. The `Timer` object contains the information to recreate the timer on the node, the `Timer ID` holds the timer's ID, and the `Old replicas` list holds where the replicas for the timer were under the old cluster configuration. 
 
 #### Request (DELETE)
 
@@ -172,13 +172,15 @@ This JSON body contains enough information for the requesting node to add the ti
 
 This URL requests that the receiving node delete their references to a set of timers. 
 
-The request has a JSON body with the format:
+The DELETE body consists of the IDs of all the timers the node has just processed, paired with the replica number of the node for each timer. It has the format:
 
     {"IDs": [{"ID": id1, "replica index": replica_index},
              {"ID": id2, "replica index": replica_index}
              ...
             ]
     }
+
+The `replica_index` is the index of the timer in the replica list (where 0 represents the primary). The `ID` is the timer ID. 
 
 #### Response (DELETE)
 
