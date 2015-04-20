@@ -16,6 +16,7 @@ static const char* const JSON_OLD_REPLICAS = "OldReplicas";
 // Parameters
 static const char* const PARAM_REQUESTING_NODE = "requesting-node";
 static const char* const PARAM_SYNC_MODE = "sync-mode";
+static const char* const PARAM_CLUSTER_VIEW_ID = "cluster-view-id";
 
 // Parameter values
 static const char* const PARAM_SYNC_MODE_VALUE_SCALE = "SCALE";

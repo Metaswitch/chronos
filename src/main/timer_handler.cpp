@@ -75,10 +75,14 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
 
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            int max_responses,
+                                           std::string cluster_view_id,
                                            std::string& get_response)
 {
   pthread_mutex_lock(&_mutex);
-  HTTPCode rc = _store->get_timers_for_node(request_node, max_responses, get_response);
+  HTTPCode rc = _store->get_timers_for_node(request_node, 
+                                            max_responses, 
+                                            cluster_view_id, 
+                                            get_response);
   pthread_mutex_unlock(&_mutex);
 
   return rc;
@@ -177,6 +181,9 @@ void TimerHandler::pop(Timer* timer)
 
   // Increment the timer's sequence before sending the callback.
   timer->sequence_number++;
+
+  // Update the timer in case it has out of date configuration
+  timer->update_cluster_information();
 
   // The callback takes ownership of the timer at this point.
   _callback->perform(timer); timer = NULL;

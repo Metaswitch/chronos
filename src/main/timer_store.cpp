@@ -36,11 +36,17 @@ TimerStore::TimerStore(HealthChecker* hc) :
 TimerStore::~TimerStore()
 {
   // Delete the timers in the lookup table as they will never pop now.
-  for (std::map<TimerID, Timer*>::iterator it = _timer_lookup_table.begin(); 
-                                           it != _timer_lookup_table.end(); 
-                                           ++it)
+  for (std::map<TimerID, std::vector<Timer*>>::iterator it = 
+                                                _timer_lookup_table.begin(); 
+                                                it != _timer_lookup_table.end(); 
+                                                ++it)
   {
-    delete it->second;
+    for (std::vector<Timer*>::iterator it_timer = it->second.begin();
+                                       it_timer != it->second.end();
+                                       ++it_timer)
+    {
+      delete *it_timer;
+    }
   }
 
   _timer_lookup_table.clear();
@@ -63,34 +69,83 @@ TimerStore::~TimerStore()
 // may delete it at any time).
 void TimerStore::add_timer(Timer* t)
 {
+  std::vector<Timer*> timers;
+
   // First check if this timer already exists.
-  std::map<TimerID, Timer*>::iterator map_it = _timer_lookup_table.find(t->id);
+  std::map<TimerID, std::vector<Timer*>>::iterator map_it = 
+                                                _timer_lookup_table.find(t->id);
 
   if (map_it != _timer_lookup_table.end())
   {
-    Timer* existing = map_it->second;
+    // There's already a timer with this ID in the store. We can update the 
+    // existing timer, discard the new timer, or add the new timer, and move the 
+    // old timer out of the timer wheel, but still save the timer information 
+    // in the timer map (this last option is used in scaling operations) 
+    LOG_DEBUG("Already a timer with ID %ld in the store", t->id);
+
+    Timer* existing = map_it->second.front();
 
     // Compare timers for precedence, start-time then sequence-number.
     if ((t->start_time < existing->start_time) ||
         ((t->start_time == existing->start_time) &&
          (t->sequence_number < existing->sequence_number)))
     {
-      // Existing timer is more recent
+      LOG_DEBUG("The timer in the store is more recent, discard the new timer");
       delete t;
       return;
     }
     else
     {
-      // Existing timer is older
-      if (t->is_tombstone())
+      // We want to add the timer, so decide whether this is an update, or 
+      // if we need to save off the old timer. 
+      if (existing->cluster_view_id != t->cluster_view_id)
       {
-        // Learn the interval so that this tombstone lasts long enough to catch
-        // errors.
-        t->interval = existing->interval;
-        t->repeat_for = existing->interval;
+        // The cluster IDs on the new and existing timers are different.
+        // This means that the cluster configuration has changed between 
+        // and when the timer was last updated. 
+        LOG_DEBUG("Cluster view IDs are different on the new and existing timers");
+
+        if (map_it->second.size() > 1)
+        {
+          // There's already a saved timer, but the new timer doesn't match the
+          // existing timer. This is an error condition, and suggests that 
+          // a scaling operation has been started before an old scaling operation
+          // finished, or there was a node failure during a scaling operation. 
+          // Either way, the saved timer information is out of date, and is 
+          // deleted (by not saving a copy of it when we delete the entire Timer 
+          // ID in the next step) 
+          LOG_WARNING("Deleting out of date timer from timer map");
+        }
+
+        set_tombstone_values(t, existing);
+
+        // Save the old timer information in the list of timers.
+        Timer* existing_copy = new Timer(*existing);
+        timers.push_back(t);
+        timers.push_back(existing_copy);
       }
+      else
+      {
+        set_tombstone_values(t, existing);
+        timers.push_back(t);
+  
+        if (map_it->second.size() > 1)
+        {
+          Timer* existing_copy = new Timer(*map_it->second.back());
+          timers.push_back(existing_copy);
+        }
+      }
+
+      // Delete the old timer from the timer map and the timer wheel - it will
+      // be added again later on
       delete_timer(t->id);
     }
+  }
+  else
+  {
+    // The timer doesn't already exist, so add it to the store. 
+    LOG_DEBUG("Adding a new timer to the store with ID %ld", t->id);
+    timers.push_back(t);
   }
 
   // Work out where to store the timer (overdue bucket, short wheel, long wheel,
@@ -143,84 +198,85 @@ void TimerStore::add_timer(Timer* t)
   }
 
   // Finally, add the timer to the lookup table.
-  _timer_lookup_table.insert(std::pair<TimerID, Timer*>(t->id, t));
+  _timer_lookup_table.insert(std::pair<TimerID, std::vector<Timer*>>(t->id, timers));
 
   // We've successfully added a timer, so confirm to the
   // health-checker that we're still healthy.
   _health_checker->health_check_passed();
 }
 
-// Add a collection of timers to the data store.  The collection is emptied by
-// this operation, since the timers are now owned by the store.
-void TimerStore::add_timers(std::unordered_set<Timer*>& set)
-{
-  for (std::unordered_set<Timer*>::iterator it = set.begin(); 
-                                            it != set.end(); 
-                                            ++it)
-  {
-    add_timer(*it);
-  }
-  set.clear();
-}
-
-// Delete a timer from the store by ID.
+// Delete a timer from the store by ID. This deletes all stored
+// information about the timer, deleting it from the timer wheel
+// and the timer map
 void TimerStore::delete_timer(TimerID id)
 {
-  std::map<TimerID, Timer*>::iterator it;
+  std::map<TimerID, std::vector<Timer*>>::iterator it;
   it = _timer_lookup_table.find(id);
+
   if (it != _timer_lookup_table.end())
   {
-    // The timer is still present in the store, delete it.
-    Timer* timer = it->second;
-    Bucket* bucket;
-    size_t num_erased;
+    // The timer(s) are still present in the store.
+    // Delete the first timer from the timer wheel, delete any 
+    // other timers in the timer list, then erase the entry from
+    // the timer map. 
+    Timer* timer = it->second.front(); 
+    delete_timer_from_timer_wheel(timer);
 
-    // Delete the timer from the overdue buckets / timer wheels / heap. Try the
-    // overdue bucket first, then the short wheel then the long wheel, then
-    // finally the heap.
-    num_erased = _overdue_timers.erase(timer);
+    for (std::vector<Timer*>::iterator it_timer = it->second.begin();
+                                       it_timer != it->second.end();
+                                       ++it_timer)
+    {
+      delete *it_timer;
+    }
+
+    _timer_lookup_table.erase(id);
+  }
+}
+
+void TimerStore::delete_timer_from_timer_wheel(Timer* timer)
+{
+  Bucket* bucket;
+  size_t num_erased;
+
+  // Delete the timer from the overdue buckets / timer wheels / heap. Try the
+  // overdue bucket first, then the short wheel then the long wheel, then
+  // finally the heap.
+  num_erased = _overdue_timers.erase(timer);
+
+  if (num_erased == 0)
+  {
+    bucket = short_wheel_bucket(timer);
+    num_erased = bucket->erase(timer);
 
     if (num_erased == 0)
     {
-      bucket = short_wheel_bucket(timer);
+      bucket = long_wheel_bucket(timer);
       num_erased = bucket->erase(timer);
 
       if (num_erased == 0)
       {
-        bucket = long_wheel_bucket(timer);
-        num_erased = bucket->erase(timer);
+        std::vector<Timer*>::iterator heap_it;
+        heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
 
-        if (num_erased == 0)
+        if (heap_it != _extra_heap.end())
         {
-          std::vector<Timer*>::iterator heap_it;
-          heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
-          if (heap_it != _extra_heap.end())
-          {
-            // Timer is in heap, remove it.
-            _extra_heap.erase(heap_it, heap_it + 1);
-            std::make_heap(_extra_heap.begin(), _extra_heap.end());
-          }
-          else
-          {
-            // We failed to remove the timer from any data structure.  Try and
-            // purge the timer from all the timer wheels (we're already sure
-            // that it's not in the heap).
+          // Timer is in heap, remove it.
+          _extra_heap.erase(heap_it, heap_it + 1);
+          std::make_heap(_extra_heap.begin(), _extra_heap.end());
+        }
+        else
+        {
+          // We failed to remove the timer from any data structure.  Try and
+          // purge the timer from all the timer wheels (we're already sure
+          // that it's not in the heap).
 
-            // LCOV_EXCL_START
-            LOG_ERROR("Failed to remove timer consistently");
-            purge_timer_from_wheels(timer);
-
-            // Assert after purging, so we get a nice log detailing how the
-            // purge went.
-            assert(!"Failed to remove timer consistently");
-            // LCOV_EXCL_STOP
-          }
+          // LCOV_EXCL_START
+          LOG_ERROR("Failed to remove timer consistently");
+          purge_timer_from_wheels(timer);
+          // LCOV_EXCL_STOP
         }
       }
     }
-
-    _timer_lookup_table.erase(id);
-    delete timer;
   }
 }
 
@@ -427,24 +483,49 @@ void TimerStore::update_replica_tracker_for_timer(TimerID id,
                                                   int replica_index)
 {
   // Check if the timer exists.
-  std::map<TimerID, Timer*>::iterator map_it = _timer_lookup_table.find(id);
+  std::map<TimerID, std::vector<Timer*>>::iterator map_it = 
+                                                   _timer_lookup_table.find(id);
 
   if (map_it != _timer_lookup_table.end())
   {
-    Timer* timer = map_it->second;
-    
-    if (!timer->is_tombstone())
+    Timer* timer;
+    bool timer_in_wheel = true;
+
+    if (map_it->second.size() == 1)
     {
-      // Update the replica tracker
+      timer = map_it->second.front(); 
+    }
+    else 
+    {
+      timer = map_it->second.back(); 
+      timer_in_wheel = false;
+    }
+
+    std::string cluster_view_id;
+    __globals->get_cluster_view_id(cluster_view_id);
+
+    if (!timer->is_matching_cluster_view_id(cluster_view_id))
+    {
+      // The cluster view ID is out of date, so update the tracker. 
       int remaining_replicas = timer->update_replica_tracker(replica_index);
 
-      // If all the new replicas know about the timer, tombstone it. 
-      // NOTE -> This is currently only valid for scale down. To use
-      // this for other cases, check whether the node is leaving 
-      // before deleting any timers. 
       if (remaining_replicas == 0)
       {
-        delete_timer(id);
+        if (!timer_in_wheel)
+        {
+          // All the new replicas have been told about the timer. We don't
+          // need to store the information about the timer anymore. 
+          delete timer; timer = NULL;
+          map_it->second.pop_back();
+        }
+        else
+        {
+          // This is a window condition where node is responsible for an 
+          // old timer replica. The node knows that all new replicas that 
+          // should know about the timer are in the process of being told, 
+          // but it hasn't yet received an update or tombstone for its 
+          // replica. It will receive this soon. 
+        }
       }
     }
   }
@@ -452,31 +533,45 @@ void TimerStore::update_replica_tracker_for_timer(TimerID id,
 
 HTTPCode TimerStore::get_timers_for_node(std::string request_node, 
                                          int max_responses,
+                                         std::string cluster_view_id,
                                          std::string& get_response)
 {
+  LOG_DEBUG("Get timers for %s", request_node.c_str());
+
   // Create the JSON doc for the Timer information
   rapidjson::StringBuffer sb;
   rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
   writer.StartObject();
 
-  writer.String("Timers");
+  writer.String(JSON_TIMERS);
   writer.StartArray();
 
   int retrieved_timers = 0;
-  for (std::map<TimerID, Timer*>::iterator it = _timer_lookup_table.begin();
+  for (std::map<TimerID, std::vector<Timer*>>::iterator it = 
+                                           _timer_lookup_table.begin();
                                            it != _timer_lookup_table.end();                                        
                                            ++it)
   {
-    // Take a copy of the timer so we don't change the timer in the wheel
-    Timer* timer_copy = new Timer(*it->second);
+    // Take a copy of the timer so we don't change the timer in the wheel/map. 
+    // If there's a saved timer in the timer map, use that rather than 
+    // the timer in the wheel. 
+    Timer* timer_copy;
+    if (it->second.size() == 1)
+    {
+      timer_copy = new Timer(*it->second.front());
+    }
+    else
+    {
+      timer_copy = new Timer(*it->second.back());   
+    }
 
     if (!timer_copy->is_tombstone())   
     {
       std::vector<std::string> old_replicas;
-
-      if (update_timer(request_node,
-                       timer_copy, 
-                       old_replicas))
+      if (timer_is_on_node(request_node,
+                           cluster_view_id,
+                           timer_copy, 
+                           old_replicas))
       {
         writer.StartObject();
         {
@@ -526,41 +621,54 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
 
   get_response = sb.GetString();
 
+  LOG_DEBUG("Retrieved %d timers", retrieved_timers);
   return ((max_responses != 0) &&
           (retrieved_timers == max_responses)) ? HTTP_PARTIAL_CONTENT : 
                                                  HTTP_OK;
 }
 
-bool TimerStore::update_timer(std::string request_node,
-                              Timer* timer,
-                              std::vector<std::string>& old_replicas)
+bool TimerStore::timer_is_on_node(std::string request_node,
+                                  std::string cluster_view_id,
+                                  Timer* timer,
+                                  std::vector<std::string>& old_replicas)
 {
   bool timer_is_on_requesting_node = false;
-
-  // Store the old replica list
-  std::string localhost;
-  __globals->get_cluster_local_ip(localhost);
-
-  for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                          it != timer->replicas.end();
-                                          ++it)
+ 
+  if (!timer->is_matching_cluster_view_id(cluster_view_id)) 
   {
-    old_replicas.push_back(*it);
-  }
+    // Store the old replica list
+    std::string localhost;
+    __globals->get_cluster_local_ip(localhost);
+    old_replicas = timer->replicas;
 
-  // Calculate whether the new request node is interested in the timer. This
-  // updates the replica list in the timer object to be the new replica list
-  timer->calculate_replicas(0); 
-  for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                          it != timer->replicas.end();
-                                          ++it)
-  {
-    if (*it == request_node)
+    // Calculate whether the new request node is interested in the timer. This
+    // updates the replica list in the timer object to be the new replica list
+    timer->update_cluster_information(); 
+
+    int index = 0;
+    for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                            it != timer->replicas.end();
+                                            ++it, ++index)
     {
-      timer_is_on_requesting_node = true;
-      break;
+      if ((*it == request_node) && 
+          !(timer->has_replica_been_informed(index)))
+      {
+        timer_is_on_requesting_node = true;
+        break;
+      }
     }
   }
- 
+
   return timer_is_on_requesting_node;
+}
+
+void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
+{
+  if (t->is_tombstone())
+  {
+    // Learn the interval so that this tombstone lasts long enough to catch
+    // errors.
+    t->interval = existing->interval;
+    t->repeat_for = existing->interval;
+  }
 }

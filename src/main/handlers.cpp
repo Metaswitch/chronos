@@ -184,20 +184,37 @@ void ControllerTask::handle_delete()
 
 void ControllerTask::handle_get()
 {
-  // Check the request is valid. It must have the requesting-node 
-  // and sync-mode parameters set, the sync-mode parameter must be SCALE 
-  // (this will be extended later) and the request-node must correspond 
-  // to a node in the Chronos cluster (it can be a leaving node).
+  // Check the request is valid. It must have the requesting-node, 
+  // sync-mode and cluster-view-id parameters set, the sync-mode parameter 
+  // must be SCALE (this will be extended later), the request-node 
+  // must correspond to a node in the Chronos cluster (it can be a 
+  // leaving node), and the cluster-view-id request must correspond to
+  // the receiving nodes view of the cluster configuration
   std::string requesting_node = _req.param(PARAM_REQUESTING_NODE);
   std::string sync_mode = _req.param(PARAM_SYNC_MODE);  
+  std::string cluster_view_id = _req.param(PARAM_CLUSTER_VIEW_ID);
 
-  if ((requesting_node == "") || (sync_mode == ""))
+  if ((requesting_node == "") || 
+      (sync_mode == "") ||
+      (cluster_view_id == ""))
   {
     LOG_INFO("GET request doesn't have mandatory parameters");
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
 
+  std::string global_cluster_view_id;
+  __globals->get_cluster_view_id(global_cluster_view_id);
+
+  if (cluster_view_id != global_cluster_view_id)
+  {
+    LOG_INFO("GET request is for an out of date cluster (%s and %s)", 
+             cluster_view_id.c_str(),
+             global_cluster_view_id.c_str());
+    send_http_reply(HTTP_BAD_REQUEST);
+    return;
+  }
+  
   if (!node_is_in_cluster(requesting_node))
   {
     LOG_DEBUG("The request node isn't a Chronos node: %s", 
@@ -215,6 +232,7 @@ void ControllerTask::handle_get()
     std::string get_response;
     HTTPCode rc = _cfg->_handler->get_timers_for_node(requesting_node, 
                                                       max_timers_to_get,
+                                                      cluster_view_id,
                                                       get_response);
     _req.add_content(get_response);
     
