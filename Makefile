@@ -94,6 +94,10 @@ clean: $(patsubst %, %_clean, ${SUBMODULES})
 distclean: $(patsubst %, %_distclean, ${SUBMODULES})
 	rm -rf ${ROOT}/build
 
+.PHONY: resync_test
+resync_test: build
+	./scripts/chronos_resync.py
+
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test
 	valgrind ${VG_OPTS} --xml=yes --xml-file=${OBJ_DIR_TEST}/chronos.memcheck $(TARGET_BIN_TEST)
