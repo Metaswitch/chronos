@@ -95,8 +95,8 @@ distclean: $(patsubst %, %_distclean, ${SUBMODULES})
 	rm -rf ${ROOT}/build
 
 .PHONY: resync_test
-resync_test: 
-	./scripts/chronos_resync.py build/bin/chronos
+resync_test: build
+	./scripts/chronos_resync.py
 
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test

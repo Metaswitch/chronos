@@ -77,6 +77,7 @@ def start_nodes(lower, upper):
         processes.append(Popen([CHRONOS_BINARY, '--config-file', CONFIG_FILE_PATTERN % i],
                                stdout=FNULL, stderr=FNULL))
     
+    sleep(2) 
 
 def kill_nodes(lower, upper):
     # kill nodes with indexes [lower, upper)
@@ -87,11 +88,13 @@ def node_reload_config(lower, upper):
     # SIGHUP nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
         os.kill(p.pid, signal.SIGHUP)
+    sleep(2)
 
 def node_trigger_scaling(lower, upper):
     # SIGHUSR1 nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
         os.kill(p.pid, signal.SIGUSR1)
+    sleep(2)
 
 def create_timers(target, num):
     # Create and send timer requests. These are all sent to the first Chronos
@@ -161,15 +164,16 @@ class ChronosLiveTests(unittest.TestCase):
         # Kill all the Chronos processes
         kill_nodes(0, len(processes))
 
-    def assert_all_timers_received(self, expected_number):
-        # Check that as many timers popped as were added in the first place. 
+    def assert_enough_timers_received(self, expected_number):
+        # Check that enough timers pop as expected. 
+        # This should typically be as many as were added in the first place. 
         # Ideally, we'd be checking where the timers popped from, but that's
         # not possible with these tests (as everything looks like it comes
         # from 127.0.0.1)
-        self.assertEqual(receiveCount, 
-                         expected_number,
-                         ('Incorrect number of popped timers: received %i, expected %i' %
-                         (receiveCount, expected_number)))
+        self.assertGreaterEqual(receiveCount, 
+                                expected_number,
+                               ('Incorrect number of popped timers: received %i, expected at least %i' %
+                               (receiveCount, expected_number)))
 
     def write_config_for_nodes(self, lower, upper):
         # Write configuration files for the nodes
@@ -204,9 +208,35 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_all_timers_received(100)
+        self.assert_enough_timers_received(100)
 
-    def test_downscale(self):
+    def test_scale_up_and_kill(self):
+        # Test that scaling up definitely moves timers. This test creates 2 
+        # Chronos nodes and adds 100 timers. It then scales up to 4 Chronos 
+        # nodes, then kills the first two nodes. It then checks at least 50
+        # timers still pop (we'd expect around 75 would pop but this isn't
+        # guaranteed. We check 50 so that the test is very unlikely to fail
+        # but it also can't pass unless the timers have moved). 
+
+        # Start initial nodes and add timers
+        self.write_config_for_nodes(0, 2)
+        start_nodes(0, 2)
+        create_timers(chronos_nodes[0], 100)
+
+        # Scale up
+        self.write_config_for_nodes(0, 4)
+        start_nodes(2, 4)
+        node_reload_config(0, 2)
+        node_trigger_scaling(0, 4)
+
+        # Now kill the first nodes
+        kill_nodes(0, 2)
+
+        # Check that all the timers have popped
+        sleep(10)
+        self.assert_enough_timers_received(50)
+
+    def test_scale_down(self):
         # Test that scaling down works. This test creates 4 Chronos nodes,
         # adds 100 timers, scales down to 2 Chronos nodes, then checks that
         # 100 timers pop.
@@ -224,7 +254,7 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_all_timers_received(100)
+        self.assert_enough_timers_received(100)
 
     def test_upscale_downscale(self):
         # Test a scale up and scale down. This test creates 2 Chronos nodes,
@@ -251,7 +281,7 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_all_timers_received(100)
+        self.assert_enough_timers_received(100)
 
 if __name__ == '__main__':
     unittest.main()
