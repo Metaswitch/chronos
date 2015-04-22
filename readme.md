@@ -19,10 +19,12 @@ To develop on Chronos, you'll need to install a few dependencies first.
  * libevent
  * google-mock
  * google-test
+ * python-flask
+ * python-requests
 
 On Ubuntu most of these can be installed with:
 
-    sudo apt-get install git build-essential devscripts debhelper libcurl4-gnutls-dev libboost-program-options-dev libboost-regex-dev libevent-dev
+    sudo apt-get install git build-essential devscripts debhelper libcurl4-gnutls-dev libboost-program-options-dev libboost-regex-dev libevent-dev python-flask python-requests
 
 ### Building
 
@@ -37,3 +39,4 @@ The supplied makefile has a few useful targets:
  * `make coverage` - Runs the UTs and generates a code coverage report
  * `make valgrind` - Runs the UTs under valgrind and reports the results
  * `make deb` - Build a Debian package containing Chronos and a default configuration file.
+ * `make resync_test` - Runs the tests of Chronos resynchronization
