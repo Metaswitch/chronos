@@ -82,6 +82,50 @@ do_abort()
   return $RETVAL
 }
 
+#
+# Send Chronos a SIGUSR1 (used in scale operations)
+#
+do_scale_operation()
+{
+  start-stop-daemon --stop --signal 10 --quiet --pidfile $PIDFILE --name $EXECNAME
+  return 0
+}
+
+#
+# Polls Chronos until resynchronization completes
+#
+do_wait_sync() {
+  # Wait for 2s to give Chronos a chance to have updated its statistics.
+  sleep 2
+
+  # Query Chronos via the 0MQ socket, parse out the number of Chronos nodes
+  # still needing to be queried, and check if it's 0. 
+  # If not, wait for 5s and try again.
+  while true
+  do
+    # Retrieve the statistics.
+    nodes=`/usr/share/clearwater/chronos/bin/cw_stat chronos chronos_scale_nodes_to_query`
+
+    # If the nodes left to query is 0 or unset, we're finished
+    if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]
+    then
+      break
+    fi
+
+    # If the statistic is unknown then the SNMP handler isn't installed. Give up
+    if [ "$nodes" = 'Unknown statistic "chronos_scale_nodes_to_query"' ]
+    then
+      echo "SNMP statistics are not supported on this box. Please install the required packages and retry"
+      break
+    fi
+
+    # Indicate that we're still waiting, then sleep for 5 secs and repeat
+    echo -n "..."
+    sleep 5
+  done
+  return 0
+}
+
 case "$1" in
   start)
         [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
@@ -113,6 +157,13 @@ case "$1" in
   reload|force-reload)
         do_reload
         ;;
+  resync)
+        do_scale_operation
+        ;;
+  wait-sync)
+        log_daemon_msg "Waiting for synchronization - $DESC"
+        do_wait_sync
+        ;;
   restart)
         log_daemon_msg "Restarting $DESC" "$NAME"
         do_stop
@@ -140,7 +191,7 @@ case "$1" in
         esac
         ;;
   *)
-        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload}" >&2
+        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload|resync|wait-sync}" >&2
         exit 3
         ;;
 esac

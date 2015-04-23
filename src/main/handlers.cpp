@@ -184,24 +184,41 @@ void ControllerTask::handle_delete()
 
 void ControllerTask::handle_get()
 {
-  // Check the request is valid. It must have the requesting-node 
-  // and sync-mode parameters set, the sync-mode parameter must be SCALE 
-  // (this will be extended later) and the request-node must correspond 
-  // to a node in the Chronos cluster (it can be a leaving node).
-  std::string requesting_node = _req.param(PARAM_REQUESTING_NODE);
+  // Check the request is valid. It must have the node-for-replicas, 
+  // sync-mode and cluster-view-id parameters set, the sync-mode parameter 
+  // must be SCALE (this will be extended later), the request-node 
+  // must correspond to a node in the Chronos cluster (it can be a 
+  // leaving node), and the cluster-view-id request must correspond to
+  // the receiving nodes view of the cluster configuration
+  std::string node_for_replicas = _req.param(PARAM_NODE_FOR_REPLICAS);
   std::string sync_mode = _req.param(PARAM_SYNC_MODE);  
+  std::string cluster_view_id = _req.param(PARAM_CLUSTER_VIEW_ID);
 
-  if ((requesting_node == "") || (sync_mode == ""))
+  if ((node_for_replicas == "") || 
+      (sync_mode == "") ||
+      (cluster_view_id == ""))
   {
     LOG_INFO("GET request doesn't have mandatory parameters");
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
 
-  if (!node_is_in_cluster(requesting_node))
+  std::string global_cluster_view_id;
+  __globals->get_cluster_view_id(global_cluster_view_id);
+
+  if (cluster_view_id != global_cluster_view_id)
+  {
+    LOG_INFO("GET request is for an out of date cluster (%s and %s)", 
+             cluster_view_id.c_str(),
+             global_cluster_view_id.c_str());
+    send_http_reply(HTTP_BAD_REQUEST);
+    return;
+  }
+  
+  if (!node_is_in_cluster(node_for_replicas))
   {
     LOG_DEBUG("The request node isn't a Chronos node: %s", 
-              requesting_node.c_str());
+              node_for_replicas.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
@@ -213,8 +230,9 @@ void ControllerTask::handle_get()
     LOG_DEBUG("Range value is %d", max_timers_to_get);
 
     std::string get_response;
-    HTTPCode rc = _cfg->_handler->get_timers_for_node(requesting_node, 
+    HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas, 
                                                       max_timers_to_get,
+                                                      cluster_view_id,
                                                       get_response);
     _req.add_content(get_response);
     
@@ -232,7 +250,7 @@ void ControllerTask::handle_get()
   }
 }
 
-bool ControllerTask::node_is_in_cluster(std::string requesting_node)
+bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
 {
   // Check the requesting node is a Chronos node
   std::vector<std::string> cluster;
@@ -244,10 +262,10 @@ bool ControllerTask::node_is_in_cluster(std::string requesting_node)
                                           it != cluster.end();
                                           ++it)
   {
-    if (*it == requesting_node)
+    if (*it == node_for_replicas)
     {
       LOG_DEBUG("Found requesting node in current nodes: %s", 
-                requesting_node.c_str());
+                node_for_replicas.c_str());
       node_in_cluster = true;
       break;
     }
@@ -262,10 +280,10 @@ bool ControllerTask::node_is_in_cluster(std::string requesting_node)
                                             it != leaving.end();
                                             ++it)
     {
-      if (*it == requesting_node)
+      if (*it == node_for_replicas)
       {
         LOG_DEBUG("Found requesting node in leaving nodes: %s", 
-                  requesting_node.c_str());
+                  node_for_replicas.c_str());
         node_in_cluster = true;
         break;
       }
