@@ -21,7 +21,6 @@ Globals::Globals(std::string config_file) :
   _desc.add_options()
     ("http.bind-address", po::value<std::string>()->default_value("localhost"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
-    ("http.default-bind-port", po::value<int>()->default_value(7253), "Port to send requests to other Chronos nodes (if not specified in the cluster settings")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
     ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster")
     ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
@@ -69,10 +68,6 @@ void Globals::update_config()
   int bind_port = conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
   LOG_STATUS("Bind port: %d", bind_port);
-
-  int default_bind_port = conf_map["http.default-bind-port"].as<int>();
-  set_default_bind_port(default_bind_port);
-  LOG_STATUS("Default bind port: %d", default_bind_port);
 
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);

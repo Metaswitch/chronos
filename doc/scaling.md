@@ -37,8 +37,12 @@ ID creation and processing is described in more detail [here](design/hashing.md)
 
 ## Rebalancing timers
 
-When a Chronos cluster scales up/down then we want to rebalance the timers, so that new Chronos nodes 
-can take over some of the load, and leaving Chronos nodes can be safely removed from the cluster. 
+When a Chronos cluster scales up/down then any existing timers will no longer be on the right 
+replicas (given the new configuration). For example, when a new node is added it can immediately 
+start accepting new timers, but it won't have any of the load of the existing timers on it. 
+
+We therefore want to rebalance the timers, so that new Chronos nodes can take over some of the load, 
+and leaving Chronos nodes can be safely removed from the cluster. 
 
 After the Chronos cluster configuration changes, new, updated and popped timers are rebalanced to 
 the correct Chronos nodes, given the new configuration. This process is described [below](scaling.md#rebalancing-timers---passive-method).
@@ -94,7 +98,9 @@ In this way, the timers will automatically spread themselves out over the larger
 
 ### Rebalancing timers - active method
 
-The active resynchronization process has three steps:
+The active resynchronization process has three steps. The first and third step involve changing 
+the Chronos configuration file (and reloading Chronos), and the second step actually covers
+the rebalancing process:
 
 #### Step 1
 
@@ -106,27 +112,29 @@ Any timers that pop on/are updated on/are added to a node that has the new confi
 
 To trigger the scaling process, run `service chronos <scale-down/scale-up>` on all Chronos nodes that will remain in the cluster (i.e. not on any nodes that are being scaled down). 
 
-In both cases this sends a SIGUSR1 to the Chronos process, which triggers it to contact the other nodes in the cluster and run the resynchronization. The resynchronization process is described below, and more detail about the GET/DELETE requests is available [here](api.md).
-
-* Each node sends a GET request to every other Chronos node. 
-* The receiving node calculates which of its timers the requesting node will be interested in after the scale operation down is complete (excluding any timers that have already been updated), and responds with enough information that the requesting node can add the timer to their store.
-* The requesting node then takes the timers that the leaving node has told it about and then for each timer it may:
-    * Add it to its timer wheel - This is only allowed if the requesting node has moved down/stayed at the same level in the replica list (where the lowest replica is the primary) for the timer
-    * Replicate the timer - The timer is replicated to any node that is higher in the new replica list than the requesting node, so long as the old replica position of the node to replicate to is equal/higher than the requesting nodes position (where not being involved previously counts as high).   
-    * Send tombstones for the timer - Tombstone requests for the timer are sent to any node on the old replica list, so long as the replica is no longer involved in the timer, and the position of the node to send a tombstone to in the old replica list is the same/higher than the position of the requesting node in the new replica list.
- 
-* Finally, the requesting node sends a DELETE request to all leaving nodes. This contains the IDs of the (old) timers that it has processed. 
-* Each leaving node finds each old timer, and, if it still exists marks which replicas the new timer has been copied to (which is the requesting node, and any nodes higher in the replica list). If all replicas know about the old timer, then a leaving node deletes the old timer.
-
-If there are many timers, then the GET responses are batched into groups of 100 timers, and the response to the GET indicates that there are more responses. The requesting nodes should continue to send GETs until they have received all the timers. 
-
-This process means that at each point in the scale down, each timer has a single node acting as the primary replica for the primary in its replica list (with small windows of time between the GET response, and any replication requests/DELETE requests being processed).  
-
-An even more detailed look what happens to timers during the resynchronization process is [here](design/resynchronization.md)
-
 #### Step 3
 
 Finally, remove any scaling configuration from the chronos configuration file and reload the Chronos configuration again (`service chronos reload`). 
+
+#### Step 2 - what does this actually cover?
+
+Running `service chronos resync` sends a SIGUSR1 to the Chronos process, which triggers it to contact the other nodes in the cluster and run the resynchronization. The resynchronization process is described below, and more detail about the GET/DELETE requests is available [here](api.md).
+
+* Each node sends a GET request to every other Chronos node.
+* The receiving node calculates which of its timers the requesting node will be interested in after the scale operation down is complete (excluding any timers that have already been updated), and responds with enough information that the requesting node can add the timer to their store.
+* The requesting node then takes the timers that the leaving node has told it about and then for each timer it may:
+    * Add it to its timer wheel - This is only allowed if the requesting node has moved down/stayed at the same level in the replica list (where the lowest replica is the primary) for the timer
+    * Replicate the timer - The timer is replicated to any node that is higher in the new replica list than the requesting node, so long as the old replica position of the node to replicate to is equal/higher than the requesting nodes position (where not being involved previously counts as high).
+    * Send tombstones for the timer - Tombstone requests for the timer are sent to any node on the old replica list, so long as the replica is no longer involved in the timer, and the position of the node to send a tombstone to in the old replica list is the same/higher than the position of the requesting node in the new replica list.
+
+* Finally, the requesting node sends a DELETE request to all leaving nodes. This contains the IDs of the (old) timers that it has processed.
+* Each leaving node finds each old timer, and, if it still exists marks which replicas the new timer has been copied to (which is the requesting node, and any nodes higher in the replica list). If all replicas know about the old timer, then a leaving node deletes the old timer.
+
+If there are many timers, then the GET responses are batched into groups of 100 timers, and the response to the GET indicates that there are more responses. The requesting nodes should continue to send GETs until they have received all the timers.
+
+This process means that at each point in the scale down, each timer has a single node acting as the primary replica for the primary in its replica list (with small windows of time between the GET response, and any replication requests/DELETE requests being processed).
+
+An even more detailed look what happens to timers during the resynchronization process is [here](design/resynchronization.md)
 
 #### Worked example
 

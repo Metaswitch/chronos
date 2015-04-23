@@ -36,7 +36,6 @@ public:
 
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
-  GLOBAL(default_bind_port, int);
   GLOBAL(cluster_local_ip, std::string);
   GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
   GLOBAL(cluster_addresses, std::vector<std::string>);

@@ -1,6 +1,8 @@
 # Resynchronization
 
-This document describes the resynchronization process in more detail.
+This document describes the resynchronization process in more detail. There is a high level view of the resynchronization process [here](../scaling.md).
+
+During the resynchronization process, each Chronos node sends a series of GET and DELETE requests to every other Chronos node. The GET requests retrieve information about timers that the requesting node should have a replica for (under the new configuration). The DELETE requests are used to mark which Chronos nodes know about a timer (and so don't need to process it again). 
 
 ## Handling a resynchronization GET request
 
@@ -8,7 +10,7 @@ When a node receives a GET request as part of resynchronization (see [here](../a
 
 The node loops through their timer wheel. For each timer it does the following processing
 
-* It compares the `cluster-view-id` on the GET request to the stored `cluster-view-id` in the timer(s). If these are the same, then the nodes stops checking the timer and moves onto the next timer.  
+* It compares the `cluster-view-id` on the GET request to the stored `cluster-view-id` in the timer(s). If these are the same, then the nodes stops checking the timer and moves onto the next timer. This allows timers that have been created under the new cluster configuration (or have already been updated) to be quickly passed over).
 * The node then calculates the replicas for the timer given the new cluster configuration. If the timer will have a replica on the requesting node under the new configuration, the node pulls out the information for the timer, and adds it to the response.
 * The timer information in the response has the new replicas, and the cluster-view-id represents the new cluster configuration. 
 
