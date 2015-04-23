@@ -104,11 +104,18 @@ do_wait_sync() {
   while true
   do
     # Retrieve the statistics.
-    nodes=`/usr/share/clearwater/bin/chronos/cw_stat chronos chronos_scale_nodes_to_query`
+    nodes=`/usr/share/clearwater/chronos/bin/cw_stat chronos chronos_scale_nodes_to_query`
 
     # If the nodes left to query is 0 or unset, we're finished
     if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]
     then
+      break
+    fi
+
+    # If the statistic is unknown then the SNMP handler isn't installed. Give up
+    if [ "$nodes" = 'Unknown statistic "chronos_scale_nodes_to_query"' ]
+    then
+      echo "SNMP statistics are not supported on this box. Please install the required packages and retry"
       break
     fi
 
