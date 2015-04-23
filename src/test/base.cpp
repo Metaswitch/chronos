@@ -30,7 +30,6 @@ void Base::SetUp()
   __globals->set_cluster_view_id(cluster_view_id);
   int bind_port = 9999;
   __globals->set_bind_port(bind_port);
-  __globals->set_default_bind_port(bind_port);
   __globals->unlock();
 }
 

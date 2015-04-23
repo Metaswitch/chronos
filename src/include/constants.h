@@ -14,7 +14,7 @@ static const char* const JSON_REPLICA_INDEX = "ReplicaIndex";
 static const char* const JSON_OLD_REPLICAS = "OldReplicas";
 
 // Parameters
-static const char* const PARAM_REQUESTING_NODE = "requesting-node";
+static const char* const PARAM_NODE_FOR_REPLICAS = "node-for-replicas";
 static const char* const PARAM_SYNC_MODE = "sync-mode";
 static const char* const PARAM_CLUSTER_VIEW_ID = "cluster-view-id";
 

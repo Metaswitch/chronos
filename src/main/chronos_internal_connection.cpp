@@ -103,7 +103,7 @@ void ChronosInternalConnection::resynchronize()
     {
       // Just use the server as the address.
       address = *it;
-      __globals->get_default_bind_port(port);
+      __globals->get_bind_port(port);
     }
     
     std::string server_to_sync = address + ":" + std::to_string(port);
@@ -409,14 +409,14 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string server,
 }
 
 HTTPCode ChronosInternalConnection::send_get(const std::string server,
-                                             const std::string request_node_param,
+                                             const std::string node_for_replicas_param,
                                              const std::string sync_mode_param,
                                              std::string cluster_view_id_param,
                                              int max_timers,
                                              std::string& response)
 {
   std::string path = std::string("/timers?") +
-                     PARAM_REQUESTING_NODE + "="  + request_node_param + ";" +
+                     PARAM_NODE_FOR_REPLICAS + "="  + node_for_replicas_param + ";" +
                      PARAM_SYNC_MODE + "=" + sync_mode_param + ";" +
                      PARAM_CLUSTER_VIEW_ID + "="  + cluster_view_id_param;
 
