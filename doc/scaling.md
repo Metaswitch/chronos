@@ -110,7 +110,7 @@ Any timers that pop on/are updated on/are added to a node that has the new confi
 
 #### Step 2
 
-To trigger the scaling process, run `service chronos <scale-down/scale-up>` on all Chronos nodes that will remain in the cluster (i.e. not on any nodes that are being scaled down). 
+To trigger the scaling process, run `service chronos resync` on all Chronos nodes that will remain in the cluster (i.e. not on any nodes that are being scaled down). 
 
 #### Step 3
 

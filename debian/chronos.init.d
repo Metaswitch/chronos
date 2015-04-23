@@ -150,7 +150,7 @@ case "$1" in
   reload|force-reload)
         do_reload
         ;;
-  scale-down|scale-up)
+  resync)
         do_scale_operation
         ;;
   wait-sync)
@@ -184,7 +184,7 @@ case "$1" in
         esac
         ;;
   *)
-        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload|scale-up|scale-down|wait-sync}" >&2
+        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload|resync|wait-sync}" >&2
         exit 3
         ;;
 esac

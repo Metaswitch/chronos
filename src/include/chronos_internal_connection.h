@@ -31,6 +31,7 @@ private:
   Alarm* _alarm;
   Statistic* _nodes_to_query_stat;
   StatisticCounter* _timers_processed_stat;
+  StatisticCounter* _invalid_timers_processed_stat;
   Updater<void, ChronosInternalConnection>* _updater;
 
   // Creates the body to use in a delete request. This is a JSON

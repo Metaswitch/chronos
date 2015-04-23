@@ -207,8 +207,9 @@ int main(int argc, char** argv)
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
 
   std::string stats[] = {"chronos_scale_nodes_to_query",
-                         "chronos_scale_timers_processed"};
-  LastValueCache* lvc = new LastValueCache(2, stats, "chronos");
+                         "chronos_scale_timers_processed",
+                         "chronos_scale_invalid_timers_processed"};
+  LastValueCache* lvc = new LastValueCache(3, stats, "chronos");
 
   ChronosInternalConnection* chronos_internal_connection =
             new ChronosInternalConnection(http_resolver, 

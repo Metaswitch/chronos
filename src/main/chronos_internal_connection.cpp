@@ -30,7 +30,8 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _replicator(replicator),
   _alarm(alarm),
   _nodes_to_query_stat(new Statistic("chronos_scale_nodes_to_query", lvc)),
-  _timers_processed_stat(new StatisticCounter("chronos_scale_timers_processed", lvc))
+  _timers_processed_stat(new StatisticCounter("chronos_scale_timers_processed", lvc)),
+  _invalid_timers_processed_stat(new StatisticCounter("chronos_scale_invalid_timers_processed", lvc))
 {
   // Create an updater to control when Chronos should resynchronise. This uses 
   // SIGUSR1 rather than the default SIGHUP, and we shouldn't resynchronise
@@ -50,6 +51,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
 ChronosInternalConnection::~ChronosInternalConnection()
 {
   delete _updater; _updater = NULL;
+  delete _invalid_timers_processed_stat; _invalid_timers_processed_stat = NULL;
   delete _timers_processed_stat; _timers_processed_stat = NULL;
   delete _nodes_to_query_stat; _nodes_to_query_stat = NULL;
   delete _http; _http = NULL;
@@ -338,6 +340,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             // A single entry is badly formatted. This is unexpected but we'll try 
             // to keep going and process the rest of the timers. 
             count_invalid_timers++;
+            _invalid_timers_processed_stat->increment();
             LOG_INFO("JSON entry was invalid (hit error at %s:%d)",
                      err._file, err._line);
           }

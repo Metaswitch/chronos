@@ -19,7 +19,7 @@ Additional nodes are added to the cluster by adding extra `node` lines and sendi
     node = 3.4.5.6
     node = 4.5.6.7
 
-To rebalance any existing timers across the Chronos cluster, run `service chronos scale-up` on each Chronos node. You can find more details about scaling up procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
+To rebalance any existing timers across the Chronos cluster, run `service chronos resync` on each Chronos node. You can find more details about scaling up procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
 
 ## Scaling down
 
@@ -32,7 +32,7 @@ To remove nodes from a cluster, mark them as leaving in the configuration file, 
     leaving = 3.4.5.6
     leaving = 4.5.6.7
 
-Nodes marked as leaving will no longer be chosen as replicas for new timers. To rebalance the existing timers across the new Chronos cluster, run `service chronos scale-down` on each Chronos node. You can find more details about scaling down procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
+Nodes marked as leaving will no longer be chosen as replicas for new timers. To rebalance the existing timers across the new Chronos cluster, run `service chronos resync` on each Chronos node. You can find more details about scaling down procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
 
 # Other scaling requirements and notes
 
