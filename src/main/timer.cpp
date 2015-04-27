@@ -15,16 +15,9 @@
 
 uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 {
-    uint32_t hash;
-    MurmurHash3_x86_32(&data, sizeof(TimerID), seed, &hash);
-    return hash;
-}
-
-uint32_t Hasher::do_hash(std::string data, uint32_t seed)
-{
-    uint32_t hash;
-    MurmurHash3_x86_32(data.data(), data.length(), seed, &hash);
-    return hash;
+  uint32_t hash;
+  MurmurHash3_x86_32(&data, sizeof(TimerID), seed, &hash);
+  return hash;
 }
 
 static Hasher hasher;
@@ -292,7 +285,9 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
     // more timers will be moved around when scaling.
     while (hash_to_idx.find(hash) != hash_to_idx.end())
     {
+      // LCOV_EXCL_START
       hash++;
+      // LCOV_EXCL_STOP
     }
     
     hash_to_idx[hash] = ii;

@@ -10,6 +10,7 @@ src/main/replicator.cpp
 src/main/globals.cpp
 src/main/murmur/MurmurHash3.cpp
 src/main/http_callback.cpp
+src/main/timer_handler.cpp
 
 # cpp-common files 
 modules/cpp-common/src/baseresolver.cpp

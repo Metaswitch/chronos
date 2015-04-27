@@ -321,10 +321,12 @@ uint64_t TimerStore::wall_time_ms()
 
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
   {
+    // LCOV_EXCL_START
     CL_CHRONOS_NO_SYSTEM_TIME.log(strerror(errno));
     LOG_ERROR("Failed to get system time - timer service cannot run: %s",
               strerror(errno));
     assert(!"Failed to get system time");
+    // LCOV_EXCL_STOP
   }
 
   // Convert the timestamp to ms (being careful to always store the result in a
