@@ -85,7 +85,7 @@ ifdef JUSTTEST
 endif
 
 .PHONY: test 
-test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test coverage-check
+test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test coverage coverage-check
 
 .PHONY: run_test
 run_test: ${TARGET_BIN_TEST}
