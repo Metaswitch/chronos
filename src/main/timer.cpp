@@ -3,6 +3,8 @@
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
+#include "rapidjson/error/en.h"
+#include "json_parse_utils.h"
 #include "utils.h"
 #include "log.h"
 
@@ -427,42 +429,6 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
   return tombstone;
 }
 
-#define JSON_PARSE_ERROR(STR) {                                               \
-  error = (STR);                                                              \
-  delete timer;                                                               \
-  return NULL;                                                                \
-}
-
-#define JSON_ASSERT_OBJECT(NODE, NODE_NAME) {                                 \
-  if (!(NODE).IsObject())                                                     \
-    JSON_PARSE_ERROR((NODE_NAME " should be an object"));                     \
-}
-
-#define JSON_ASSERT_INTEGER(NODE, NODE_NAME) {                                \
-  if (!(NODE).IsInt())                                                        \
-    JSON_PARSE_ERROR((NODE_NAME " should be an integer"));                    \
-}
-
-#define JSON_ASSERT_INTEGER_64(NODE, NODE_NAME) {                             \
-  if (!(NODE).IsInt64())                                                      \
-    JSON_PARSE_ERROR((NODE_NAME " should be an 64bit integer"));              \
-}
-
-#define JSON_ASSERT_STRING(NODE, NODE_NAME) {                                 \
-  if (!(NODE).IsString())                                                     \
-    JSON_PARSE_ERROR((NODE_NAME " should be a string"));                      \
-}
-
-#define JSON_ASSERT_ARRAY(NODE, NODE_NAME) {                                  \
-  if (!(NODE).IsArray())                                                      \
-    JSON_PARSE_ERROR((NODE_NAME " should be an array"));                      \
-}
-
-#define JSON_ASSERT_CONTAINS(NODE, NODE_NAME, ELEM) {                         \
-  if (!(NODE).HasMember(ELEM))                                                \
-    JSON_PARSE_ERROR(("Couldn't find '" ELEM "' in '" NODE_NAME "'"));        \
-}
-
 // Create a Timer object from the JSON representation.
 //
 // @param id - The unique identity for the timer (see generate_timer_id() above).
@@ -476,12 +442,14 @@ Timer* Timer::from_json(TimerID id,
                         std::string& error, 
                         bool& replicated)
 {
-  Timer* timer = NULL;
   rapidjson::Document doc;
   doc.Parse<0>(json.c_str());
+
   if (doc.HasParseError())
   {
-    JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s. JSON is: %s") % doc.GetErrorOffset() % doc.GetParseError() % json));
+    error = "Failed to parse timer as JSON. Error: %s",
+            rapidjson::GetParseError_En(doc.GetParseError());
+    return NULL;
   }
 
   return from_json_obj(id, replica_hash, error, replicated, doc);  
@@ -495,146 +463,140 @@ Timer* Timer::from_json_obj(TimerID id,
 {
   Timer* timer = NULL;
 
-  if (!doc.HasMember("timing"))
-    JSON_PARSE_ERROR(("Couldn't find the 'timing' node in the JSON"));
-  if (!doc.HasMember("callback"))
-    JSON_PARSE_ERROR(("Couldn't find the 'callback' node in the JSON"));
-
-  // Parse out the timing block
-  rapidjson::Value& timing = doc["timing"];
-  JSON_ASSERT_OBJECT(timing, "timing");
-
-  JSON_ASSERT_CONTAINS(timing, "timing", "interval");
-  rapidjson::Value& interval = timing["interval"];
-  JSON_ASSERT_INTEGER(interval, "interval");
-
-  // Extract the repeat-for parameter, if it's absent, set it to the interval
-  // instead.
-  int repeat_for_int;
-  if (timing.HasMember("repeat-for"))
+  try
   {
-    rapidjson::Value& repeat_for = timing["repeat-for"];
-    JSON_ASSERT_INTEGER(repeat_for, "repeat-for");
-    repeat_for_int = repeat_for.GetInt();
-  }
-  else
-  {
-    repeat_for_int = interval.GetInt();
-  }
+    JSON_ASSERT_CONTAINS(doc, "timing");
+    JSON_ASSERT_CONTAINS(doc, "callback");
 
-  if ((interval.GetInt() == 0) && (repeat_for_int != 0))
-  {
-    // If the interval time is 0 and the repeat_for_int isn't then reject the timer. 
-    JSON_PARSE_ERROR(boost::str(boost::format("Can't have a zero interval time with a non-zero (%d) repeat-for time") % repeat_for_int));
-  }
+    // Parse out the timing block
+    rapidjson::Value& timing = doc["timing"];
+    JSON_ASSERT_OBJECT(timing);
 
-  timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
+    JSON_ASSERT_CONTAINS(timing, "interval");
+    rapidjson::Value& interval = timing["interval"];
+    JSON_ASSERT_INT(interval);
 
-  if (timing.HasMember("start-time"))
-  {
-    // Timer JSON specifies a start-time, use that instead of now.
-    rapidjson::Value& start_time = timing["start-time"];
-    JSON_ASSERT_INTEGER_64(start_time, "start-time");
-    timer->start_time = start_time.GetInt64();
-  }
-
-  if (timing.HasMember("sequence-number"))
-  {
-    rapidjson::Value& sequence_number = timing["sequence-number"];
-    JSON_ASSERT_INTEGER(sequence_number, "sequence-number");
-    timer->sequence_number = sequence_number.GetInt();
-  }
-
-  // Parse out the 'callback' block
-  rapidjson::Value& callback = doc["callback"];
-
-  JSON_ASSERT_OBJECT(callback, "callback");
-  JSON_ASSERT_CONTAINS(callback, "callback", "http");
-
-  rapidjson::Value& http = callback["http"];
-
-  JSON_ASSERT_OBJECT(http, "http");
-  JSON_ASSERT_CONTAINS(http, "http", "uri");
-  JSON_ASSERT_CONTAINS(http, "http", "opaque");
-
-  rapidjson::Value& uri = http["uri"];
-  rapidjson::Value& opaque = http["opaque"];
-
-  JSON_ASSERT_STRING(uri, "uri");
-  JSON_ASSERT_STRING(opaque, "opaque");
-
-  timer->callback_url = std::string(uri.GetString(), uri.GetStringLength());
-  timer->callback_body = std::string(opaque.GetString(), opaque.GetStringLength());
-
-  if (doc.HasMember("reliability"))
-  {
-    // Parse out the 'reliability' block
-    rapidjson::Value& reliability = doc["reliability"];
-
-    JSON_ASSERT_OBJECT(reliability, "reliability");
-
-    if (reliability.HasMember("cluster-view-id"))
+    // Extract the repeat-for parameter, if it's absent, set it to the interval
+    // instead.
+    int repeat_for_int;
+    if (timing.HasMember("repeat-for"))
     {
-      rapidjson::Value& cluster_view_id = reliability["cluster-view-id"];
-      JSON_ASSERT_STRING(cluster_view_id, "cluster-view-id");
-      timer->cluster_view_id = cluster_view_id.GetString();
+      JSON_GET_INT_MEMBER(timing, "repeat-for", repeat_for_int);
+    }
+    else
+    {
+      repeat_for_int = interval.GetInt();
     }
 
-    if (reliability.HasMember("replicas"))
+    if ((interval.GetInt() == 0) && (repeat_for_int != 0))
     {
-      rapidjson::Value& replicas = reliability["replicas"];
-      JSON_ASSERT_ARRAY(replicas, "replicas");
+      // If the interval time is 0 and the repeat_for_int isn't then reject the timer. 
+      error = "Can't have a zero interval time with a non-zero (%s) repeat-for time", 
+              std::to_string(repeat_for_int);
+      return NULL;
+    }
 
-      if (replicas.Size() == 0)
+    timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
+
+    if (timing.HasMember("start-time"))
+    {
+      // Timer JSON specifies a start-time, use that instead of now.
+      JSON_GET_INT_64_MEMBER(timing, "start-time", timer->start_time);
+    }
+
+    if (timing.HasMember("sequence-number"))
+    {
+      JSON_GET_INT_MEMBER(timing, "sequence-number", timer->sequence_number);
+    }
+
+    // Parse out the 'callback' block
+    rapidjson::Value& callback = doc["callback"];
+    JSON_ASSERT_OBJECT(callback);
+
+    JSON_ASSERT_CONTAINS(callback, "http");
+    rapidjson::Value& http = callback["http"];
+    JSON_ASSERT_OBJECT(http);
+
+    JSON_GET_STRING_MEMBER(http, "uri", timer->callback_url);
+    JSON_GET_STRING_MEMBER(http, "opaque", timer->callback_body);
+
+    if (doc.HasMember("reliability"))
+    {
+      // Parse out the 'reliability' block
+      rapidjson::Value& reliability = doc["reliability"];
+      JSON_ASSERT_OBJECT(reliability);
+
+      if (reliability.HasMember("cluster-view-id"))
       {
-        JSON_PARSE_ERROR("If replicas is specified it must be non-empty");
+        JSON_GET_STRING_MEMBER(reliability, 
+                               "cluster-view-id", 
+                               timer->cluster_view_id);
       }
 
-      timer->_replication_factor = replicas.Size();
-
-      for (rapidjson::Value::ConstValueIterator it = replicas.Begin(); 
-                                                it != replicas.End(); 
-                                                ++it)
+      if (reliability.HasMember("replicas"))
       {
-        JSON_ASSERT_STRING(*it, "replica address");
-        timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+        rapidjson::Value& replicas = reliability["replicas"];
+        JSON_ASSERT_ARRAY(replicas);
+
+        if (replicas.Size() == 0)
+        {
+          error = "If replicas is specified it must be non-empty";
+          delete timer; timer = NULL;
+          return NULL;
+        }
+
+        timer->_replication_factor = replicas.Size();
+
+        for (rapidjson::Value::ConstValueIterator it = replicas.Begin(); 
+                                                  it != replicas.End(); 
+                                                  ++it)
+        {
+          JSON_ASSERT_STRING(*it);
+          timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+        }
+      }
+      else
+      {
+        if (reliability.HasMember("replication-factor"))
+        {
+          JSON_GET_INT_MEMBER(reliability,
+                              "replication-factor",
+                              timer->_replication_factor);
+        }
+        else
+        {
+          // Default replication factor is 2.
+          timer->_replication_factor = 2;
+        }
       }
     }
     else
     {
-      if (reliability.HasMember("replication-factor"))
-      {
-        rapidjson::Value& replication_factor = reliability["replication-factor"];
-        JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
-        timer->_replication_factor = replication_factor.GetInt();
-      }
-      else
-      {
-        // Default replication factor is 2.
-        timer->_replication_factor = 2;
-      }
+      // Default to 2 replicas
+      timer->_replication_factor = 2;
+    }
+
+    timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;
+
+    if (timer->replicas.empty())
+    {
+      // Replicas not determined above, determine them now.  Note that this implies
+      // the request is from a client, not another replica.
+      replicated = false;
+      timer->calculate_replicas(replica_hash);
+    }
+    else
+    {
+      // Replicas were specified in the request, must be a replication message
+      // from another cluster node.
+      replicated = true;
     }
   }
-  else
+  catch (JsonFormatError err)
   {
-    // Default to 2 replicas
-    timer->_replication_factor = 2;
-  }
-
-  timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;
-
-  if (timer->replicas.empty())
-  {
-    // Replicas not determined above, determine them now.  Note that this implies
-    // the request is from a client, not another replica.
-    replicated = false;
-    timer->calculate_replicas(replica_hash);
-  }
-  else
-  {
-    // Replicas were specified in the request, must be a replication message
-    // from another cluster node.
-    replicated = true;
+    error = "Badly formed Timer entry - hit error on line " + std::to_string(err._line);
+    delete timer; timer = NULL;
+    return NULL;
   }
 
   return timer;
@@ -662,4 +624,3 @@ void Timer::update_cluster_information()
   __globals->get_cluster_view_id(global_cluster_view_id);
  cluster_view_id = global_cluster_view_id;
 }
-
