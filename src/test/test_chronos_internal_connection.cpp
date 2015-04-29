@@ -177,7 +177,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
   fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.1:9999\", \"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.3:9999\", \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}}]}";
 
   // Delete response
-  fakecurl_responses["http://10.42.42.42:9999/timers/references"] = HTTP_ACCEPTED;
+  fakecurl_responses["http://10.42.42.42:9999/timers/references"] = HTTP_SERVER_UNAVAILABLE;
 
   // There should be no calls to add a timer, as the node has moved higher up
   // the replica list
@@ -191,6 +191,28 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
   _cluster_addresses.pop_back();
   leaving_cluster_addresses.clear();
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
+}
+
+TEST_F(TestChronosInternalConnection, ResynchronizeWithInvalidGetResponse)
+{
+  // Response has invalid JSON
+  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":}";
+
+  // There should be no calls to add/replicate a timer
+  EXPECT_CALL(*_th, add_timer(_)).Times(0);
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(_, _)).Times(0);
+  _chronos->resynchronize();
+}
+
+TEST_F(TestChronosInternalConnection, ResynchronizeWithGetRequestFailed)
+{
+  // GET request fails
+  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = HTTP_BAD_REQUEST;
+
+  // There should be no calls to add/replicate a timer
+  EXPECT_CALL(*_th, add_timer(_)).Times(0);
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(_, _)).Times(0);
+  _chronos->resynchronize();
 }
 
 TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultsInvalidJSON)
@@ -228,9 +250,9 @@ TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultNoTimer)
   EXPECT_EQ(status, 400);
 }
 
-TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultInvalidTimer)
+TEST_F(TestChronosInternalConnection, SendTriggerInvalidResultInvalidTimers)
 {
-  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {}}]}";
+  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {}}, {\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}}}]}";
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
   EXPECT_EQ(status, 400);
 }

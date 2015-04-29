@@ -779,6 +779,30 @@ TEST_F(TestTimerStore, SelectTimers)
   delete tombstone;
 }
 
+// Test that if there are no timers for the requesting node,
+// that trying to get the timers returns an empty list
+TEST_F(TestTimerStore, SelectTimersTakeInformationalTimers)
+{
+  std::unordered_set<Timer*> next_timers;
+  
+  // Add a timer to the store, then update it with a new cluster view ID.
+  timers[0]->cluster_view_id = "old-cluster-view-id";
+  ts->add_timer(timers[0]);
+  timers[1]->id = 1;
+  ts->add_timer(timers[1]);
+
+  std::string get_response;
+  ts->get_timers_for_node("10.0.0.3:9999", 1, "cluster-view-id", get_response);
+
+  // Check that the response is based on the informational timer, rather than the timer
+  // in the timer wheel (the uri should be callback1 rather than callback2)
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"cluster-view-id\",\"replicas\":\\\[\"10.0.0.3:9999\"]}}}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+
+  delete timers[2];
+  delete tombstone;
+}
+
 // Test that if there are no timers for the requesting node, 
 // that trying to get the timers returns an empty list
 TEST_F(TestTimerStore, SelectTimersNoMatchesReqNode)
@@ -788,7 +812,7 @@ TEST_F(TestTimerStore, SelectTimersNoMatchesReqNode)
   ts->add_timer(timers[1]);
   ts->add_timer(timers[2]);
   std::string get_response;
-  ts->get_timers_for_node("10.0.0.4:9999", 1, "updated-cluster-view-id", get_response);
+  ts->get_timers_for_node("10.0.0.4:9999", 1, "cluster-view-id", get_response);
 
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 
@@ -883,8 +907,8 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   ts->add_timer(timers[0]);
 
   // Add a timer to the store with the same ID as the previous timer, 
-  // but an updated ID. This will take the original timer out of the 
-  // timer wheel and save it just in the map
+  // but an updated cluster-view ID. This will take the original timer 
+  // out of the timer wheel and save it just in the map
   timers[1]->id = 1; 
   timers[1]->_replica_tracker = 7;
   timers[1]->replicas.push_back("10.0.0.2:9999");
@@ -902,6 +926,19 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
   EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
 
+  // Now update the timer. This should change the first timer but not the 
+  // second timer in the timer map
+  timers[2]->id = 1;
+  timers[2]->_replica_tracker = 7;
+  ts->add_timer(timers[2]);
+  map_it = ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
+  EXPECT_EQ(1u, map_it->second.front()->replicas.size());
+  EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
+  EXPECT_EQ(3u, map_it->second.back()->replicas.size());
+
   // Finally, update the replica tracker to mark all replicas
   // as having been informed for Timer ID 1. This should 
   // delete the saved timer. 
@@ -913,7 +950,6 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 
-  delete timers[2];
   delete tombstone;
 }
 

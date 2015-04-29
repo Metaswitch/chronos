@@ -1,0 +1,3 @@
+#!/bin/bash
+ONE_GIG=1073741824
+python2.7 /usr/share/clearwater/bin/log_cleanup.py /var/log/chronos --prefix chronos_ --maxsize $ONE_GIG

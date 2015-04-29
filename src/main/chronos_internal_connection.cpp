@@ -140,8 +140,10 @@ void ChronosInternalConnection::resynchronize()
     if (!Utils::split_host_port(*it, address, port))
     {
       // Just use the server as the address.
+      // LCOV_EXCL_START - splitting code is tested elsewhere
       address = *it;
       __globals->get_bind_port(port);
+      // LCOV_EXCL_STOP
     }
     
     std::string server_to_sync = address + ":" + std::to_string(port);
@@ -291,7 +293,9 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
                 if (old_level >= new_level)
                 {
                   // Add/update timer
+                  // LCOV_EXCL_START - Adding timer paths are tested elsewhere
                   store_timer = true;
+                  // LCOV_EXCL_STOP
                 }
               }
               else

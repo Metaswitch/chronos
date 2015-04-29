@@ -52,7 +52,6 @@ class Hasher
 {
 public:
   virtual uint32_t do_hash(TimerID data, uint32_t seed);
-  virtual uint32_t do_hash(std::string data, uint32_t seed);
 };
 
 class Timer

@@ -22,3 +22,6 @@
 [submodule "modules/gmock"]
 	path = modules/gmock
 	url = git@github.com:Metaswitch/gmock-upstream.git
+[submodule "modules/gcovr"]
+	path = modules/gcovr
+	url = https://github.com/gcovr/gcovr

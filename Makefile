@@ -28,6 +28,19 @@ LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_op
 LDFLAGS_BUILD := -lsas
 LDFLAGS_TEST := -ldl
 
+TEST_XML = $(TEST_OUT_DIR)/test_detail_$(TARGET_TEST).xml
+COVERAGE_XML = $(TEST_OUT_DIR)/coverage_$(TARGET_TEST).xml
+COVERAGE_LIST_TMP = $(TEST_OUT_DIR)/coverage_list_tmp
+COVERAGE_LIST = $(TEST_OUT_DIR)/coverage_list
+COVERAGE_MASTER_LIST = src/test/coverage-not-yet
+
+EXTRA_CLEANS += $(TEST_XML) \
+                $(COVERAGE_XML) \
+                $(OBJ_DIR_TEST)/*.gcno \
+                $(OBJ_DIR_TEST)/*.gcda \
+                *.gcov \
+		${OBJ_DIR_TEST}/chronos.memcheck
+
 # Now the GMock / GTest boilerplate.
 GTEST_HEADERS := $(GTEST_DIR)/include/gtest/*.h \
                  $(GTEST_DIR)/include/gtest/internal/*.h
@@ -41,6 +54,10 @@ GMOCK_SRCS_ := $(GMOCK_DIR)/src/*.cc $(GMOCK_HEADERS)
 
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils
 
+COVERAGEFLAGS = $(OBJ_DIR_TEST) --object-directory=$(shell pwd) --root=${ROOT} \
+                --exclude='(^src/include/|^modules/gmock/|^modules/sas-client/|^modules/rapidjson/|^modules/cpp-common/include/|^modules/cpp-common/test_utils/|^src/test/|^usr/)' \
+                --sort-percentage
+
 .PHONY: default
 default: build
 
@@ -49,7 +66,6 @@ include ${ROOT}/mk/platform.mk
 DEB_COMPONENT := chronos
 DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
-EXTRA_CLEANS := ${ROOT}/gcov ${OBJ_DIR_TEST}/chronos.memcheck
 
 SUBMODULES := c-ares curl libevhtp sas-client cpp-common
 
@@ -68,12 +84,14 @@ ifdef JUSTTEST
   EXTRA_TEST_ARGS ?= --gtest_filter=$(JUSTTEST)
 endif
 
-.PHONY: test
-test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test
+.PHONY: test 
+test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test coverage coverage-check
 
 .PHONY: run_test
 run_test: ${TARGET_BIN_TEST}
-	${TARGET_BIN_TEST} $(EXTRA_TEST_ARGS)
+	rm -f $(TEST_XML)
+	rm -f $(OBJ_DIR_TEST)/*.gcda
+	$(TARGET_BIN_TEST) $(EXTRA_TEST_ARGS) --gtest_output=xml:$(TEST_XML)
 
 .PHONY: debug
 debug: ${TARGET_BIN_TEST}
@@ -108,21 +126,35 @@ valgrind: ${TARGET_BIN_TEST}
 	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
 
 .PHONY: coverage
-coverage: ${TARGET_BIN_TEST}
-	-rm ${OBJ_DIR_TEST}/src/main/*.gcda 2> /dev/null
-	@mkdir -p gcov
-	${TARGET_BIN_TEST}
-	gcov -o ${OBJ_DIR_TEST}/src/main/ ${OBJ_DIR_TEST}/src/main/*.o > gcov/synopsis
-	@for gcov in *.gcov;                                                         \
-	do                                                                           \
-	  source=$$(basename $$gcov .gcov);                                          \
-		found=$$(find src -name $$source | wc -l);                           \
-	  if [[ $$found != 1 ]];                                                     \
-	  then                                                                       \
-	    rm $$gcov;                                                               \
-	  fi                                                                         \
-	done
-	@mv *.gcov gcov/
+coverage: | run_test
+	$(GCOVR) $(COVERAGEFLAGS) --xml > $(COVERAGE_XML)
+
+# Check that we have 100% coverage of all files except those that we
+# have declared we're being relaxed on.  In particular, all new files
+# must have 100% coverage or be added to $(COVERAGE_MASTER_LIST).
+# The string "Marking build unstable" is recognised by the CI scripts
+# and if it is found the build is marked unstable.
+.PHONY: coverage-check
+coverage-check: | coverage
+	@xmllint --xpath '//class[@line-rate!="1.0"]/@filename' $(COVERAGE_XML) \
+		| tr ' ' '\n' \
+                | grep filename= \
+                | cut -d\" -f2 \
+                | sort > $(COVERAGE_LIST_TMP)
+	@sort $(COVERAGE_MASTER_LIST) | comm -23 $(COVERAGE_LIST_TMP) - > $(COVERAGE_LIST)
+	@if grep -q ^ $(COVERAGE_LIST) ; then \
+                echo "Error: some files unexpectedly have less than 100% code coverage:" ; \
+                cat $(COVERAGE_LIST) ; \
+                /bin/false ; \
+                echo "Marking build unstable." ; \
+        fi
+
+# Get quick coverage data at the command line. Add --branches to get branch info
+# instead of line info in report.  *.gcov files generated in current directory
+# if you need to see full detail.
+.PHONY: coverage_raw
+coverage_raw: | run_test
+	$(GCOVR) $(COVERAGEFLAGS) --keep
 
 # Build rules for GMock/GTest library.
 $(OBJ_DIR_TEST)/gtest-all.o : $(GTEST_SRCS_)

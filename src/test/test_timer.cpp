@@ -342,5 +342,19 @@ TEST_F(TestTimer, BecomeTombstone)
 TEST_F(TestTimer, MatchingClusterID)
 {
   EXPECT_TRUE(t1->is_matching_cluster_view_id("cluster-view-id"));
-  EXPECT_FALSE(t1->is_matching_cluster_view_id("not-clustser-id"));
+  EXPECT_FALSE(t1->is_matching_cluster_view_id("not-cluster-id"));
+}
+
+TEST_F(TestTimer, IsLastReplica)
+{
+  EXPECT_FALSE(t1->is_last_replica());
+
+  std::vector<std::string> replicas;
+  replicas.push_back("10.0.0.2:9999");
+  replicas.push_back("10.0.0.1:9999");
+
+  Timer* t2 = new Timer(2, 100, 200);
+  t2->replicas = replicas;
+  EXPECT_TRUE(t2->is_last_replica());
+  delete t2;
 }
