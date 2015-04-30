@@ -67,21 +67,25 @@
 class Globals
 {
 public:
-  Globals(std::string config_file);
+  Globals(std::string config_file,
+          std::string cluster_config_file);
   ~Globals();
 
+  // Per node configuration
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
+  GLOBAL(alarms_enabled, bool);
+  GLOBAL(threads, int);
+  GLOBAL(max_ttl, int);
+  GLOBAL(dns_servers, std::vector<std::string>);
+
+  // Clustering configuration
   GLOBAL(cluster_local_ip, std::string);
   GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
   GLOBAL(cluster_addresses, std::vector<std::string>);
   GLOBAL(cluster_hashes, std::vector<uint32_t>);
   GLOBAL(cluster_leaving_addresses, std::vector<std::string>);
   GLOBAL(cluster_view_id, std::string);
-  GLOBAL(alarms_enabled, bool);
-  GLOBAL(threads, int);
-  GLOBAL(max_ttl, int);
-  GLOBAL(dns_servers, std::vector<std::string>);
 
 public:
   void update_config();
@@ -93,6 +97,7 @@ private:
   std::vector<uint32_t> generate_hashes(std::vector<std::string>);
 
   std::string _config_file;
+  std::string _cluster_config_file;
   pthread_rwlock_t _lock; 
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;

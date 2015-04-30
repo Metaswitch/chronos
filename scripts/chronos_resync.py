@@ -56,6 +56,7 @@ import unittest
 # timers still pop
 CHRONOS_BINARY = 'build/bin/chronos'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.livetest.conf%i'
+CLUSTER_CONFIG_FILE_PATTERN = 'scripts/log/chronos.cluster.livetest.conf%i'
 LOG_FILE_DIR = 'scripts/log/'
 LOG_FILE_PATTERN = LOG_FILE_DIR + 'chronos%s'
 
@@ -108,7 +109,7 @@ def run_app():
 def start_nodes(lower, upper):
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
-        processes.append(Popen([CHRONOS_BINARY, '--config-file', CONFIG_FILE_PATTERN % i],
+        processes.append(Popen([CHRONOS_BINARY, '--config-file', CONFIG_FILE_PATTERN % i, '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i],
                                stdout=FNULL, stderr=FNULL))
     
     sleep(2) 
@@ -152,7 +153,7 @@ def create_timers(target, num):
                           )
         assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
-def write_conf(filename, this_node, nodes, leaving):
+def write_conf(filename, this_node):
     # Create a configuration file for a chronos process 
     log_path = LOG_FILE_PATTERN % this_node.port
     with open(filename, 'w') as f:
@@ -164,7 +165,12 @@ def write_conf(filename, this_node, nodes, leaving):
         [logging]
         folder = {log_path}
         level = 5
+        """).format(**locals()))
 
+def write_cluster_conf(filename, this_node, nodes, leaving):
+    # Create a configuration file for a chronos process
+    with open(filename, 'w') as f:
+        f.write(dedent("""
         [cluster]
         localhost = {this_node.ip}:{this_node.port}
         """).format(**locals()))
@@ -172,7 +178,6 @@ def write_conf(filename, this_node, nodes, leaving):
             f.write('node = {node.ip}:{node.port}\n'.format(**locals()))
         for node in leaving:
             f.write('leaving = {node.ip}:{node.port}\n'.format(**locals()))
-
 
 # Test the resynchronization operations for Chronos.
 class ChronosLiveTests(unittest.TestCase):
@@ -213,16 +218,18 @@ class ChronosLiveTests(unittest.TestCase):
         # Write configuration files for the nodes
         for num in range(lower, upper):
             write_conf(CONFIG_FILE_PATTERN % num, 
-                       chronos_nodes[num], 
-                       chronos_nodes[:upper],
-                       [])
+                       chronos_nodes[num])
+            write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
+                               chronos_nodes[num],
+                               chronos_nodes[:upper],
+                               [])
 
     def write_scale_down_config_for_all_nodes(self, leaving_lower, leaving_upper):
         # Write configuration files including leaving nodes
         for num in range(len(chronos_nodes)):
-            write_conf(CONFIG_FILE_PATTERN % num, chronos_nodes[num],
-                       chronos_nodes[:leaving_lower] + chronos_nodes[leaving_upper:],
-                       chronos_nodes[leaving_lower: leaving_upper])
+            write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num, chronos_nodes[num],
+                               chronos_nodes[:leaving_lower] + chronos_nodes[leaving_upper:],
+                               chronos_nodes[leaving_lower: leaving_upper])
 
     def test_scale_up(self):
         # Test that scaling up works. This test creates 2 Chronos nodes, 
