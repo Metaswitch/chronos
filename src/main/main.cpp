@@ -60,18 +60,21 @@
 struct options
 {
   std::string config_file;
+  std::string cluster_config_file;
 };
 
 // Enum for option types not assigned short-forms
 enum OptionTypes
 {
   CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
+  CLUSTER_CONFIG_FILE,
   HELP
 };
 
 const static struct option long_opt[] =
 {
   {"config-file", required_argument, NULL, CONFIG_FILE},
+  {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
   {"help", no_argument, NULL, HELP},
   {NULL, 0, NULL, 0},
 };
@@ -80,7 +83,8 @@ void usage(void)
 {
   puts("Options:\n"
        "\n"
-       " --config-file <filename> Specify the configuration file\n"
+       " --config-file <filename> Specify the per node configuration file\n"
+       " --cluster-config-file <filename> Specify the cluster configuration file\n"
        " --help Show this help screen\n");
 }
 
@@ -94,8 +98,11 @@ int init_options(int argc, char**argv, struct options& options)
     switch (opt)
     {
     case CONFIG_FILE:
-      LOG_INFO("Configuration file: %s", optarg);
       options.config_file = std::string(optarg);
+      break;
+
+    case CLUSTER_CONFIG_FILE:
+      options.cluster_config_file = std::string(optarg);
       break;
 
     case HELP:
@@ -160,6 +167,7 @@ int main(int argc, char** argv)
 
   struct options options;
   options.config_file = "/etc/chronos/chronos.conf";
+  options.cluster_config_file = "/etc/chronos/chronos_cluster.conf";
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -168,7 +176,8 @@ int main(int argc, char** argv)
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration
-  __globals = new Globals(options.config_file);
+  __globals = new Globals(options.config_file, 
+                          options.cluster_config_file);
 
   boost::filesystem::path p = argv[0];
   // Copy the filename to a string so that we can be sure of its lifespan -

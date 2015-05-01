@@ -48,8 +48,10 @@ namespace po = boost::program_options;
 // terminated before main() returns.
 Globals* __globals;
 
-Globals::Globals(std::string config_file) :
-  _config_file(config_file)
+Globals::Globals(std::string config_file,
+                 std::string cluster_config_file) :
+  _config_file(config_file),
+  _cluster_config_file(cluster_config_file)
 {
   pthread_rwlock_init(&_lock, NULL);
 
@@ -86,14 +88,32 @@ void Globals::update_config()
   std::ifstream file;
   boost::program_options::variables_map conf_map;
 
+  // If the cluster configuration file isn't set, take the information from
+  // the standard configuration file. Otherwise read it from the new file.
+  file.open(_cluster_config_file);
+  if (file.is_open())
+  {
+    po::store(po::parse_config_file(file, _desc), conf_map);
+    po::notify(conf_map);
+    file.close();
+  }
+
   file.open(_config_file);
+
+  if (!file.is_open())
+  {
+    // No configuration file exists
+    return;
+  }
+
   po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
   file.close();
 
   lock();
 
-  // Set up logging early so we can log the other settings
+  // Set up the per node configuration. Set up logging early so we can 
+  // log the other settings
   Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
   Log::setLoggingLevel(conf_map["logging.level"].as<int>());
 
@@ -104,6 +124,21 @@ void Globals::update_config()
   int bind_port = conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
   LOG_STATUS("Bind port: %d", bind_port);
+
+  bool alarms_enabled = (conf_map["alarms.enabled"].as<std::string>().compare("true") == 0);
+  set_alarms_enabled(alarms_enabled);
+  LOG_STATUS("Alarms enabled: %d", alarms_enabled);
+
+  int threads = conf_map["http.threads"].as<int>();
+  set_threads(threads);
+  LOG_STATUS("HTTP Threads: %d", threads);
+
+  int ttl = conf_map["exceptions.max_ttl"].as<int>();
+  set_max_ttl(ttl);
+  LOG_STATUS("Maximum post-exception TTL: %d", ttl);
+
+  std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
+  set_dns_servers(dns_servers);
 
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
@@ -136,21 +171,6 @@ void Globals::update_config()
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
-
-  bool alarms_enabled = (conf_map["alarms.enabled"].as<std::string>().compare("true") == 0);
-  set_alarms_enabled(alarms_enabled);
-  LOG_STATUS("Alarms enabled: %d", alarms_enabled);
-
-  int threads = conf_map["http.threads"].as<int>();
-  set_threads(threads);
-  LOG_STATUS("HTTP Threads: %d", threads);
-
-  int ttl = conf_map["exceptions.max_ttl"].as<int>();
-  set_max_ttl(ttl);
-  LOG_STATUS("Maximum post-exception TTL: %d", ttl);
-
-  std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
-  set_dns_servers(dns_servers);
 
   unlock();
 }
