@@ -88,9 +88,30 @@ void Globals::update_config()
 {
   std::ifstream file;
   boost::program_options::variables_map conf_map;
-  boost::program_options::variables_map cluster_conf_map;
+
+  // If the cluster configuration file isn't set, take the information from
+  // the standard configuration file. Otherwise read it from the new file.
+  file.open(_cluster_config_file);
+  if (!file.is_open())
+  {
+    LOG_STATUS("No separate cluster configuration file (%s does not exist)",
+               _cluster_config_file.c_str());
+  }
+  else
+  {
+    po::store(po::parse_config_file(file, _desc), conf_map);
+    po::notify(conf_map);
+    file.close();
+  }
 
   file.open(_config_file);
+
+  if (!file.is_open())
+  {
+    // No configuration file exists
+    return;
+  }
+
   po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
   file.close();
@@ -125,30 +146,11 @@ void Globals::update_config()
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
 
-  // If the cluster configuration file isn't set, take the information from
-  // the standard configuration file. Otherwise read it from the new file.
-  struct stat s;
-  if ((_cluster_config_file == "") ||
-      ((stat(_cluster_config_file.c_str(), &s) != 0) &&
-      (errno == ENOENT)))
-  {
-    LOG_STATUS("No cluster configuration (file %s does not exist)",
-               _cluster_config_file.c_str());
-    cluster_conf_map = conf_map;
-  }
-  else 
-  {
-    file.open(_cluster_config_file);
-    po::store(po::parse_config_file(file, _desc), cluster_conf_map);
-    po::notify(cluster_conf_map);
-    file.close();
-  }
-  
-  std::string cluster_local_address = cluster_conf_map["cluster.localhost"].as<std::string>();
+  std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
   LOG_STATUS("Cluster local address: %s", cluster_local_address.c_str());
 
-  std::vector<std::string> cluster_addresses = cluster_conf_map["cluster.node"].as<std::vector<std::string>>();
+  std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
   
   std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
@@ -173,7 +175,7 @@ void Globals::update_config()
   set_cluster_view_id(cluster_view_id_str);
   LOG_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
 
-  std::vector<std::string> cluster_leaving_addresses = cluster_conf_map["cluster.leaving"].as<std::vector<std::string>>();
+  std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
 
   unlock();

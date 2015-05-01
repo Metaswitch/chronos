@@ -157,7 +157,7 @@ def write_conf(filename, this_node):
     # Create a configuration file for a chronos process 
     log_path = LOG_FILE_PATTERN % this_node.port
     with open(filename, 'w') as f:
-        f.write(dedent("""
+        f.write(dedent("""\
         [http]
         bind-address = {this_node.ip}
         bind-port = {this_node.port}
@@ -170,7 +170,7 @@ def write_conf(filename, this_node):
 def write_cluster_conf(filename, this_node, nodes, leaving):
     # Create a configuration file for a chronos process
     with open(filename, 'w') as f:
-        f.write(dedent("""
+        f.write(dedent("""\
         [cluster]
         localhost = {this_node.ip}:{this_node.port}
         """).format(**locals()))
