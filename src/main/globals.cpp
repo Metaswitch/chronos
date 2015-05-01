@@ -38,7 +38,6 @@
 #include "murmur/MurmurHash3.h"
 #include "log.h"
 
-#include <sys/stat.h>
 #include <fstream>
 
 // Shorten the imported namespace for ease of use.  Notice we don't do this in the
@@ -92,12 +91,7 @@ void Globals::update_config()
   // If the cluster configuration file isn't set, take the information from
   // the standard configuration file. Otherwise read it from the new file.
   file.open(_cluster_config_file);
-  if (!file.is_open())
-  {
-    LOG_STATUS("No separate cluster configuration file (%s does not exist)",
-               _cluster_config_file.c_str());
-  }
-  else
+  if (file.is_open())
   {
     po::store(po::parse_config_file(file, _desc), conf_map);
     po::notify(conf_map);
