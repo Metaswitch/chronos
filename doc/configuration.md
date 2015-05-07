@@ -46,6 +46,6 @@ To update the cluster configuration, make the desired changes in `etc/chronos/ch
 
 We used to keep both types of configuration in the same file (in `/etc/chronos/chronos.conf`). To move to the new configuration files, you should move anything under the `[cluster]` section in `/etc/chronos/chronos.conf` to a new file `/etc/chronos/chronos_cluster.conf`. We have provided a script that does this for you; you can run this with:
 
-    usr/share/clearwater/bin/chronos_configuration_split.py [--current "Your current configuration file"] [--cluster "Your new cluster configuration file"] 
+    sudo /usr/share/clearwater/bin/chronos_configuration_split.py [--current "Your current configuration file"] [--cluster "Your new cluster configuration file"] 
 
 The script uses `/etc/chronos/chronos.conf` as your current configuration file and `/etc/chronos/chronos_cluster` as your new cluster configuration file if you don't provide an alternative
