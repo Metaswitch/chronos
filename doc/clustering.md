@@ -2,7 +2,7 @@
 
 Chronos is a distributed timer service, based on an arbitrary-size cluster of communicating nodes which replicate timers between them. This document describes how to configure Chronos to know about the other Chronos nodes it should replicate timers to.
 
-Chronos's cluster settings are controlled by `/etc/chronos/chronos.conf`, which includes:
+Chronos's cluster settings are controlled by `/etc/chronos/chronos_cluster.conf`, which includes:
 
     [cluster]
     localhost = 1.2.3.4
