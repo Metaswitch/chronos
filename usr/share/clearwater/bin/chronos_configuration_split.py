@@ -59,11 +59,8 @@ def write_section(section, file_obj):
     for key, val in config.items(section):
         # This is required to undo the multiline-value handling 
         # done by ConfigParser
-        if '\n' in val:
-            for v in val.split('\n'):
-                file_obj.writelines('%s=%s\n' % (key, v))
-        else:
-            file_obj.writelines('%s=%s\n' % (key, val))
+        for v in val.split('\n'):
+            file_obj.writelines('%s=%s\n' % (key, v))
 
 config = ConfigParser.ConfigParser(dict_type=MultiOrderedDict)
 config.read(args.current)
@@ -73,7 +70,12 @@ with open(args.cluster, 'w') as f:
         if section in CLUSTER_SECTIONS:
             write_section(section, f)
 
-with open(args.current, 'w') as f:
+with open(args.current + ".bak", 'w') as f:
+    for section in config.sections():
+        write_section(section, f)
+        f.write('\n')
+
+with open(args.current, 'w') as f: 
     for section in config.sections():
         if section not in CLUSTER_SECTIONS:
             write_section(section, f)
