@@ -99,6 +99,9 @@ void Globals::update_config()
   }
 
   file.open(_config_file);
+  // This is safe even if the config file doesn't exist, and this also sets up
+  // the default values if the file doesn't exist, or for any config options
+  // that aren't set in the file.
   po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
 
