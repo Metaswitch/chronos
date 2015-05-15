@@ -86,29 +86,26 @@ Globals::~Globals()
 void Globals::update_config()
 {
   std::ifstream file;
-  boost::program_options::variables_map conf_map;
+  po::variables_map conf_map;
 
-  // If the cluster configuration file isn't set, take the information from
-  // the standard configuration file. Otherwise read it from the new file.
+  // Read clustering config from _cluster_config_file and other config from
+  // _config_file. Any remaining unset configuration options will be set to
+  // their default values defined above when notify is called.
   file.open(_cluster_config_file);
   if (file.is_open())
   {
     po::store(po::parse_config_file(file, _desc), conf_map);
-    po::notify(conf_map);
     file.close();
   }
 
   file.open(_config_file);
-
-  if (!file.is_open())
-  {
-    // No configuration file exists
-    return;
-  }
-
   po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
-  file.close();
+
+  if (file.is_open())
+  {
+    file.close();
+  }
 
   lock();
 
