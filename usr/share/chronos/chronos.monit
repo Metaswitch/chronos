@@ -35,7 +35,8 @@
 # Check the Chronos process.
 
 # Monitor the service's PID file and memory use.
-check process chronos with pidfile /var/run/chronos.pid
+check process chronos_process with pidfile /var/run/chronos.pid
+  group chronos
 
   # The start, stop and restart commands are linked to alarms
   start program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos start'"
@@ -55,7 +56,8 @@ check process chronos with pidfile /var/run/chronos.pid
 # Check the HTTP interface. This depends on the Chronos process (and so won't run
 # unless the Chronos process is running)
 check program poll_chronos with path "/usr/share/clearwater/bin/poll_chronos.sh"
-  depends on chronos
+  group chronos
+  depends on chronos_process
 
   # Aborting generates a core file and triggers diagnostic collection. Monit will raise
   # an alarm when it restarts the process
