@@ -120,7 +120,7 @@ void ChronosInternalConnection::resynchronize()
                       cluster_nodes.end());
 
   // Start the scaling operation 
-  CL_CHRONOS_START_SCALE.log();
+  CL_CHRONOS_START_SCALE.log(cluster_nodes.size(), leaving_nodes.size());
   LOG_DEBUG("Starting scaling operation");
 
   int nodes_remaining = cluster_nodes.size();

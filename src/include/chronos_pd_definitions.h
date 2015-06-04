@@ -129,13 +129,14 @@ static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL
   "No action required."
 );
 
-const static PDLog CL_CHRONOS_START_SCALE
+const static PDLog2<int, int> CL_CHRONOS_START_SCALE
 (
   PDLog::CL_CHRONOS_ID + 10,
   PDLOG_INFO,
   "Chronos has started a resync operation",
   "Chronos has detected an on-going cluster resize and is proactively "
-    "resynchronising timers between cluster members.",
+  "resynchronising timers between cluster members. There are now %d current "
+  "members and %d leaving members",
   "Timers are being resynced across the Chronos cluster.",
   "Wait until the current resync operation has completed before continuing "
     "with the cluster resize."
@@ -163,5 +164,7 @@ const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
     "may result in loss of timers or loss of redundancy",
   "Check the status of the Chronos cluster and ensure network connectivity "
     "is possible between all nodes."
-);
+)
+
+;
 #endif
