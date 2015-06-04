@@ -2,7 +2,7 @@ Source: chronos
 Section: network
 Priority: optional
 Maintainer: Project Clearwater Maintainers <maintainers@projectclearwater.org>
-Build-Depends: debhelper (>= 8.0.0), devscripts, build-essential, libboost-program-options-dev, libcurl-ssl-dev, libevent-dev, google-mock, libboost-regex1.46-dev, libboost-filesystem-dev
+Build-Depends: debhelper (>= 8.0.0), devscripts, build-essential, libboost-program-options-dev, libcurl-ssl-dev, libevent-dev, libboost-regex1.46-dev, libboost-filesystem-dev
 Standards-Version: 3.9.2
 Homepage: http://github.com/Metaswitch/chronos
 

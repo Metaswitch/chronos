@@ -37,6 +37,7 @@
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
 #include "log.h"
+#include "chronos_pd_definitions.h"
 
 #include <fstream>
 
@@ -171,6 +172,9 @@ void Globals::update_config()
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
+
+  CL_CHRONOS_CLUSTER_CFG_READ.log(cluster_addresses.size(),
+                                  cluster_leaving_addresses.size());
 
   unlock();
 }
