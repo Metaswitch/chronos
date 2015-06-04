@@ -36,8 +36,8 @@ Nodes marked as leaving will no longer be chosen as replicas for new timers. To 
 
 # Other scaling requirements and notes
 
-Chronos will re-read the chronos.conf file when it receives a SIGHUP (e.g. `pkill -HUP chronos` or `service reload chronos`), and start distributing timers around the new servers immediately.
+Chronos will re-read the chronos_cluster.conf file when it receives a SIGHUP (e.g. `pkill -HUP chronos` or `service chronos reload`), and start distributing timers around the new servers immediately.
 
-This is relatively free of race conditions - timers can still be created successfully if the cluster is temporarily in an inconsistent state while the `chronos.conf` files are being updated.
+This is relatively free of race conditions - timers can still be created successfully if the cluster is temporarily in an inconsistent state while the `chronos_cluster.conf` files are being updated.
 
 However, timer updates and deletes may not replicate fully if the timer was created on a node which knew about more nodes than the node receiving the `PUT`/`DELETE`, so the SIGHUPs should be sent to all nodes in quick succession and (optimally) during a low-usage period.
