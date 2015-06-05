@@ -164,4 +164,16 @@ const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
   "Check the status of the Chronos cluster and ensure network connectivity "
     "is possible between all nodes."
 );
+
+const static PDLog2<int, int> CL_CHRONOS_CLUSTER_CFG_READ
+(
+  PDLog::CL_CHRONOS_ID + 13,
+  PDLOG_NOTICE,
+  "The Chronos cluster configuration has been loaded. There are now %d current members and %d leaving nodes.",
+  "Chronos has reloaded its cluster configuration file.",
+  "If necessary, timers will be resynced across the Chronos cluster.",
+  "None."
+);
+
+
 #endif
