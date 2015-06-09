@@ -46,7 +46,7 @@ parser.add_argument('--cluster', default='/etc/chronos/chronos_cluster.conf', he
 args = parser.parse_args()
 
 # Bail out early if the cluster configuration file already exists
-if os.path.exists(args.current): 
+if os.path.exists(args.cluster): 
     sys.exit("Exiting as the cluster configuration file already exists")
 
 CLUSTER_SECTIONS = ['cluster']
