@@ -37,11 +37,17 @@
 import ConfigParser
 from collections import OrderedDict
 import argparse
+import os
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--current', default='/etc/chronos/chronos.conf', help='The current Chronos configuration')
 parser.add_argument('--cluster', default='/etc/chronos/chronos_cluster.conf', help='The new Chronos cluster configuration')
 args = parser.parse_args()
+
+# Bail out early if the cluster configuration file already exists
+if os.path.exists(args.cluster): 
+    sys.exit("Exiting as the cluster configuration file already exists")
 
 CLUSTER_SECTIONS = ['cluster']
 
