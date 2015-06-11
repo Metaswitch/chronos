@@ -277,7 +277,8 @@ int main(int argc, char** argv)
 
   HttpStackUtils::PingHandler ping_handler;
   ControllerTask::Config controller_config(controller_rep, handler);
-  HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config);
+  HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
+                                                                                             &HttpStack::NULL_SAS_LOGGER);
 
   try
   {
