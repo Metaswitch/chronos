@@ -71,14 +71,14 @@ Globals::Globals(std::string config_file,
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
     ;
 
-#ifndef UNITTEST
+#ifndef UNIT_TEST
   _updater = new Updater<void, Globals>(this, std::mem_fun(&Globals::update_config));
 #endif
 }
 
 Globals::~Globals()
 {
-#ifndef UNITTEST
+#ifndef UNIT_TEST
   delete _updater;
 #endif
   pthread_rwlock_destroy(&_lock);
