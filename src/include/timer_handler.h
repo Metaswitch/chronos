@@ -39,7 +39,7 @@
 
 #include <pthread.h>
 
-#ifdef UNITTEST
+#ifdef UNIT_TEST
 #include "pthread_cond_var_helper.h"
 #else
 #include "cond_var.h"
@@ -64,7 +64,7 @@ public:
 
   friend class TestTimerHandler;
 
-#ifdef UNITTEST
+#ifdef UNIT_TEST
   TimerHandler() {}
 #endif
 
@@ -81,7 +81,7 @@ private:
   volatile unsigned int _nearest_new_timer;
   pthread_mutex_t _mutex;
 
-#ifdef UNITTEST
+#ifdef UNIT_TEST
   MockPThreadCondVar* _cond;
 #else
   CondVar* _cond;

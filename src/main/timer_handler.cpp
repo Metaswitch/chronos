@@ -56,7 +56,7 @@ TimerHandler::TimerHandler(TimerStore* store,
 {
   pthread_mutex_init(&_mutex, NULL);
 
-#ifdef UNITTEST
+#ifdef UNIT_TEST
   _cond = new MockPThreadCondVar(&_mutex);
 #else
   _cond = new CondVar(&_mutex);
