@@ -20,9 +20,9 @@ TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp http
 TARGET_EXTRA_OBJS_TEST := gmock-all.o gtest-all.o
 INCLUDE_DIR := ${ROOT}/src/include
 LIB_DIR := ${INSTALL_DIR}/lib
-CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror -DUNIT_TEST 
+CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror 
 CPPFLAGS_BUILD := -O0
-CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
+CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNIT_TEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
 LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp \
            -levent_pthreads -lcares
 LDFLAGS_BUILD := -lsas
