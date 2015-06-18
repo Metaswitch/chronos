@@ -172,7 +172,6 @@ void ChronosInternalConnection::resynchronize()
   if (_alarm)
   {
     _alarm->clear();   // LCOV_EXCL_LINE - No alarms in UT
-
   }
 
   std::vector<std::string> finished_value;
