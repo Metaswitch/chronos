@@ -119,7 +119,12 @@ void ChronosInternalConnection::resynchronize()
                                   localhost),
                       cluster_nodes.end());
 
-  // Start the scaling operation 
+  // Start the scaling operation. Update the logs/stats/alarms
+  if (_alarm)
+  {
+    _alarm->set();  // LCOV_EXCL_LINE - No alarms in UT
+  }
+
   CL_CHRONOS_START_SCALE.log();
   LOG_DEBUG("Starting scaling operation");
 
@@ -159,9 +164,17 @@ void ChronosInternalConnection::resynchronize()
     }
   }
 
-  // The scaling operation is now complete.
+  // The scaling operation is now complete. Update the logs/stats/alarms
   LOG_DEBUG("Finished scaling operation");
+
   CL_CHRONOS_COMPLETE_SCALE.log();
+
+  if (_alarm)
+  {
+    _alarm->clear();   // LCOV_EXCL_LINE - No alarms in UT
+
+  }
+
   std::vector<std::string> finished_value;
   finished_value.push_back(std::to_string(0));
   _nodes_to_query_stat->report_change(finished_value);
