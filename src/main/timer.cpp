@@ -173,7 +173,7 @@ std::string Timer::to_json()
   to_json_obj(&writer);
 
   std::string body = sb.GetString();
-  LOG_DEBUG("Built replication body: %s", body.c_str());
+  TRC_DEBUG("Built replication body: %s", body.c_str());
 
   return body;
 }
@@ -407,12 +407,12 @@ void Timer::calculate_replicas(TimerID id,
     }
   }
 
-  LOG_DEBUG("Replicas calculated:");
+  TRC_DEBUG("Replicas calculated:");
   for (std::vector<std::string>::iterator it = replicas.begin(); 
                                           it != replicas.end(); 
                                           ++it)
   {
-    LOG_DEBUG(" - %s", it->c_str());
+    TRC_DEBUG(" - %s", it->c_str());
   }
 }
 

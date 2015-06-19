@@ -94,7 +94,7 @@ TimerHandler::~TimerHandler()
 
 void TimerHandler::add_timer(Timer* timer)
 {
-  LOG_DEBUG("Adding timer:  %lu", timer->id);
+  TRC_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
   _store->add_timer(timer);
   pthread_mutex_unlock(&_mutex);
@@ -142,7 +142,7 @@ void TimerHandler::run() {
   {
     if (!next_timers.empty())
     {
-      LOG_DEBUG("Have a timer to pop");
+      TRC_DEBUG("Have a timer to pop");
       pthread_mutex_unlock(&_mutex);
       pop(next_timers);
       pthread_mutex_lock(&_mutex);
@@ -210,7 +210,7 @@ void TimerHandler::pop(Timer* timer)
   // Tombstones are reaped when they pop.
   if (timer->is_tombstone())
   {
-    LOG_DEBUG("Discarding expired tombstone");
+    TRC_DEBUG("Discarding expired tombstone");
     delete timer;
     return;
   }

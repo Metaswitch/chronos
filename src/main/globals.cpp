@@ -120,30 +120,30 @@ void Globals::update_config()
 
   std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
-  LOG_STATUS("Bind address: %s", bind_address.c_str());
+  TRC_STATUS("Bind address: %s", bind_address.c_str());
 
   int bind_port = conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
-  LOG_STATUS("Bind port: %d", bind_port);
+  TRC_STATUS("Bind port: %d", bind_port);
 
   bool alarms_enabled = (conf_map["alarms.enabled"].as<std::string>().compare("true") == 0);
   set_alarms_enabled(alarms_enabled);
-  LOG_STATUS("Alarms enabled: %d", alarms_enabled);
+  TRC_STATUS("Alarms enabled: %d", alarms_enabled);
 
   int threads = conf_map["http.threads"].as<int>();
   set_threads(threads);
-  LOG_STATUS("HTTP Threads: %d", threads);
+  TRC_STATUS("HTTP Threads: %d", threads);
 
   int ttl = conf_map["exceptions.max_ttl"].as<int>();
   set_max_ttl(ttl);
-  LOG_STATUS("Maximum post-exception TTL: %d", ttl);
+  TRC_STATUS("Maximum post-exception TTL: %d", ttl);
 
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
 
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
-  LOG_STATUS("Cluster local address: %s", cluster_local_address.c_str());
+  TRC_STATUS("Cluster local address: %s", cluster_local_address.c_str());
 
   std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
   set_cluster_addresses(cluster_addresses);
@@ -154,12 +154,12 @@ void Globals::update_config()
   std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 
-  LOG_STATUS("Cluster nodes:");
+  TRC_STATUS("Cluster nodes:");
   for (std::vector<std::string>::iterator it = cluster_addresses.begin();
                                           it != cluster_addresses.end();
                                           ++it)
   {
-    LOG_STATUS(" - %s", it->c_str());
+    TRC_STATUS(" - %s", it->c_str());
     uint64_t bloom = generate_bloom_filter(*it);
     cluster_bloom_filters[*it] = bloom;
     cluster_view_id |= bloom;
@@ -168,7 +168,7 @@ void Globals::update_config()
 
   std::string cluster_view_id_str = std::to_string(cluster_view_id);
   set_cluster_view_id(cluster_view_id_str);
-  LOG_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
+  TRC_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
 
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);

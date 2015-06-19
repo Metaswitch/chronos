@@ -110,7 +110,7 @@ int init_options(int argc, char**argv, struct options& options)
       return -1;
 
     default:
-      LOG_ERROR("Unknown option. Run with --help for options.\n");
+      TRC_ERROR("Unknown option. Run with --help for options.\n");
       return -1;
     }
   }
@@ -134,11 +134,11 @@ void signal_handler(int sig)
   signal(SIGSEGV, signal_handler);
 
   // Log the signal, along with a backtrace.
-  LOG_BACKTRACE("Signal %d caught", sig);
+  TRC_BACKTRACE("Signal %d caught", sig);
 
   // Ensure the log files are complete - the core file created by abort() below
   // will trigger the log files to be copied to the diags bundle
-  LOG_COMMIT();
+  TRC_COMMIT();
 
   // Check if there's a stored jmp_buf on the thread and handle if there is
   exception_handler->handle_exception();
@@ -187,7 +187,7 @@ int main(int argc, char** argv)
   CL_CHRONOS_STARTED.log();
 
   // Log the PID, this is useful for debugging if monit restarts chronos.
-  LOG_STATUS("Starting with PID %d", getpid());
+  TRC_STATUS("Starting with PID %d", getpid());
 
   bool alarms_enabled;
   __globals->get_alarms_enabled(alarms_enabled);
@@ -245,7 +245,7 @@ int main(int argc, char** argv)
 
   if (inet_pton(AF_INET6, bind_address.c_str(), &dummy_addr) == 1)
   {
-    LOG_DEBUG("Local host is an IPv6 address");
+    TRC_DEBUG("Local host is an IPv6 address");
     af = AF_INET6;
   }
 
@@ -272,7 +272,7 @@ int main(int argc, char** argv)
 
   if (!strcmp(bind_address.c_str(), "0.0.0.0"))
   {
-    LOG_ERROR("0.0.0.0 has been deprecated for the bind_address setting. Use the local IP address instead");
+    TRC_ERROR("0.0.0.0 has been deprecated for the bind_address setting. Use the local IP address instead");
   }
 
   HttpStackUtils::PingHandler ping_handler;
