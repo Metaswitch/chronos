@@ -71,7 +71,7 @@ void HTTPCallback::start(TimerHandler* handler)
                                    (void*)this);
     if (thread_rc != 0)
     {
-      LOG_ERROR("Failed to start callback worker thread: %s", strerror(thread_rc));
+      TRC_ERROR("Failed to start callback worker thread: %s", strerror(thread_rc));
     }
 
     _worker_threads[ii] = thread;
@@ -146,10 +146,10 @@ void HTTPCallback::worker_thread_entry_point()
       {
         long http_rc = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
-        LOG_WARNING("Got HTTP error %d from %s", http_rc, timer->callback_url.c_str());
+        TRC_WARNING("Got HTTP error %d from %s", http_rc, timer->callback_url.c_str());
       }
 
-      LOG_WARNING("Failed to process callback for %lu: URL %s, curl error was: %s", timer->id,
+      TRC_WARNING("Failed to process callback for %lu: URL %s, curl error was: %s", timer->id,
                   timer->callback_url.c_str(),
                   curl_easy_strerror(curl_rc));
 

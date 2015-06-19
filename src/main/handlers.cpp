@@ -42,7 +42,7 @@
 void ControllerTask::run()
 {
   std::string path = _req.full_path();
-  LOG_DEBUG("Path is %s", path.c_str());
+  TRC_DEBUG("Path is %s", path.c_str());
 
   boost::smatch matches;
 
@@ -54,7 +54,7 @@ void ControllerTask::run()
   {
     if (_req.method() != htp_method_POST)
     {
-      LOG_DEBUG("Empty timer, but the method wasn't POST");
+      TRC_DEBUG("Empty timer, but the method wasn't POST");
       send_http_reply(HTTP_BADMETHOD);
     }
     else
@@ -66,7 +66,7 @@ void ControllerTask::run()
   {
     if (_req.method() != htp_method_DELETE)
     {
-      LOG_DEBUG("Dealing with timer references, but the method wasn't DELETE");
+      TRC_DEBUG("Dealing with timer references, but the method wasn't DELETE");
       send_http_reply(HTTP_BADMETHOD);
     }
     else
@@ -78,7 +78,7 @@ void ControllerTask::run()
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
     {
-      LOG_DEBUG("Timer present, but the method wasn't PUT or DELETE");
+      TRC_DEBUG("Timer present, but the method wasn't PUT or DELETE");
       send_http_reply(HTTP_BADMETHOD);
     }
     else
@@ -90,7 +90,7 @@ void ControllerTask::run()
   }
   else
   {
-    LOG_DEBUG("Invalid request, or timer present but badly formatted");
+    TRC_DEBUG("Invalid request, or timer present but badly formatted");
     send_http_reply(HTTP_NOT_FOUND);
   }
 
@@ -121,13 +121,13 @@ void ControllerTask::add_or_update_timer(int timer_id, int replica_hash)
 
     if (!timer)
     {
-      LOG_DEBUG("Unable to create timer");
+      TRC_DEBUG("Unable to create timer");
       send_http_reply(HTTP_BAD_REQUEST);
       return;
     }
   }
 
-  LOG_DEBUG("Accepted timer definition, timer is%s a replica", replicated_timer ? "" : " not");
+  TRC_DEBUG("Accepted timer definition, timer is%s a replica", replicated_timer ? "" : " not");
 
   // Now we have a valid timer object, reply to the HTTP request.
   _req.add_header("Location", timer->url());
@@ -164,7 +164,7 @@ void ControllerTask::handle_delete()
 
   if (doc.HasParseError())
   {
-    LOG_INFO("Failed to parse document as JSON");
+    TRC_INFO("Failed to parse document as JSON");
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
@@ -206,14 +206,14 @@ void ControllerTask::handle_delete()
       }
       catch (JsonFormatError err)
       {
-        LOG_INFO("JSON entry was invalid (hit error at %s:%d)",
+        TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
                   err._file, err._line);
       }
     }
   }
   catch (JsonFormatError err)
   {
-    LOG_INFO("JSON body didn't contain the IDs array"); 
+    TRC_INFO("JSON body didn't contain the IDs array"); 
     send_http_reply(HTTP_BAD_REQUEST);
   }
 }
@@ -234,7 +234,7 @@ void ControllerTask::handle_get()
       (sync_mode == "") ||
       (cluster_view_id == ""))
   {
-    LOG_INFO("GET request doesn't have mandatory parameters");
+    TRC_INFO("GET request doesn't have mandatory parameters");
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
@@ -244,7 +244,7 @@ void ControllerTask::handle_get()
 
   if (cluster_view_id != global_cluster_view_id)
   {
-    LOG_INFO("GET request is for an out of date cluster (%s and %s)", 
+    TRC_INFO("GET request is for an out of date cluster (%s and %s)", 
              cluster_view_id.c_str(),
              global_cluster_view_id.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
@@ -253,7 +253,7 @@ void ControllerTask::handle_get()
   
   if (!node_is_in_cluster(node_for_replicas))
   {
-    LOG_DEBUG("The request node isn't a Chronos node: %s", 
+    TRC_DEBUG("The request node isn't a Chronos node: %s", 
               node_for_replicas.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
     return;
@@ -263,7 +263,7 @@ void ControllerTask::handle_get()
   {
     std::string max_timers_from_req = _req.header(HEADER_RANGE);
     int max_timers_to_get = atoi(max_timers_from_req.c_str());
-    LOG_DEBUG("Range value is %d", max_timers_to_get);
+    TRC_DEBUG("Range value is %d", max_timers_to_get);
 
     std::string get_response;
     HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas, 
@@ -281,7 +281,7 @@ void ControllerTask::handle_get()
   }
   else
   {
-    LOG_DEBUG("Sync mode is unsupported: %s", sync_mode.c_str());
+    TRC_DEBUG("Sync mode is unsupported: %s", sync_mode.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
   }
 }
@@ -300,7 +300,7 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
   {
     if (*it == node_for_replicas)
     {
-      LOG_DEBUG("Found requesting node in current nodes: %s", 
+      TRC_DEBUG("Found requesting node in current nodes: %s", 
                 node_for_replicas.c_str());
       node_in_cluster = true;
       break;
@@ -318,7 +318,7 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
     {
       if (*it == node_for_replicas)
       {
-        LOG_DEBUG("Found requesting node in leaving nodes: %s", 
+        TRC_DEBUG("Found requesting node in leaving nodes: %s", 
                   node_for_replicas.c_str());
         node_in_cluster = true;
         break;

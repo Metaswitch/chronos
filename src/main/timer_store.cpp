@@ -117,7 +117,7 @@ void TimerStore::add_timer(Timer* t)
     // existing timer, discard the new timer, or add the new timer, and move the 
     // old timer out of the timer wheel, but still save the timer information 
     // in the timer map (this last option is used in scaling operations) 
-    LOG_DEBUG("Already a timer with ID %ld in the store", t->id);
+    TRC_DEBUG("Already a timer with ID %ld in the store", t->id);
 
     Timer* existing = map_it->second.front();
 
@@ -126,7 +126,7 @@ void TimerStore::add_timer(Timer* t)
         ((t->start_time == existing->start_time) &&
          (t->sequence_number < existing->sequence_number)))
     {
-      LOG_DEBUG("The timer in the store is more recent, discard the new timer");
+      TRC_DEBUG("The timer in the store is more recent, discard the new timer");
       delete t;
       return;
     }
@@ -139,7 +139,7 @@ void TimerStore::add_timer(Timer* t)
         // The cluster IDs on the new and existing timers are different.
         // This means that the cluster configuration has changed between 
         // and when the timer was last updated. 
-        LOG_DEBUG("Cluster view IDs are different on the new and existing timers");
+        TRC_DEBUG("Cluster view IDs are different on the new and existing timers");
 
         if (map_it->second.size() > 1)
         {
@@ -150,7 +150,7 @@ void TimerStore::add_timer(Timer* t)
           // Either way, the saved timer information is out of date, and is 
           // deleted (by not saving a copy of it when we delete the entire Timer 
           // ID in the next step) 
-          LOG_WARNING("Deleting out of date timer from timer map");
+          TRC_WARNING("Deleting out of date timer from timer map");
         }
 
         set_tombstone_values(t, existing);
@@ -180,7 +180,7 @@ void TimerStore::add_timer(Timer* t)
   else
   {
     // The timer doesn't already exist, so add it to the store. 
-    LOG_DEBUG("Adding a new timer to the store with ID %ld", t->id);
+    TRC_DEBUG("Adding a new timer to the store with ID %ld", t->id);
     timers.push_back(t);
   }
 
@@ -204,7 +204,7 @@ void TimerStore::add_timer(Timer* t)
     // what bucket to look in when deleting timers, and this is derived from
     // the pop time. So if we put the timer in the wrong bucket we can't find
     // it to delete it.
-    LOG_WARNING("Modifying timer after pop time (current time is %lu). "
+    TRC_WARNING("Modifying timer after pop time (current time is %lu). "
                 "Window condition detected.\n" TIMER_LOG_FMT,
                 _tick_timestamp,
                 TIMER_LOG_PARAMS(t));
@@ -227,7 +227,7 @@ void TimerStore::add_timer(Timer* t)
   {
     // Timer is too far in the future to be handled by the wheels, put it in
     // the extra heap.
-    LOG_WARNING("Adding timer to extra heap, consider re-building with a larger "
+    TRC_WARNING("Adding timer to extra heap, consider re-building with a larger "
                 "LONG_WHEEL_NUM_BUCKETS constant");
     _extra_heap.push_back(t);
     std::push_heap(_extra_heap.begin(), _extra_heap.end());
@@ -307,7 +307,7 @@ void TimerStore::delete_timer_from_timer_wheel(Timer* timer)
           // that it's not in the heap).
 
           // LCOV_EXCL_START
-          LOG_ERROR("Failed to remove timer consistently");
+          TRC_ERROR("Failed to remove timer consistently");
           purge_timer_from_wheels(timer);
           // LCOV_EXCL_STOP
         }
@@ -359,7 +359,7 @@ uint64_t TimerStore::wall_time_ms()
   {
     // LCOV_EXCL_START
     CL_CHRONOS_NO_SYSTEM_TIME.log(strerror(errno));
-    LOG_ERROR("Failed to get system time - timer service cannot run: %s",
+    TRC_ERROR("Failed to get system time - timer service cannot run: %s",
               strerror(errno));
     assert(!"Failed to get system time");
     // LCOV_EXCL_STOP
@@ -497,13 +497,13 @@ void TimerStore::refill_short_wheel()
 // LCOV_EXCL_START
 void TimerStore::purge_timer_from_wheels(Timer* t)
 {
-  LOG_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
+  TRC_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
 
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
     if (_short_wheel[ii].erase(t) != 0)
     {
-      LOG_WARNING("  Deleting timer %lu from short wheel bucket %d", t->id, ii);
+      TRC_WARNING("  Deleting timer %lu from short wheel bucket %d", t->id, ii);
     }
   }
 
@@ -511,7 +511,7 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
   {
     if (_long_wheel[ii].erase(t) != 0)
     {
-      LOG_WARNING("  Deleting timer %lu from long wheel bucket %d", t->id, ii);
+      TRC_WARNING("  Deleting timer %lu from long wheel bucket %d", t->id, ii);
     }
   }
 }
@@ -574,7 +574,7 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
                                          std::string cluster_view_id,
                                          std::string& get_response)
 {
-  LOG_DEBUG("Get timers for %s", request_node.c_str());
+  TRC_DEBUG("Get timers for %s", request_node.c_str());
 
   // Create the JSON doc for the Timer information
   rapidjson::StringBuffer sb;
@@ -649,7 +649,7 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
     if ((max_responses != 0) && 
         (retrieved_timers == max_responses))
     {
-      LOG_DEBUG("Reached the max number of timers to collect");
+      TRC_DEBUG("Reached the max number of timers to collect");
       break;
     }
   }
@@ -659,7 +659,7 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
 
   get_response = sb.GetString();
 
-  LOG_DEBUG("Retrieved %d timers", retrieved_timers);
+  TRC_DEBUG("Retrieved %d timers", retrieved_timers);
   return ((max_responses != 0) &&
           (retrieved_timers == max_responses)) ? HTTP_PARTIAL_CONTENT : 
                                                  HTTP_OK;

@@ -126,7 +126,7 @@ void ChronosInternalConnection::resynchronize()
   }
 
   CL_CHRONOS_START_SCALE.log();
-  LOG_DEBUG("Starting scaling operation");
+  TRC_DEBUG("Starting scaling operation");
 
   int nodes_remaining = cluster_nodes.size();
 
@@ -157,7 +157,7 @@ void ChronosInternalConnection::resynchronize()
                                                  localhost);
     if (rc != HTTP_OK)
     {
-      LOG_WARNING("Resynchronisation with node %s failed with rc %d",
+      TRC_WARNING("Resynchronisation with node %s failed with rc %d",
                   server_to_sync.c_str(), 
                   rc);
       CL_CHRONOS_RESYNC_ERROR.log(server_to_sync.c_str());
@@ -165,7 +165,7 @@ void ChronosInternalConnection::resynchronize()
   }
 
   // The scaling operation is now complete. Update the logs/stats/alarms
-  LOG_DEBUG("Finished scaling operation");
+  TRC_DEBUG("Finished scaling operation");
 
   CL_CHRONOS_COMPLETE_SCALE.log();
 
@@ -184,7 +184,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
                              std::vector<std::string> cluster_nodes,
                              std::string localhost)
 {
-  LOG_DEBUG("Querying %s for timers", server_to_sync.c_str());
+  TRC_DEBUG("Querying %s for timers", server_to_sync.c_str());
 
   // Get the cluster view ID from the global configuration
   std::string cluster_view_id;
@@ -217,7 +217,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
         // We've failed to parse the document as JSON. This suggests that
         // there's something seriously wrong with the node we're trying
         // to query so don't retry
-        LOG_WARNING("Failed to parse document as JSON");
+        TRC_WARNING("Failed to parse document as JSON");
         rc = HTTP_BAD_REQUEST;
         break;
       }
@@ -273,13 +273,13 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             if (!timer)
             {
               count_invalid_timers++;
-              LOG_INFO("Unable to create timer - error: %s", error_str.c_str());
+              TRC_INFO("Unable to create timer - error: %s", error_str.c_str());
               continue;
             }
             else if (!replicated_timer)
             {
               count_invalid_timers++;
-              LOG_INFO("Unreplicated timer in response - ignoring");
+              TRC_INFO("Unreplicated timer in response - ignoring");
               delete timer; timer = NULL;
               continue;
             }
@@ -393,7 +393,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             // to keep going and process the rest of the timers. 
             count_invalid_timers++;
             _invalid_timers_processed_stat->increment();
-            LOG_INFO("JSON entry was invalid (hit error at %s:%d)",
+            TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
                      err._file, err._line);
           }
         }
@@ -404,7 +404,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
         if ((total_timers != 0) && 
            (count_invalid_timers == total_timers))
         {
-          LOG_WARNING("Unable to process any timer entries in GET response");
+          TRC_WARNING("Unable to process any timer entries in GET response");
           rc = HTTP_BAD_REQUEST;
         }
       }
@@ -413,7 +413,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
         // We've failed to find the Timers array. This suggests that
         // there's something seriously wrong with the node we're trying
         // to query so don't retry
-        LOG_WARNING("JSON body didn't contain the Timers array");
+        TRC_WARNING("JSON body didn't contain the Timers array");
         rc = HTTP_BAD_REQUEST;
       }
 
@@ -433,7 +433,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             // been retried). A failed DELETE won't prevent the scaling operation
             // from finishing, it just means that we'll tell other nodes
             // about timers inefficiently. 
-            LOG_INFO("Error response (%d) to DELETE request to %s", 
+            TRC_INFO("Error response (%d) to DELETE request to %s", 
                      delete_rc,
                     (*it).c_str());
           }
@@ -445,7 +445,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
       // We've received an error response to the GET request. A timeout
       // will already have been retried by the underlying HTTPConnection, 
       // so don't retry again
-      LOG_WARNING("Error response (%d) to GET request to %s", 
+      TRC_WARNING("Error response (%d) to GET request to %s", 
                   rc, 
                   server_to_sync.c_str());
     }

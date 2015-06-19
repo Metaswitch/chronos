@@ -55,7 +55,7 @@ Replicator::Replicator(ExceptionHandler* exception_handler) :
                                    (void*)this);
     if (thread_rc != 0)
     {
-      LOG_ERROR("Failed to start replicator thread: %s", strerror(thread_rc));
+      TRC_ERROR("Failed to start replicator thread: %s", strerror(thread_rc));
     }
 
     _worker_threads[ii] = thread;
@@ -161,7 +161,7 @@ void Replicator::worker_thread_entry_point()
       {
         long http_rc;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
-        LOG_WARNING("Failed to replicate timer to %s, HTTP error was %d %s",
+        TRC_WARNING("Failed to replicate timer to %s, HTTP error was %d %s",
                     replication_request->url.c_str(),
                     http_rc,
                     curl_easy_strerror(rc));
