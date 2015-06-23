@@ -1,8 +1,46 @@
+/**
+ * @file timer.cpp
+ *
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2013  Metaswitch Networks Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version, along with the "Special Exception" for use of
+ * the program along with SSL, set forth below. This program is distributed
+ * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details. You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * The author can be reached by email at clearwater@metaswitch.com or by
+ * post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+ *
+ * Special Exception
+ * Metaswitch Networks Ltd  grants you permission to copy, modify,
+ * propagate, and distribute a work formed by combining OpenSSL with The
+ * Software, or a work derivative of such a combination, even if such
+ * copying, modification, propagation, or distribution would otherwise
+ * violate the terms of the GPL. You must comply with the GPL in all
+ * respects for all of the code used other than OpenSSL.
+ * "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+ * Project and licensed under the OpenSSL Licenses, or a work based on such
+ * software and licensed under the OpenSSL Licenses.
+ * "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+ * under which the OpenSSL Project distributes the OpenSSL toolkit software,
+ * as those licenses appear in the file LICENSE-OPENSSL.
+ */
+
 #include "timer.h"
 #include "globals.h"
 #include "murmur/MurmurHash3.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
+#include "rapidjson/error/en.h"
+#include "json_parse_utils.h"
 #include "utils.h"
 #include "log.h"
 
@@ -13,6 +51,15 @@
 #include <map>
 #include <atomic>
 
+uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
+{
+  uint32_t hash;
+  MurmurHash3_x86_32(&data, sizeof(TimerID), seed, &hash);
+  return hash;
+}
+
+static Hasher hasher;
+
 Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   id(id),
   interval(interval),
@@ -21,11 +68,18 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   replicas(std::vector<std::string>()),
   callback_url(""),
   callback_body(""),
-  _replication_factor(0)
+  _replication_factor(0),
+  _replica_tracker(0)
 {
+  // Set the start time to now (using REALTIME)
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
   start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+
+  // Get the cluster view ID from global configuration
+  std::string global_cluster_view_id;
+  __globals->get_cluster_view_id(global_cluster_view_id);
+  cluster_view_id = global_cluster_view_id; 
 }
 
 Timer::~Timer()
@@ -57,27 +111,33 @@ std::string Timer::url(std::string host)
 {
   std::stringstream ss;
 
-  int bind_port;
-  __globals->get_bind_port(bind_port);
-
   // Here (and below) we render the timer ID (and replica hash) as 0-padded
   // hex strings so we can parse it back out later easily.
   if (host != "")
   {
-    ss << "http://" << host << ":" << bind_port;
-  }
+    std::string address;
+    int port;
+    if (!Utils::split_host_port(host, address, port))
+    {
+      // Just use the server as the address.
+      address = host;
+      __globals->get_bind_port(port);
+    }
 
+    ss << "http://" << address << ":" << port;
+  }
+  
   ss << "/timers/";
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
   uint64_t hash = 0;
-  std::map<std::string, uint64_t> cluster_hashes;
-  __globals->get_cluster_hashes(cluster_hashes);
+  std::map<std::string, uint64_t> cluster_bloom_filters;
+  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
 
   for (std::vector<std::string>::iterator it = replicas.begin(); 
                                           it != replicas.end(); 
                                           ++it)
   {
-    hash |= cluster_hashes[*it];
+    hash |= cluster_bloom_filters[*it];
   }
   ss << std::setfill('0') << std::setw(16) << std::hex << hash;
 
@@ -100,6 +160,7 @@ std::string Timer::url(std::string host)
 //         }
 //     },
 //     "reliability": {
+//         "cluster-view-id": "string",
 //         "replicas": [
 //             <comma separated "string"s>
 //         ]
@@ -107,51 +168,70 @@ std::string Timer::url(std::string host)
 // }
 std::string Timer::to_json()
 {
-  rapidjson::Document doc;
-  doc.SetObject();
+  rapidjson::StringBuffer sb;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+  to_json_obj(&writer);
 
-  rapidjson::Value timing(rapidjson::kObjectType);
-  timing.AddMember("start-time", start_time, doc.GetAllocator());
-  timing.AddMember("sequence-number", sequence_number, doc.GetAllocator());
-  timing.AddMember("interval", interval/1000, doc.GetAllocator());
-  timing.AddMember("repeat-for", repeat_for/1000, doc.GetAllocator());
-
-  rapidjson::Value http(rapidjson::kObjectType);
-  rapidjson::Value val;
-  val.SetString(callback_url.c_str(), doc.GetAllocator());
-  http.AddMember("uri", val, doc.GetAllocator());
-  val.SetString(callback_body.c_str(), doc.GetAllocator());
-  http.AddMember("opaque", val, doc.GetAllocator());
-
-  rapidjson::Value callback(rapidjson::kObjectType);
-  callback.AddMember("http", http, doc.GetAllocator());
-
-  rapidjson::Value replicas_array(rapidjson::kArrayType);
-
-  for (std::vector<std::string>::iterator it = replicas.begin(); 
-                                          it != replicas.end(); 
-                                          ++it)
-  {
-    val.SetString((*it).c_str(), doc.GetAllocator());
-    replicas_array.PushBack(val, doc.GetAllocator());
-  }
-
-  rapidjson::Value reliability(rapidjson::kObjectType);
-  reliability.AddMember("replicas", replicas_array, doc.GetAllocator());
-
-  // Create the document.
-  doc.AddMember("timing", timing, doc.GetAllocator());
-  doc.AddMember("callback", callback, doc.GetAllocator());
-  doc.AddMember("reliability", reliability, doc.GetAllocator());
-
-  rapidjson::StringBuffer s;
-  rapidjson::Writer<rapidjson::StringBuffer> w(s);
-  doc.Accept(w);
-  std::string body = s.GetString();
-
-  LOG_DEBUG("Built replication body: %s", body.c_str());
+  std::string body = sb.GetString();
+  TRC_DEBUG("Built replication body: %s", body.c_str());
 
   return body;
+}
+
+void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
+{
+  writer->StartObject();
+  {
+    writer->String("timing");
+    writer->StartObject();
+    {
+      writer->String("start-time");
+      writer->Int64(start_time);
+      writer->String("sequence-number");
+      writer->Int(sequence_number);
+      writer->String("interval");
+      writer->Int(interval/1000);
+      writer->String("repeat-for");
+      writer->Int(repeat_for/1000);
+    }
+    writer->EndObject();
+
+    writer->String("callback");
+    writer->StartObject();
+    {
+      writer->String("http");
+      writer->StartObject();
+      {
+        writer->String("uri");
+        writer->String(callback_url.c_str());
+        writer->String("opaque");
+        writer->String(callback_body.c_str());
+      }
+      writer->EndObject();
+    }
+    writer->EndObject();
+
+    writer->String("reliability");
+    writer->StartObject();
+    {
+      writer->String("cluster-view-id");
+      writer->String(cluster_view_id.c_str());
+      writer->String("replicas");
+      writer->StartArray();
+      {
+        for (std::vector<std::string>::iterator it = replicas.begin();
+                                                it != replicas.end();
+                                                ++it)
+        {
+          writer->String((*it).c_str());
+        }
+      }
+
+      writer->EndArray();
+    }
+    writer->EndObject();
+  }
+  writer->EndObject();
 }
 
 bool Timer::is_local(std::string host)
@@ -181,82 +261,181 @@ void Timer::become_tombstone()
   repeat_for = interval * (sequence_number + 1);
 }
 
-void Timer::calculate_replicas(uint64_t replica_hash)
+bool Timer::is_matching_cluster_view_id(std::string cluster_view_id_to_match)
 {
-  std::vector<std::string> hash_replicas;
-  if (replica_hash)
+  return (cluster_view_id_to_match == cluster_view_id);
+}
+
+static void calculate_rendezvous_hash(std::vector<std::string> cluster,
+                                      std::vector<uint32_t> cluster_rendezvous_hashes,
+                                      TimerID id,
+                                      uint32_t replication_factor,
+                                      std::vector<std::string>& replicas,
+                                      Hasher* hasher)
+{
+  if (replication_factor == 0u)
+  {
+    return;
+  }
+
+  std::map<uint32_t, size_t> hash_to_idx;
+  std::vector<std::string> ordered_cluster;
+
+  // Do a rendezvous hash, by hashing this timer repeatedly, seeded by a
+  // different per-server value each time. Rank the servers for this timer
+  // based on this hash output.
+
+  for (unsigned int ii = 0;
+       ii < cluster.size();
+       ++ii)
+  {
+    uint32_t server_hash = cluster_rendezvous_hashes[ii];
+    uint32_t hash = hasher->do_hash(id, server_hash);
+
+    // Deal with hash collisions by incrementing the hash. For
+    // example, if I have server hashes A, B, C, D which cause
+    // this timer to hash to 10, 40, 10, 30:
+    // hash_to_idx[10] = 0 (A's index)
+    // hash_to_idx[40] = 1 (B's index)
+    // hash_to_idx[10] exists, increment C's hash
+    // hash_to_idx[11] = 2 (C's index)
+    // hash_to_idx[30] = 3 (D's index)
+    //
+    // Iterating over hash_to_idx then gives (10, 0), (11, 2), (40, 1)
+    // and (30, 3), so the ordered list is A, C, B, D. Effectively, the
+    // first entry in the original list consistently wins.
+    //
+    // This doesn't work perfectly in the edge case 
+    // If I have servers A, B, C, D which cause this
+    // timer to hash to 10, 11, 10, 11:
+    // hash_to_idx[10] = 0 (A's index)
+    // hash_to_idx[11] = 1 (B's index)
+    // hash_to_idx[10] exists, increment C's hash
+    // hash_to_idx[11] exists, increment C's hash
+    // hash_to_idx[12] = 2 (C's index)
+    // hash_to_idx[11] exists, increment D's hash
+    // hash_to_idx[12] exists, increment D's hash
+    // hash_to_idx[13] = 3 (D's index)
+    //
+    // Iterating over hash_to_idx then gives (10, 0), (11, 1), (12, 2)
+    // and (13, 3), so the ordered list is A, B, C, D. This is wrong,
+    // but deterministic - the only problem in this very rare case is that
+    // more timers will be moved around when scaling.
+    while (hash_to_idx.find(hash) != hash_to_idx.end())
+    {
+      // LCOV_EXCL_START
+      hash++;
+      // LCOV_EXCL_STOP
+    }
+    
+    hash_to_idx[hash] = ii;
+  }
+
+  // Pick the lowest hash value as the primary replica.
+  for (std::map<uint32_t, size_t>::iterator ii = hash_to_idx.begin();
+       ii != hash_to_idx.end();
+       ii++)
+  {
+    ordered_cluster.push_back(cluster[ii->second]);
+  }
+  
+  replicas.push_back(ordered_cluster.front());
+
+  // Pick the (N-1) highest hash values as the backup replicas.  
+  replication_factor = replication_factor > ordered_cluster.size() ?
+                       ordered_cluster.size() : replication_factor;
+
+  for (size_t jj = 1;
+       jj < replication_factor;
+       jj++)
+  {
+    replicas.push_back(ordered_cluster.back());
+    ordered_cluster.pop_back();
+  }
+}
+
+void Timer::calculate_replicas(TimerID id,
+                               uint64_t replica_bloom_filter,
+                               std::map<std::string, uint64_t> cluster_bloom_filters,
+                               std::vector<std::string> cluster,
+                               std::vector<uint32_t> cluster_rendezvous_hashes,
+                               uint32_t replication_factor,
+                               std::vector<std::string>& replicas,
+                               std::vector<std::string>& extra_replicas,
+                               Hasher* hasher)
+{
+  std::vector<std::string> bloom_replicas;
+  if (replica_bloom_filter)
   {
     // Compare the hash to all the known replicas looking for matches.
-    std::map<std::string, uint64_t> cluster_hashes;
-    __globals->get_cluster_hashes(cluster_hashes);
 
-    for (std::map<std::string, uint64_t>::iterator it = cluster_hashes.begin();
-         it != cluster_hashes.end();
+    for (std::map<std::string, uint64_t>::iterator it = cluster_bloom_filters.begin();
+         it != cluster_bloom_filters.end();
          ++it)
     {
       // Quickly check if this replica might be one of the replicas for the
       // given timer (i.e. if the replica's individual hash collides with the
       // bloom filter we calculated when we created the hash (see `url()`).
-      if ((replica_hash & it->second) == it->second)
+      if ((replica_bloom_filter & it->second) == it->second)
       {
         // This is probably a replica.
-        hash_replicas.push_back(it->first);
+        bloom_replicas.push_back(it->first);
       }
     }
 
     // Recreate the vector of replicas. Use the replication factor if it's set,
     // otherwise use the size of the existing replicas.
-    _replication_factor = _replication_factor > 0 ?
-                          _replication_factor : hash_replicas.size();
-    uint32_t hash;
-    MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-    std::vector<std::string> cluster;
-    __globals->get_cluster_addresses(cluster);
-    unsigned int first_replica = hash % cluster.size();
+    replication_factor = replication_factor > 0 ?
+                         replication_factor : bloom_replicas.size();
+  }
 
-    for (unsigned int ii = 0;
-         ii < _replication_factor && ii < cluster.size();
-         ++ii)
-    {
-      replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
-    }
+  // Pick replication-factor replicas from the cluster.
+  calculate_rendezvous_hash(cluster, cluster_rendezvous_hashes, id, replication_factor, replicas, hasher);
 
-    // Finally, add any replicas that were in hash_replicas but aren't in
+  if (replica_bloom_filter)
+  {
+    // Finally, add any replicas that were in the bloom filter but aren't in
     // replicas to the extra_replicas vector.
     for (unsigned int ii = 0;
-         ii < hash_replicas.size();
+         ii < bloom_replicas.size();
          ++ii)
     {
-      if (std::find(replicas.begin(), replicas.end(), hash_replicas[ii]) == replicas.end())
+      if (std::find(replicas.begin(), replicas.end(), bloom_replicas[ii]) == replicas.end())
       {
-        extra_replicas.push_back(hash_replicas[ii]);
+        extra_replicas.push_back(bloom_replicas[ii]);
       }
     }
   }
-  else
-  {
-    // Pick replication-factor replicas from the cluster, using a hash of the ID
-    // to balance the choices.
-    uint32_t hash;
-    MurmurHash3_x86_32(&id, sizeof(TimerID), 0x0, &hash);
-    std::vector<std::string> cluster;
-    __globals->get_cluster_addresses(cluster);
-    unsigned int first_replica = hash % cluster.size();
-    for (unsigned int ii = 0;
-         ii < _replication_factor && ii < cluster.size();
-         ++ii)
-    {
-      replicas.push_back(cluster[(first_replica + ii) % cluster.size()]);
-    }
-  }
 
-  LOG_DEBUG("Replicas calculated:");
+  TRC_DEBUG("Replicas calculated:");
   for (std::vector<std::string>::iterator it = replicas.begin(); 
                                           it != replicas.end(); 
                                           ++it)
   {
-    LOG_DEBUG(" - %s", it->c_str());
+    TRC_DEBUG(" - %s", it->c_str());
   }
+}
+
+void Timer::calculate_replicas(uint64_t replica_hash)
+{
+  std::map<std::string, uint64_t> cluster_bloom_filters;
+  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
+  
+  std::vector<std::string> cluster;
+  __globals->get_cluster_addresses(cluster);
+
+  std::vector<uint32_t> cluster_rendezvous_hashes;
+  __globals->get_cluster_hashes(cluster_rendezvous_hashes);
+
+  Timer::calculate_replicas(id,
+                            replica_hash,
+                            cluster_bloom_filters,
+                            cluster,
+                            cluster_rendezvous_hashes,
+                            _replication_factor,
+                            replicas,
+                            extra_replicas,
+                            &hasher);
 }
 
 uint32_t Timer::deployment_id = 0;
@@ -286,42 +465,6 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
   return tombstone;
 }
 
-#define JSON_PARSE_ERROR(STR) {                                               \
-  error = (STR);                                                              \
-  delete timer;                                                               \
-  return NULL;                                                                \
-}
-
-#define JSON_ASSERT_OBJECT(NODE, NODE_NAME) {                                 \
-  if (!(NODE).IsObject())                                                     \
-    JSON_PARSE_ERROR((NODE_NAME " should be an object"));                     \
-}
-
-#define JSON_ASSERT_INTEGER(NODE, NODE_NAME) {                                \
-  if (!(NODE).IsInt())                                                        \
-    JSON_PARSE_ERROR((NODE_NAME " should be an integer"));                    \
-}
-
-#define JSON_ASSERT_INTEGER_64(NODE, NODE_NAME) {                             \
-  if (!(NODE).IsInt64())                                                      \
-    JSON_PARSE_ERROR((NODE_NAME " should be an 64bit integer"));              \
-}
-
-#define JSON_ASSERT_STRING(NODE, NODE_NAME) {                                 \
-  if (!(NODE).IsString())                                                     \
-    JSON_PARSE_ERROR((NODE_NAME " should be a string"));                      \
-}
-
-#define JSON_ASSERT_ARRAY(NODE, NODE_NAME) {                                  \
-  if (!(NODE).IsArray())                                                      \
-    JSON_PARSE_ERROR((NODE_NAME " should be an array"));                      \
-}
-
-#define JSON_ASSERT_CONTAINS(NODE, NODE_NAME, ELEM) {                         \
-  if (!(NODE).HasMember(ELEM))                                                \
-    JSON_PARSE_ERROR(("Couldn't find '" ELEM "' in '" NODE_NAME "'"));        \
-}
-
 // Create a Timer object from the JSON representation.
 //
 // @param id - The unique identity for the timer (see generate_timer_id() above).
@@ -329,148 +472,191 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // @param json - The JSON representation of the timer.
 // @param error - This will be populated with a descriptive error string if required.
 // @param replicated - This will be set to true if this is a replica of a timer.
-Timer* Timer::from_json(TimerID id, uint64_t replica_hash, std::string json, std::string& error, bool& replicated)
+Timer* Timer::from_json(TimerID id, 
+                        uint64_t replica_hash, 
+                        std::string json, 
+                        std::string& error, 
+                        bool& replicated)
 {
-  Timer* timer = NULL;
   rapidjson::Document doc;
   doc.Parse<0>(json.c_str());
+
   if (doc.HasParseError())
   {
-    JSON_PARSE_ERROR(boost::str(boost::format("Failed to parse JSON body, offset: %lu - %s. JSON is: %s") % doc.GetErrorOffset() % doc.GetParseError() % json));
+    error = "Failed to parse timer as JSON. Error: %s",
+            rapidjson::GetParseError_En(doc.GetParseError());
+    return NULL;
   }
 
-  if (!doc.HasMember("timing"))
-    JSON_PARSE_ERROR(("Couldn't find the 'timing' node in the JSON"));
-  if (!doc.HasMember("callback"))
-    JSON_PARSE_ERROR(("Couldn't find the 'callback' node in the JSON"));
+  return from_json_obj(id, replica_hash, error, replicated, doc);  
+}
 
-  // Parse out the timing block
-  rapidjson::Value& timing = doc["timing"];
-  JSON_ASSERT_OBJECT(timing, "timing");
+Timer* Timer::from_json_obj(TimerID id, 
+                            uint64_t replica_hash, 
+                            std::string& error, 
+                            bool& replicated, 
+                            rapidjson::Value& doc)
+{
+  Timer* timer = NULL;
 
-  JSON_ASSERT_CONTAINS(timing, "timing", "interval");
-  rapidjson::Value& interval = timing["interval"];
-  JSON_ASSERT_INTEGER(interval, "interval");
-
-  // Extract the repeat-for parameter, if it's absent, set it to the interval
-  // instead.
-  int repeat_for_int;
-  if (timing.HasMember("repeat-for"))
+  try
   {
-    rapidjson::Value& repeat_for = timing["repeat-for"];
-    JSON_ASSERT_INTEGER(repeat_for, "repeat-for");
-    repeat_for_int = repeat_for.GetInt();
-  }
-  else
-  {
-    repeat_for_int = interval.GetInt();
-  }
+    JSON_ASSERT_CONTAINS(doc, "timing");
+    JSON_ASSERT_CONTAINS(doc, "callback");
 
-  if ((interval.GetInt() == 0) && (repeat_for_int != 0))
-  {
-    // If the interval time is 0 and the repeat_for_int isn't then reject the timer. 
-    JSON_PARSE_ERROR(boost::str(boost::format("Can't have a zero interval time with a non-zero (%d) repeat-for time") % repeat_for_int));
-  }
+    // Parse out the timing block
+    rapidjson::Value& timing = doc["timing"];
+    JSON_ASSERT_OBJECT(timing);
 
-  timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
+    JSON_ASSERT_CONTAINS(timing, "interval");
+    rapidjson::Value& interval = timing["interval"];
+    JSON_ASSERT_INT(interval);
 
-  if (timing.HasMember("start-time"))
-  {
-    // Timer JSON specifies a start-time, use that instead of now.
-    rapidjson::Value& start_time = timing["start-time"];
-    JSON_ASSERT_INTEGER_64(start_time, "start-time");
-    timer->start_time = start_time.GetInt64();
-  }
-
-  if (timing.HasMember("sequence-number"))
-  {
-    rapidjson::Value& sequence_number = timing["sequence-number"];
-    JSON_ASSERT_INTEGER(sequence_number, "sequence-number");
-    timer->sequence_number = sequence_number.GetInt();
-  }
-
-  // Parse out the 'callback' block
-  rapidjson::Value& callback = doc["callback"];
-
-  JSON_ASSERT_OBJECT(callback, "callback");
-  JSON_ASSERT_CONTAINS(callback, "callback", "http");
-
-  rapidjson::Value& http = callback["http"];
-
-  JSON_ASSERT_OBJECT(http, "http");
-  JSON_ASSERT_CONTAINS(http, "http", "uri");
-  JSON_ASSERT_CONTAINS(http, "http", "opaque");
-
-  rapidjson::Value& uri = http["uri"];
-  rapidjson::Value& opaque = http["opaque"];
-
-  JSON_ASSERT_STRING(uri, "uri");
-  JSON_ASSERT_STRING(opaque, "opaque");
-
-  timer->callback_url = std::string(uri.GetString(), uri.GetStringLength());
-  timer->callback_body = std::string(opaque.GetString(), opaque.GetStringLength());
-
-  if (doc.HasMember("reliability"))
-  {
-    // Parse out the 'reliability' block
-    rapidjson::Value& reliability = doc["reliability"];
-
-    JSON_ASSERT_OBJECT(reliability, "reliability");
-
-    if (reliability.HasMember("replicas"))
+    // Extract the repeat-for parameter, if it's absent, set it to the interval
+    // instead.
+    int repeat_for_int;
+    if (timing.HasMember("repeat-for"))
     {
-      rapidjson::Value& replicas = reliability["replicas"];
-      JSON_ASSERT_ARRAY(replicas, "replicas");
+      JSON_GET_INT_MEMBER(timing, "repeat-for", repeat_for_int);
+    }
+    else
+    {
+      repeat_for_int = interval.GetInt();
+    }
 
-      if (replicas.Size() == 0)
+    if ((interval.GetInt() == 0) && (repeat_for_int != 0))
+    {
+      // If the interval time is 0 and the repeat_for_int isn't then reject the timer. 
+      error = "Can't have a zero interval time with a non-zero (%s) repeat-for time", 
+              std::to_string(repeat_for_int);
+      return NULL;
+    }
+
+    timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
+
+    if (timing.HasMember("start-time"))
+    {
+      // Timer JSON specifies a start-time, use that instead of now.
+      JSON_GET_INT_64_MEMBER(timing, "start-time", timer->start_time);
+    }
+
+    if (timing.HasMember("sequence-number"))
+    {
+      JSON_GET_INT_MEMBER(timing, "sequence-number", timer->sequence_number);
+    }
+
+    // Parse out the 'callback' block
+    rapidjson::Value& callback = doc["callback"];
+    JSON_ASSERT_OBJECT(callback);
+
+    JSON_ASSERT_CONTAINS(callback, "http");
+    rapidjson::Value& http = callback["http"];
+    JSON_ASSERT_OBJECT(http);
+
+    JSON_GET_STRING_MEMBER(http, "uri", timer->callback_url);
+    JSON_GET_STRING_MEMBER(http, "opaque", timer->callback_body);
+
+    if (doc.HasMember("reliability"))
+    {
+      // Parse out the 'reliability' block
+      rapidjson::Value& reliability = doc["reliability"];
+      JSON_ASSERT_OBJECT(reliability);
+
+      if (reliability.HasMember("cluster-view-id"))
       {
-        JSON_PARSE_ERROR("If replicas is specified it must be non-empty");
+        JSON_GET_STRING_MEMBER(reliability, 
+                               "cluster-view-id", 
+                               timer->cluster_view_id);
       }
 
-      timer->_replication_factor = replicas.Size();
-
-      for (rapidjson::Value::ConstValueIterator it = replicas.Begin(); 
-                                                it != replicas.End(); 
-                                                ++it)
+      if (reliability.HasMember("replicas"))
       {
-        JSON_ASSERT_STRING(*it, "replica address");
-        timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+        rapidjson::Value& replicas = reliability["replicas"];
+        JSON_ASSERT_ARRAY(replicas);
+
+        if (replicas.Size() == 0)
+        {
+          error = "If replicas is specified it must be non-empty";
+          delete timer; timer = NULL;
+          return NULL;
+        }
+
+        timer->_replication_factor = replicas.Size();
+
+        for (rapidjson::Value::ConstValueIterator it = replicas.Begin(); 
+                                                  it != replicas.End(); 
+                                                  ++it)
+        {
+          JSON_ASSERT_STRING(*it);
+          timer->replicas.push_back(std::string(it->GetString(), it->GetStringLength()));
+        }
+      }
+      else
+      {
+        if (reliability.HasMember("replication-factor"))
+        {
+          JSON_GET_INT_MEMBER(reliability,
+                              "replication-factor",
+                              timer->_replication_factor);
+        }
+        else
+        {
+          // Default replication factor is 2.
+          timer->_replication_factor = 2;
+        }
       }
     }
     else
     {
-      if (reliability.HasMember("replication-factor"))
-      {
-        rapidjson::Value& replication_factor = reliability["replication-factor"];
-        JSON_ASSERT_INTEGER(replication_factor, "replication-factor");
-        timer->_replication_factor = replication_factor.GetInt();
-      }
-      else
-      {
-        // Default replication factor is 2.
-        timer->_replication_factor = 2;
-      }
+      // Default to 2 replicas
+      timer->_replication_factor = 2;
+    }
+
+    timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;
+
+    if (timer->replicas.empty())
+    {
+      // Replicas not determined above, determine them now.  Note that this implies
+      // the request is from a client, not another replica.
+      replicated = false;
+      timer->calculate_replicas(replica_hash);
+    }
+    else
+    {
+      // Replicas were specified in the request, must be a replication message
+      // from another cluster node.
+      replicated = true;
     }
   }
-  else
+  catch (JsonFormatError err)
   {
-    // Default to 2 replicas
-    timer->_replication_factor = 2;
-  }
-
-  if (timer->replicas.empty())
-  {
-    // Replicas not determined above, determine them now.  Note that this implies
-    // the request is from a client, not another replica.
-    replicated = false;
-    timer->calculate_replicas(replica_hash);
-  }
-  else
-  {
-    // Replicas were specified in the request, must be a replication message
-    // from another cluster node.
-    replicated = true;
+    error = "Badly formed Timer entry - hit error on line " + std::to_string(err._line);
+    delete timer; timer = NULL;
+    return NULL;
   }
 
   return timer;
+}
+
+int Timer::update_replica_tracker(int replica_index)
+{
+  _replica_tracker = _replica_tracker % (int)pow(2,replica_index);
+  return _replica_tracker;
+}
+
+bool Timer::has_replica_been_informed(int replica_index)
+{
+  return ((_replica_tracker & (int)pow(2, replica_index)) == 0);
+}
+
+void Timer::update_cluster_information()
+{
+  // Update the replica list
+  replicas.clear();
+  calculate_replicas(0);
+
+  // Update the cluster view ID 
+  std::string global_cluster_view_id;
+  __globals->get_cluster_view_id(global_cluster_view_id);
+ cluster_view_id = global_cluster_view_id;
 }

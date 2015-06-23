@@ -1,3 +1,39 @@
+/**
+ * @file timer_handler.cpp
+ *
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2013  Metaswitch Networks Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version, along with the "Special Exception" for use of
+ * the program along with SSL, set forth below. This program is distributed
+ * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details. You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * The author can be reached by email at clearwater@metaswitch.com or by
+ * post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+ *
+ * Special Exception
+ * Metaswitch Networks Ltd  grants you permission to copy, modify,
+ * propagate, and distribute a work formed by combining OpenSSL with The
+ * Software, or a work derivative of such a combination, even if such
+ * copying, modification, propagation, or distribution would otherwise
+ * violate the terms of the GPL. You must comply with the GPL in all
+ * respects for all of the code used other than OpenSSL.
+ * "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+ * Project and licensed under the OpenSSL Licenses, or a work based on such
+ * software and licensed under the OpenSSL Licenses.
+ * "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+ * under which the OpenSSL Project distributes the OpenSSL toolkit software,
+ * as those licenses appear in the file LICENSE-OPENSSL.
+ */
+
 #include <time.h>
 #include <cstring>
 #include <iostream>
@@ -20,7 +56,7 @@ TimerHandler::TimerHandler(TimerStore* store,
 {
   pthread_mutex_init(&_mutex, NULL);
 
-#ifdef UNITTEST
+#ifdef UNIT_TEST
   _cond = new MockPThreadCondVar(&_mutex);
 #else
   _cond = new CondVar(&_mutex);
@@ -58,10 +94,34 @@ TimerHandler::~TimerHandler()
 
 void TimerHandler::add_timer(Timer* timer)
 {
-  LOG_DEBUG("Adding timer:  %lu", timer->id);
+  TRC_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
   _store->add_timer(timer);
   pthread_mutex_unlock(&_mutex);
+}
+
+void TimerHandler::update_replica_tracker_for_timer(TimerID id,
+                                                    int replica_index)
+{
+  pthread_mutex_lock(&_mutex);
+  _store->update_replica_tracker_for_timer(id, 
+                                           replica_index);
+  pthread_mutex_unlock(&_mutex);
+}
+
+HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
+                                           int max_responses,
+                                           std::string cluster_view_id,
+                                           std::string& get_response)
+{
+  pthread_mutex_lock(&_mutex);
+  HTTPCode rc = _store->get_timers_for_node(request_node, 
+                                            max_responses, 
+                                            cluster_view_id, 
+                                            get_response);
+  pthread_mutex_unlock(&_mutex);
+
+  return rc;
 }
 
 // The core function in the timer handler, basic principle is to loop around repeatedly
@@ -82,7 +142,7 @@ void TimerHandler::run() {
   {
     if (!next_timers.empty())
     {
-      LOG_DEBUG("Have a timer to pop");
+      TRC_DEBUG("Have a timer to pop");
       pthread_mutex_unlock(&_mutex);
       pop(next_timers);
       pthread_mutex_lock(&_mutex);
@@ -150,13 +210,16 @@ void TimerHandler::pop(Timer* timer)
   // Tombstones are reaped when they pop.
   if (timer->is_tombstone())
   {
-    LOG_DEBUG("Discarding expired tombstone");
+    TRC_DEBUG("Discarding expired tombstone");
     delete timer;
     return;
   }
 
   // Increment the timer's sequence before sending the callback.
   timer->sequence_number++;
+
+  // Update the timer in case it has out of date configuration
+  timer->update_cluster_information();
 
   // The callback takes ownership of the timer at this point.
   _callback->perform(timer); timer = NULL;

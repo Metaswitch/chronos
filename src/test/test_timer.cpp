@@ -1,3 +1,39 @@
+/**
+ * @file test_timer.cpp
+ *
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2013  Metaswitch Networks Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version, along with the "Special Exception" for use of
+ * the program along with SSL, set forth below. This program is distributed
+ * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details. You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * The author can be reached by email at clearwater@metaswitch.com or by
+ * post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+ *
+ * Special Exception
+ * Metaswitch Networks Ltd  grants you permission to copy, modify,
+ * propagate, and distribute a work formed by combining OpenSSL with The
+ * Software, or a work derivative of such a combination, even if such
+ * copying, modification, propagation, or distribution would otherwise
+ * violate the terms of the GPL. You must comply with the GPL in all
+ * respects for all of the code used other than OpenSSL.
+ * "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+ * Project and licensed under the OpenSSL Licenses, or a work based on such
+ * software and licensed under the OpenSSL Licenses.
+ * "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+ * under which the OpenSSL Project distributes the OpenSSL toolkit software,
+ * as those licenses appear in the file LICENSE-OPENSSL.
+ */
+
 #include "timer.h"
 #include "globals.h"
 #include "base.h"
@@ -16,8 +52,8 @@ protected:
   {
     Base::SetUp();
     std::vector<std::string> replicas;
-    replicas.push_back("10.0.0.1");
-    replicas.push_back("10.0.0.2");
+    replicas.push_back("10.0.0.1:9999");
+    replicas.push_back("10.0.0.2:9999");
     TimerID id = (TimerID)UINT_MAX + 10;
     uint32_t interval = 100;
     uint32_t repeat_for = 200;
@@ -28,6 +64,7 @@ protected:
     t1->replicas = replicas;
     t1->callback_url = "http://localhost:80/callback";
     t1->callback_body = "stuff stuff stuff";
+    t1->cluster_view_id = "cluster-view-id";
   }
 
   virtual void TearDown()
@@ -100,7 +137,7 @@ TEST_F(TestTimer, FromJSONTests)
   std::string custom_repl_factor = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
 
   // Or you can pass specific replicas to use.
-  std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1\", \"10.0.0.2\" ] }}";
+  std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"cluster-view-id\": \"cluster-view-id\", \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}";
 
   // You can skip the `repeat-for` to set up a one-shot timer.
   std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
@@ -233,6 +270,7 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 
 TEST_F(TestTimer, URL)
 {
+  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
 }
 
@@ -253,7 +291,7 @@ TEST_F(TestTimer, ToJSON)
   t2->replicas = t1->replicas;
   t2->callback_url = "http://localhost:80/callback";
   t2->callback_body = "{\"stuff\": \"stuff\"}";
-
+  t2->cluster_view_id = "cluster-view-id";
   std::string json = t2->to_json();
   std::string err;
   bool replicated;
@@ -269,6 +307,7 @@ TEST_F(TestTimer, ToJSON)
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
   EXPECT_EQ(t2->replicas, t3->replicas) << json;
+  EXPECT_EQ(t2->cluster_view_id, t3->cluster_view_id) << json;
   EXPECT_EQ("http://localhost:80/callback", t3->callback_url) << json;
   EXPECT_EQ("{\"stuff\": \"stuff\"}", t3->callback_body) << json;
   delete t2;
@@ -277,8 +316,9 @@ TEST_F(TestTimer, ToJSON)
 
 TEST_F(TestTimer, IsLocal)
 {
-  EXPECT_TRUE(t1->is_local("10.0.0.1"));
-  EXPECT_FALSE(t1->is_local("20.0.0.1"));
+  EXPECT_TRUE(t1->is_local("10.0.0.1:9999"));
+  EXPECT_FALSE(t1->is_local("10.0.0.1:9998"));
+  EXPECT_FALSE(t1->is_local("20.0.0.1:9999"));
 }
 
 TEST_F(TestTimer, IsTombstone)
@@ -297,4 +337,24 @@ TEST_F(TestTimer, BecomeTombstone)
   EXPECT_EQ(1000000u, t1->start_time);
   EXPECT_EQ(100u, t1->interval);
   EXPECT_EQ(100u, t1->repeat_for);
+}
+
+TEST_F(TestTimer, MatchingClusterID)
+{
+  EXPECT_TRUE(t1->is_matching_cluster_view_id("cluster-view-id"));
+  EXPECT_FALSE(t1->is_matching_cluster_view_id("not-cluster-id"));
+}
+
+TEST_F(TestTimer, IsLastReplica)
+{
+  EXPECT_FALSE(t1->is_last_replica());
+
+  std::vector<std::string> replicas;
+  replicas.push_back("10.0.0.2:9999");
+  replicas.push_back("10.0.0.1:9999");
+
+  Timer* t2 = new Timer(2, 100, 200);
+  t2->replicas = replicas;
+  EXPECT_TRUE(t2->is_last_replica());
+  delete t2;
 }

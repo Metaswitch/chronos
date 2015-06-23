@@ -7,10 +7,6 @@ threads = 50
 folder = /var/log/chronos
 level = 2
 
-[cluster]
-localhost = localhost
-node = localhost
-
 [alarms]
 enabled = true
 

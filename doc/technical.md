@@ -39,14 +39,15 @@ instances in the cluster and passing them down to the timer wheel.
 
 ### Architecture
 
-Chronos is made up of 6 major components:
+Chronos is made up of 7 major components:
 
  * HTTP Stack - Responsible for parsing and validating incoming requests.
- * Controller – Handles the logic for the proxying service.
- * Replication Client – A simple HTTP client that sends replication messages.
- * Timer Handler – Handles the worker threads that pop the timers.
- * Timer Wheel – The local timer wheel.
- * HTTP Callback Client – A simple HTTP client that calls back to the client.
+ * Controller - Handles the logic for the proxying service.
+ * Replication Client - A simple HTTP client that sends replication messages.
+ * Timer Handler - Handles the worker threads that pop the timers.
+ * Timer Wheel - The local timer wheel.
+ * HTTP Callback Client - A simple HTTP client that calls back to the client.
+ * Chronos connection - Responsible for resynchronizing timers between Chronos nodes 
 
 ![Architecture Diagram](architecture.png?raw=true)
 
@@ -143,85 +144,6 @@ allowed to pop (given the repeat-for attribute). He deletes the timer from B and
 Since networks are inherently unreliable and often impart latency in communications between nodes,
 there are some window conditions where updates and deletes might be unreliable. We use standard
 mechanisms (tombstones/change timestamps) to resolve these issues.
-
-#### Elastic Scaling
-
-If we didn't need to support elastic scaling of the Chronos cluster, what we've described above
-would be all that is necessary:
-
- * The proxy component can pick replicas for a timer in a deterministic way such that any other
-proxy component could make the same decision given the timer ID in order to update or delete a
-timer.
- * The replicas have a record of which the other replicas are for the timer they're handling (they
-have this information so they can calculate their skew, see above).
-
-With elastic scaling, the second of these bullets is unchanged, but the first becomes harder since
-the deterministic process would need to know what the cluster looked like when the timer was first
-created so it could repeat the algorithm to determine the correct replica list.
-
-Chronos's solution involves encoding the list of replicas into the ID returned to the user when they
-create/update a timer. The user then uses this ID when they want to update/delete the timer later.
-
-The solution uses a bloom filter to store the list of replicas and appends that to the unique ID for
-the timer. When a request from a client arrives, the proxy component checks the bloom filter against
-the current list of members in the cluster and replicates the timer to all that match.
-
-Normally this would be inefficient since checking a bloom filter to see if a given value is in it
-requires hashing the value multiple times, suggesting that checking every member from the cluster
-would be computationally expensive. Fortunately, we can calculate the bits in the bloom filter that
-would have to be set if each member was a replica ahead of time (since the cluster membership list
-rarely changes) and check for presence in the bloom filter with (example C/C++ code):
-
-    (bloom_filter & member_bits) == member_bits
-
-This is super cheap in comparison to calculating hashes.
-
-As an extra benefit of this algorithm we are able to use a fixed sized field to represent the
-collection of IPv4/IPv6 addresses for the replicas.
-
-#### Rebalancing timers
-
-To rebalance timers during scaling up (to take advantage of the new nodes) and to restore redundancy
-during scaling down (so the timer that were homed on the removed nodes return to having the correct
-number of replicas), the bloom filter for the timer is generated from the timer's unique ID on each
-update operation from the client and compared to the one provided in the request. If the filters do
-not match, Chronos replicates the update/delete operation to all the nodes that match either filter
-so that the old replicas can delete their record of the timer and the new ones can create a record.
-
-**Example:**
-
-Initially, the Chronos cluster contains 3 nodes and a timer is created with a replication factor of
-3 so one replica is placed on each node. The client is given the ID+bloom filter identifier for the
-timer for future use.
-
- * Node A sees a create request
-     * Node A creates a record in its local store.
-
- * Node B sees a create request
-     * Node B creates a record in its local store.
-
- * Node C sees a create request
-     * Node B creates a record in its local store.
-
-Before the timer pops, a fourth node D is added to the cluster and the timer is updated by the
-client (who passes the ID+Bloom filter as part of the update request). The receiving Chronos node
-re-hashes the ID and decides that the new set of replica nodes should be B, C and D. It also sees
-that node A matches the bloom filter passed by the client so he sends update messages to A, B, C and
-D.
-
- * Node A sees an update request
-     * Node A is not included as a replica so it deletes it's local record
-
- * Node B sees an update request
-     * Node B updates its local store.
-
- * Node C sees an update request
-     * Node C updates its local store.
-
- * Node D sees an update request
-     * Node D does not recognize this timer so it creates a record for it
-
-In this way, the timers will automatically spread themselves out over the larger cluster.
 
 ### Real World Example
 

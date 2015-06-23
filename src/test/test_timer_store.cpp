@@ -1,10 +1,50 @@
+/**
+ * @file test_timer_store.cpp
+ *
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2013  Metaswitch Networks Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version, along with the "Special Exception" for use of
+ * the program along with SSL, set forth below. This program is distributed
+ * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details. You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * The author can be reached by email at clearwater@metaswitch.com or by
+ * post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+ *
+ * Special Exception
+ * Metaswitch Networks Ltd  grants you permission to copy, modify,
+ * propagate, and distribute a work formed by combining OpenSSL with The
+ * Software, or a work derivative of such a combination, even if such
+ * copying, modification, propagation, or distribution would otherwise
+ * violate the terms of the GPL. You must comply with the GPL in all
+ * respects for all of the code used other than OpenSSL.
+ * "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+ * Project and licensed under the OpenSSL Licenses, or a work based on such
+ * software and licensed under the OpenSSL Licenses.
+ * "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+ * under which the OpenSSL Project distributes the OpenSSL toolkit software,
+ * as those licenses appear in the file LICENSE-OPENSSL.
+ */
+
 #include "timer_store.h"
 #include "timer_helper.h"
 #include "test_interposer.hpp"
 #include "base.h"
 #include "health_checker.h"
+#include "globals.h"
 
 #include <gtest/gtest.h>
+#include "gmock/gmock.h"
+
+using ::testing::MatchesRegex;
 
 // The timer store has a granularity of 10ms. This means that timers may pop up
 // to 10ms late. As a result the timer store tests often add this granularity
@@ -656,3 +696,260 @@ TEST_F(TestTimerStore, DeleteOverdueTimer)
   delete timers[2];
   delete tombstone;
 }
+
+// Test that marking some of the replicas as being informed 
+// doesn't change the timer if it's got an up-to-date 
+// cluster view ID
+TEST_F(TestTimerStore, UpdateReplicaTrackerValueForNewTimer)
+{
+  cwtest_advance_time_ms(500);
+  std::unordered_set<Timer*> next_timers;
+  timers[0]->_replica_tracker = 15;
+  ts->add_timer(timers[0]);
+  ts->update_replica_tracker_for_timer(1u, 3);
+
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1u, next_timers.size());
+  timers[0] = *next_timers.begin();
+  ASSERT_EQ(15u, timers[0]->_replica_tracker);
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
+// Test that marking some of the replicas as being informed
+// changes the replica tracker if the cluster view ID is
+// different
+TEST_F(TestTimerStore, UpdateReplicaTrackerValueForOldTimer)
+{
+  cwtest_advance_time_ms(500);
+  std::unordered_set<Timer*> next_timers;
+  timers[0]->_replica_tracker = 15;
+  timers[0]->cluster_view_id = "different-id";
+  ts->add_timer(timers[0]);
+  ts->update_replica_tracker_for_timer(1u, 3);
+
+  ts->get_next_timers(next_timers);
+  ASSERT_EQ(1u, next_timers.size());
+  timers[0] = *next_timers.begin();
+  ASSERT_EQ(7u, timers[0]->_replica_tracker);
+
+  delete timers[0];
+  delete timers[1];
+  delete timers[2];
+  delete tombstone;
+}
+
+// Test that getting timers for a node returns the set of timers
+// (up to the maximum requested)
+TEST_F(TestTimerStore, SelectTimers)
+{
+  std::unordered_set<Timer*> next_timers;
+  ts->add_timer(timers[0]);
+  ts->add_timer(timers[1]);
+  ts->add_timer(timers[2]);
+  std::string get_response;
+
+  std::string updated_cluster_view_id = "updated-cluster-view-id";
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->set_cluster_view_id(updated_cluster_view_id);
+  __globals->unlock();
+
+  ts->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
+
+  // Check the GET has the right format. This is two timers out of the three available (as the
+  // max number of timers is set to 2). We're using a simple regex here as we use JSON
+  // parsing in the code.
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]}}}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+
+  std::string cluster_view_id = "cluster-view-id";
+  cluster_addresses.push_back("10.0.0.2:9999");
+  cluster_addresses.push_back("10.0.0.3:9999");
+  __globals->lock();
+  __globals->set_cluster_view_id(cluster_view_id);
+  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->unlock();
+
+  delete tombstone;
+}
+
+// Test that if there are no timers for the requesting node,
+// that trying to get the timers returns an empty list
+TEST_F(TestTimerStore, SelectTimersTakeInformationalTimers)
+{
+  std::unordered_set<Timer*> next_timers;
+  
+  // Add a timer to the store, then update it with a new cluster view ID.
+  timers[0]->cluster_view_id = "old-cluster-view-id";
+  ts->add_timer(timers[0]);
+  timers[1]->id = 1;
+  ts->add_timer(timers[1]);
+
+  std::string get_response;
+  ts->get_timers_for_node("10.0.0.3:9999", 1, "cluster-view-id", get_response);
+
+  // Check that the response is based on the informational timer, rather than the timer
+  // in the timer wheel (the uri should be callback1 rather than callback2)
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"cluster-view-id\",\"replicas\":\\\[\"10.0.0.3:9999\"]}}}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+
+  delete timers[2];
+  delete tombstone;
+}
+
+// Test that if there are no timers for the requesting node, 
+// that trying to get the timers returns an empty list
+TEST_F(TestTimerStore, SelectTimersNoMatchesReqNode)
+{
+  std::unordered_set<Timer*> next_timers;
+  ts->add_timer(timers[0]);
+  ts->add_timer(timers[1]);
+  ts->add_timer(timers[2]);
+  std::string get_response;
+  ts->get_timers_for_node("10.0.0.4:9999", 1, "cluster-view-id", get_response);
+
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  delete tombstone;
+}
+
+// Test that if there are no timers with an out of date cluster
+// ID then trying to get the timers returns an empty list
+TEST_F(TestTimerStore, SelectTimersNoMatchesClusterID)
+{
+  std::unordered_set<Timer*> next_timers;
+  ts->add_timer(timers[0]);
+  ts->add_timer(timers[1]);
+  ts->add_timer(timers[2]);
+  std::string get_response;
+  ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
+
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  delete tombstone;
+}
+
+// Test that updating a timer with a new cluster ID causes the original 
+// timer to be saved off. 
+//
+// WARNING: In this test we look directly in the timer store as there's no 
+// other way to test what's in the timer map (when it's not also in the timer
+// wheel)
+TEST_F(TestTimerStore, UpdateClusterViewID)
+{
+  // Add the first timer with ID 1
+  ts->add_timer(timers[0]);
+
+  // Find this timer in the store, and check there's no saved timers
+  // associated with it
+  std::map<TimerID, std::vector<Timer*>>::iterator map_it =
+                                                    ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(1u, map_it->second.size());
+  EXPECT_EQ(1u, map_it->second.front()->id);
+
+  // Add a new timer with the same ID, and an updated Cluster View ID
+  timers[1]->id = 1; 
+  timers[1]->cluster_view_id = "updated-cluster-view-id"; 
+  ts->add_timer(timers[1]);
+
+  // Find this timer in the store, and check there's a saved timer. The saved
+  // timer has the old cluster view ID, and the new timer has the new one. 
+  map_it = ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(1u, map_it->second.front()->id);
+  EXPECT_EQ("updated-cluster-view-id", map_it->second.front()->cluster_view_id);
+  EXPECT_EQ(1u, map_it->second.back()->id);
+  EXPECT_EQ("cluster-view-id", map_it->second.back()->cluster_view_id);
+
+  // Add a new timer with the same ID, an updated Cluster View ID, 
+  // and make it a tombstone
+  timers[2]->id = 1;
+  timers[2]->cluster_view_id = "updated-again-cluster-view-id";
+  timers[2]->become_tombstone();
+  ts->add_timer(timers[2]);
+
+  // Find this timer in the store, and check there's a saved timer. The saved
+  // timer has the old cluster view ID, and the new timer has the new one.
+  map_it = ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(1u, map_it->second.front()->id);
+  EXPECT_EQ("updated-again-cluster-view-id", map_it->second.front()->cluster_view_id);
+  EXPECT_TRUE(map_it->second.front()->is_tombstone());
+  EXPECT_EQ(1u, map_it->second.back()->id);
+  EXPECT_EQ("updated-cluster-view-id", map_it->second.back()->cluster_view_id);
+  EXPECT_FALSE(map_it->second.back()->is_tombstone());
+
+  delete tombstone;
+}
+
+// Test that the store uses the saved timers (rather than the timers in the 
+// timer wheel) when updating the replica tracker or handling get requests. 
+//
+// WARNING: In this test we look directly in the timer store as there's no
+// other way to test what's in the timer map (when it's not also in the timer
+// wheel)
+TEST_F(TestTimerStore, ModifySavedTimers)
+{
+  // Add a timer to the store with an old cluster ID and three replicas
+  timers[0]->cluster_view_id = "old-cluster-view-id"; 
+  timers[0]->_replica_tracker = 7;
+  timers[0]->replicas.push_back("10.0.0.2:9999");
+  timers[0]->replicas.push_back("10.0.0.3:9999");
+  ts->add_timer(timers[0]);
+
+  // Add a timer to the store with the same ID as the previous timer, 
+  // but an updated cluster-view ID. This will take the original timer 
+  // out of the timer wheel and save it just in the map
+  timers[1]->id = 1; 
+  timers[1]->_replica_tracker = 7;
+  timers[1]->replicas.push_back("10.0.0.2:9999");
+  timers[1]->replicas.push_back("10.0.0.3:9999");
+  ts->add_timer(timers[1]);
+
+  // Update the replica tracker for Timer ID 1. This should update the
+  // saved timer to mark that the third replica has been informed, not 
+  // the new first timer.
+  ts->update_replica_tracker_for_timer(1u, 2);
+  std::map<TimerID, std::vector<Timer*>>::iterator map_it =
+                                                    ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
+  EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
+
+  // Now update the timer. This should change the first timer but not the 
+  // second timer in the timer map
+  timers[2]->id = 1;
+  timers[2]->_replica_tracker = 7;
+  ts->add_timer(timers[2]);
+  map_it = ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
+  EXPECT_EQ(1u, map_it->second.front()->replicas.size());
+  EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
+  EXPECT_EQ(3u, map_it->second.back()->replicas.size());
+
+  // Finally, update the replica tracker to mark all replicas
+  // as having been informed for Timer ID 1. This should 
+  // delete the saved timer. 
+  ts->update_replica_tracker_for_timer(1u, 0);
+  map_it = ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
+  EXPECT_EQ(1u, map_it->second.size());
+  std::string get_response;
+  ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  delete tombstone;
+}
+

@@ -1,3 +1,39 @@
+/**
+ * @file globals.h
+ *
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2013  Metaswitch Networks Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version, along with the "Special Exception" for use of
+ * the program along with SSL, set forth below. This program is distributed
+ * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details. You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * The author can be reached by email at clearwater@metaswitch.com or by
+ * post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+ *
+ * Special Exception
+ * Metaswitch Networks Ltd  grants you permission to copy, modify,
+ * propagate, and distribute a work formed by combining OpenSSL with The
+ * Software, or a work derivative of such a combination, even if such
+ * copying, modification, propagation, or distribution would otherwise
+ * violate the terms of the GPL. You must comply with the GPL in all
+ * respects for all of the code used other than OpenSSL.
+ * "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+ * Project and licensed under the OpenSSL Licenses, or a work based on such
+ * software and licensed under the OpenSSL Licenses.
+ * "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+ * under which the OpenSSL Project distributes the OpenSSL toolkit software,
+ * as those licenses appear in the file LICENSE-OPENSSL.
+ */
+
 #ifndef GLOBALS_H__
 #define GLOBALS_H__
 
@@ -28,24 +64,28 @@
   private: \
     __VA_ARGS__ _##NAME
 
-// The config filename
-#define CONFIG_DIR "/etc/chronos/"
-#define CONFIG_FILE CONFIG_DIR "chronos.conf"
-
 class Globals
 {
 public:
-  Globals();
+  Globals(std::string config_file,
+          std::string cluster_config_file);
   ~Globals();
 
+  // Per node configuration
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
-  GLOBAL(cluster_local_ip, std::string);
-  GLOBAL(cluster_hashes, std::map<std::string, uint64_t>);
-  GLOBAL(cluster_addresses, std::vector<std::string>);
   GLOBAL(alarms_enabled, bool);
   GLOBAL(threads, int);
   GLOBAL(max_ttl, int);
+  GLOBAL(dns_servers, std::vector<std::string>);
+
+  // Clustering configuration
+  GLOBAL(cluster_local_ip, std::string);
+  GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
+  GLOBAL(cluster_addresses, std::vector<std::string>);
+  GLOBAL(cluster_hashes, std::vector<uint32_t>);
+  GLOBAL(cluster_leaving_addresses, std::vector<std::string>);
+  GLOBAL(cluster_view_id, std::string);
 
 public:
   void update_config();
@@ -53,9 +93,12 @@ public:
   void unlock() { pthread_rwlock_unlock(&_lock); }
 
 private:
-  uint64_t generate_hash(std::string);
+  uint64_t generate_bloom_filter(std::string);
+  std::vector<uint32_t> generate_hashes(std::vector<std::string>);
 
-  pthread_rwlock_t _lock;
+  std::string _config_file;
+  std::string _cluster_config_file;
+  pthread_rwlock_t _lock; 
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
 };

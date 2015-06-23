@@ -14,19 +14,32 @@ GMOCK_DIR := $(ROOT)/modules/gmock
 TARGET := chronos
 TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := src/main/main.cpp
-TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp) test_interposer.cpp fakelogger.cpp mock_sas.cpp
+TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
-TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp
+TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp
 TARGET_EXTRA_OBJS_TEST := gmock-all.o gtest-all.o
 INCLUDE_DIR := ${ROOT}/src/include
 LIB_DIR := ${INSTALL_DIR}/lib
-CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror
+CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror 
 CPPFLAGS_BUILD := -O0
-CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNITTEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
+CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNIT_TEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
 LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp \
-           -levent_pthreads
-LDFLAGS_BUILD := -lsas
+           -levent_pthreads -lcares
+LDFLAGS_BUILD := -lsas -lz
 LDFLAGS_TEST := -ldl
+
+TEST_XML = $(TEST_OUT_DIR)/test_detail_$(TARGET_TEST).xml
+COVERAGE_XML = $(TEST_OUT_DIR)/coverage_$(TARGET_TEST).xml
+COVERAGE_LIST_TMP = $(TEST_OUT_DIR)/coverage_list_tmp
+COVERAGE_LIST = $(TEST_OUT_DIR)/coverage_list
+COVERAGE_MASTER_LIST = src/test/coverage-not-yet
+
+EXTRA_CLEANS += $(TEST_XML) \
+                $(COVERAGE_XML) \
+                $(OBJ_DIR_TEST)/*.gcno \
+                $(OBJ_DIR_TEST)/*.gcda \
+                *.gcov \
+		${OBJ_DIR_TEST}/chronos.memcheck
 
 # Now the GMock / GTest boilerplate.
 GTEST_HEADERS := $(GTEST_DIR)/include/gtest/*.h \
@@ -41,6 +54,10 @@ GMOCK_SRCS_ := $(GMOCK_DIR)/src/*.cc $(GMOCK_HEADERS)
 
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils
 
+COVERAGEFLAGS = $(OBJ_DIR_TEST) --object-directory=$(shell pwd) --root=${ROOT} \
+                --exclude='(^src/include/|^modules/gmock/|^modules/sas-client/|^modules/rapidjson/|^modules/cpp-common/include/|^modules/cpp-common/test_utils/|^src/test/|^usr/)' \
+                --sort-percentage
+
 .PHONY: default
 default: build
 
@@ -49,9 +66,8 @@ include ${ROOT}/mk/platform.mk
 DEB_COMPONENT := chronos
 DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
-EXTRA_CLEANS := ${ROOT}/gcov ${OBJ_DIR_TEST}/chronos.memcheck
 
-SUBMODULES := c-ares curl libevhtp sas-client
+SUBMODULES := c-ares curl libevhtp sas-client cpp-common
 
 include build-infra/cw-deb.mk
 include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
@@ -62,9 +78,20 @@ deb: build deb-only
 .PHONY: build
 build: ${SUBMODULES} ${TARGET_BIN}
 
-.PHONY: test
-test: ${SUBMODULES} ${TARGET_BIN_TEST}
-	${TARGET_BIN_TEST}
+# Define JUSTTEST=<testname> to test just that test.  Easier than
+# passing the --gtest_filter in EXTRA_TEST_ARGS.
+ifdef JUSTTEST
+  EXTRA_TEST_ARGS ?= --gtest_filter=$(JUSTTEST)
+endif
+
+.PHONY: test 
+test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test coverage coverage-check
+
+.PHONY: run_test
+run_test: ${TARGET_BIN_TEST}
+	rm -f $(TEST_XML)
+	rm -f $(OBJ_DIR_TEST)/*.gcda
+	$(TARGET_BIN_TEST) $(EXTRA_TEST_ARGS) --gtest_output=xml:$(TEST_XML)
 
 .PHONY: debug
 debug: ${TARGET_BIN_TEST}
@@ -84,6 +111,10 @@ clean: $(patsubst %, %_clean, ${SUBMODULES})
 .PHONY: distclean
 distclean: $(patsubst %, %_distclean, ${SUBMODULES})
 	rm -rf ${ROOT}/build
+
+.PHONY: resync_test
+resync_test: build
+	./scripts/chronos_resync.py
 
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test
@@ -110,6 +141,35 @@ coverage: ${TARGET_BIN_TEST}
 	  fi                                                                         \
 	done
 	@mv *.gcov gcov/
+coverage: | run_test
+	$(GCOVR) $(COVERAGEFLAGS) --xml > $(COVERAGE_XML)
+
+# Check that we have 100% coverage of all files except those that we
+# have declared we're being relaxed on.  In particular, all new files
+# must have 100% coverage or be added to $(COVERAGE_MASTER_LIST).
+# The string "Marking build unstable" is recognised by the CI scripts
+# and if it is found the build is marked unstable.
+.PHONY: coverage-check
+coverage-check: | coverage
+	@xmllint --xpath '//class[@line-rate!="1.0"]/@filename' $(COVERAGE_XML) \
+		| tr ' ' '\n' \
+                | grep filename= \
+                | cut -d\" -f2 \
+                | sort > $(COVERAGE_LIST_TMP)
+	@sort $(COVERAGE_MASTER_LIST) | comm -23 $(COVERAGE_LIST_TMP) - > $(COVERAGE_LIST)
+	@if grep -q ^ $(COVERAGE_LIST) ; then \
+                echo "Error: some files unexpectedly have less than 100% code coverage:" ; \
+                cat $(COVERAGE_LIST) ; \
+                /bin/false ; \
+                echo "Marking build unstable." ; \
+        fi
+
+# Get quick coverage data at the command line. Add --branches to get branch info
+# instead of line info in report.  *.gcov files generated in current directory
+# if you need to see full detail.
+.PHONY: coverage_raw
+coverage_raw: | run_test
+	$(GCOVR) $(COVERAGEFLAGS) --keep
 
 # Build rules for GMock/GTest library.
 $(OBJ_DIR_TEST)/gtest-all.o : $(GTEST_SRCS_)

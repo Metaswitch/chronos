@@ -20,7 +20,7 @@ On Ubuntu 14.04,
 
 2.  install the required packages
 
-        sudo apt-get install git debhelper devscripts build-essential libboost-program-options-dev libcurl4-gnutls-dev libevent-dev libboost-regex-dev libboost-filesystem-dev libtool automake make cmake libzmq3-dev valgrind
+        sudo apt-get install git debhelper devscripts build-essential libboost-program-options-dev libcurl4-gnutls-dev libevent-dev libboost-regex-dev libboost-filesystem-dev libtool automake make cmake libzmq3-dev valgrind python-flask python-requests
 
 ## Getting the Code
 
@@ -94,3 +94,7 @@ The chronos makefile offers the following additional options and targets.
 *   `make valgrind` runs the tests checking for memory leaks (using [Valgrind](http://valgrind.org/)).
 *   Passing `NOISY=T` enables verbose logging during the tests; you can add
     a logging level (e.g., `NOISY=T:99`) to control which logs you see.
+
+## Running Functional Tests
+
+To run the tests of Chronos resynchronization, run `make resync_test`.
