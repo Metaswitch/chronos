@@ -25,7 +25,7 @@ CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNIT_TEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
 LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp \
            -levent_pthreads -lcares $(shell net-snmp-config --netsnmp-agent-libs)
-LDFLAGS_BUILD := -lsas
+LDFLAGS_BUILD := -lsas -lz
 LDFLAGS_TEST := -ldl
 
 TEST_XML = $(TEST_OUT_DIR)/test_detail_$(TARGET_TEST).xml
@@ -126,6 +126,21 @@ valgrind: ${TARGET_BIN_TEST}
 	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
 
 .PHONY: coverage
+coverage: ${TARGET_BIN_TEST}
+	-rm ${OBJ_DIR_TEST}/src/main/*.gcda 2> /dev/null
+	@mkdir -p gcov
+	${TARGET_BIN_TEST}
+	gcov -o ${OBJ_DIR_TEST}/src/main/ ${OBJ_DIR_TEST}/src/main/*.o > gcov/synopsis
+	@for gcov in *.gcov;                                                         \
+	do                                                                           \
+	  source=$$(basename $$gcov .gcov);                                          \
+		found=$$(find src -name $$source | wc -l);                           \
+	  if [[ $$found != 1 ]];                                                     \
+	  then                                                                       \
+	    rm $$gcov;                                                               \
+	  fi                                                                         \
+	done
+	@mv *.gcov gcov/
 coverage: | run_test
 	$(GCOVR) $(COVERAGEFLAGS) --xml > $(COVERAGE_XML)
 
