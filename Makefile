@@ -39,7 +39,7 @@ EXTRA_CLEANS += $(TEST_XML) \
                 $(OBJ_DIR_TEST)/*.gcno \
                 $(OBJ_DIR_TEST)/*.gcda \
                 *.gcov \
-		${OBJ_DIR_TEST}/chronos.memcheck
+                ${OBJ_DIR_TEST}/chronos.memcheck
 
 # Now the GMock / GTest boilerplate.
 GTEST_HEADERS := $(GTEST_DIR)/include/gtest/*.h \
@@ -126,21 +126,6 @@ valgrind: ${TARGET_BIN_TEST}
 	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
 
 .PHONY: coverage
-coverage: ${TARGET_BIN_TEST}
-	-rm ${OBJ_DIR_TEST}/src/main/*.gcda 2> /dev/null
-	@mkdir -p gcov
-	${TARGET_BIN_TEST}
-	gcov -o ${OBJ_DIR_TEST}/src/main/ ${OBJ_DIR_TEST}/src/main/*.o > gcov/synopsis
-	@for gcov in *.gcov;                                                         \
-	do                                                                           \
-	  source=$$(basename $$gcov .gcov);                                          \
-		found=$$(find src -name $$source | wc -l);                           \
-	  if [[ $$found != 1 ]];                                                     \
-	  then                                                                       \
-	    rm $$gcov;                                                               \
-	  fi                                                                         \
-	done
-	@mv *.gcov gcov/
 coverage: | run_test
 	$(GCOVR) $(COVERAGEFLAGS) --xml > $(COVERAGE_XML)
 
