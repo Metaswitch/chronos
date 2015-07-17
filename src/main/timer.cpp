@@ -50,6 +50,7 @@
 #include <boost/format.hpp>
 #include <map>
 #include <atomic>
+#include <time.h>
 
 uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 {
@@ -79,7 +80,7 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   // Get the cluster view ID from global configuration
   std::string global_cluster_view_id;
   __globals->get_cluster_view_id(global_cluster_view_id);
-  cluster_view_id = global_cluster_view_id; 
+  cluster_view_id = global_cluster_view_id;
 }
 
 Timer::~Timer()
@@ -93,8 +94,8 @@ uint64_t Timer::next_pop_time()
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
 
-  for (std::vector<std::string>::iterator it = replicas.begin(); 
-                                          it != replicas.end(); 
+  for (std::vector<std::string>::iterator it = replicas.begin();
+                                          it != replicas.end();
                                           ++it, ++replica_index)
   {
     if (*it == localhost)
@@ -126,15 +127,15 @@ std::string Timer::url(std::string host)
 
     ss << "http://" << address << ":" << port;
   }
-  
+
   ss << "/timers/";
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
   uint64_t hash = 0;
   std::map<std::string, uint64_t> cluster_bloom_filters;
   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
 
-  for (std::vector<std::string>::iterator it = replicas.begin(); 
-                                          it != replicas.end(); 
+  for (std::vector<std::string>::iterator it = replicas.begin();
+                                          it != replicas.end();
                                           ++it)
   {
     hash |= cluster_bloom_filters[*it];
@@ -148,7 +149,8 @@ std::string Timer::url(std::string host)
 // The JSON should take the form:
 // {
 //     "timing": {
-//         "start-time": Int64,
+//         "start-time": UInt64, // Wall-time in milliseconds - Deprecated in favor of "start-time-delta"
+//         "start-time-delta": Int32, // Millisecond offset from current time
 //         "sequence-number": Int,
 //         "interval": Int,
 //         "repeat-for": Int
@@ -178,6 +180,13 @@ std::string Timer::to_json()
   return body;
 }
 
+inline uint64_t clock_gettime_ms(int clock_id)
+{
+  struct timespec time;
+  clock_gettime(clock_id, &time);
+  return ((time.tv_sec * 1000) + (time.tv_nsec / 1000));
+}
+
 void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
 {
   writer->StartObject();
@@ -185,8 +194,13 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->String("timing");
     writer->StartObject();
     {
+      uint64_t realtime = clock_gettime_ms(CLOCK_REALTIME);
+      uint64_t monotime = clock_gettime_ms(CLOCK_MONOTONIC);
+      int32_t delta = start_time_mono_ms - monotime;
       writer->String("start-time");
-      writer->Int64(start_time);
+      writer->Int64(realtime + delta);
+      writer->String("start-time-delta");
+      writer->Int64(delta);
       writer->String("sequence-number");
       writer->Int(sequence_number);
       writer->String("interval");
@@ -305,7 +319,7 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
     // and (30, 3), so the ordered list is A, C, B, D. Effectively, the
     // first entry in the original list consistently wins.
     //
-    // This doesn't work perfectly in the edge case 
+    // This doesn't work perfectly in the edge case
     // If I have servers A, B, C, D which cause this
     // timer to hash to 10, 11, 10, 11:
     // hash_to_idx[10] = 0 (A's index)
@@ -327,7 +341,7 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
       hash++;
       // LCOV_EXCL_STOP
     }
-    
+
     hash_to_idx[hash] = ii;
   }
 
@@ -338,10 +352,10 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
   {
     ordered_cluster.push_back(cluster[ii->second]);
   }
-  
+
   replicas.push_back(ordered_cluster.front());
 
-  // Pick the (N-1) highest hash values as the backup replicas.  
+  // Pick the (N-1) highest hash values as the backup replicas.
   replication_factor = replication_factor > ordered_cluster.size() ?
                        ordered_cluster.size() : replication_factor;
 
@@ -408,8 +422,8 @@ void Timer::calculate_replicas(TimerID id,
   }
 
   TRC_DEBUG("Replicas calculated:");
-  for (std::vector<std::string>::iterator it = replicas.begin(); 
-                                          it != replicas.end(); 
+  for (std::vector<std::string>::iterator it = replicas.begin();
+                                          it != replicas.end();
                                           ++it)
   {
     TRC_DEBUG(" - %s", it->c_str());
@@ -420,7 +434,7 @@ void Timer::calculate_replicas(uint64_t replica_hash)
 {
   std::map<std::string, uint64_t> cluster_bloom_filters;
   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
-  
+
   std::vector<std::string> cluster;
   __globals->get_cluster_addresses(cluster);
 
@@ -472,10 +486,10 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // @param json - The JSON representation of the timer.
 // @param error - This will be populated with a descriptive error string if required.
 // @param replicated - This will be set to true if this is a replica of a timer.
-Timer* Timer::from_json(TimerID id, 
-                        uint64_t replica_hash, 
-                        std::string json, 
-                        std::string& error, 
+Timer* Timer::from_json(TimerID id,
+                        uint64_t replica_hash,
+                        std::string json,
+                        std::string& error,
                         bool& replicated)
 {
   rapidjson::Document doc;
@@ -488,13 +502,13 @@ Timer* Timer::from_json(TimerID id,
     return NULL;
   }
 
-  return from_json_obj(id, replica_hash, error, replicated, doc);  
+  return from_json_obj(id, replica_hash, error, replicated, doc);
 }
 
-Timer* Timer::from_json_obj(TimerID id, 
-                            uint64_t replica_hash, 
-                            std::string& error, 
-                            bool& replicated, 
+Timer* Timer::from_json_obj(TimerID id,
+                            uint64_t replica_hash,
+                            std::string& error,
+                            bool& replicated,
                             rapidjson::Value& doc)
 {
   Timer* timer = NULL;
@@ -526,18 +540,30 @@ Timer* Timer::from_json_obj(TimerID id,
 
     if ((interval.GetInt() == 0) && (repeat_for_int != 0))
     {
-      // If the interval time is 0 and the repeat_for_int isn't then reject the timer. 
-      error = "Can't have a zero interval time with a non-zero (%s) repeat-for time", 
+      // If the interval time is 0 and the repeat_for_int isn't then reject the timer.
+      error = "Can't have a zero interval time with a non-zero (%s) repeat-for time",
               std::to_string(repeat_for_int);
       return NULL;
     }
 
     timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
 
-    if (timing.HasMember("start-time"))
+    if (timing.HasMember("start-time-delta"))
+    {
+      // Timer JSON specified a time offset, use that to determine the true
+      // start time.
+      uint64_t start_time_delta;
+      JSON_GET_INT_64_MEMBER(timing, "start-time-delta", start_time_delta);
+      timer->start_time_mono_ms = clock_gettime_ms(CLOCK_MONOTONIC) + start_time_delta;
+    }
+    else if (timing.HasMember("start-time"))
     {
       // Timer JSON specifies a start-time, use that instead of now.
-      JSON_GET_INT_64_MEMBER(timing, "start-time", timer->start_time);
+      uint64_t real_start_time;
+      JSON_GET_INT_64_MEMBER(timing, "start-time", real_start_time);
+      uint64_t real_time = clock_gettime_ms(CLOCK_REALTIME);
+      uint64_t mono_time = clock_gettime_ms(CLOCK_MONOTONIC);
+      timer->start_time_mono_ms = mono_time + (real_start_time - real_time);
     }
 
     if (timing.HasMember("sequence-number"))
@@ -564,8 +590,8 @@ Timer* Timer::from_json_obj(TimerID id,
 
       if (reliability.HasMember("cluster-view-id"))
       {
-        JSON_GET_STRING_MEMBER(reliability, 
-                               "cluster-view-id", 
+        JSON_GET_STRING_MEMBER(reliability,
+                               "cluster-view-id",
                                timer->cluster_view_id);
       }
 
@@ -583,8 +609,8 @@ Timer* Timer::from_json_obj(TimerID id,
 
         timer->_replication_factor = replicas.Size();
 
-        for (rapidjson::Value::ConstValueIterator it = replicas.Begin(); 
-                                                  it != replicas.End(); 
+        for (rapidjson::Value::ConstValueIterator it = replicas.Begin();
+                                                  it != replicas.End();
                                                   ++it)
         {
           JSON_ASSERT_STRING(*it);
@@ -655,7 +681,7 @@ void Timer::update_cluster_information()
   replicas.clear();
   calculate_replicas(0);
 
-  // Update the cluster view ID 
+  // Update the cluster view ID
   std::string global_cluster_view_id;
   __globals->get_cluster_view_id(global_cluster_view_id);
  cluster_view_id = global_cluster_view_id;
