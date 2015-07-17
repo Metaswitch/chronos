@@ -56,7 +56,7 @@
                       "Body:\n"                                                \
                       "%s"
 #define TIMER_LOG_PARAMS(T) (T)->id,                                           \
-                            (T)->start_time,                                   \
+                            (T)->start_time_mono_ms,                           \
                             (T)->interval,                                     \
                             (T)->repeat_for,                                   \
                             (T)->sequence_number,                              \
@@ -66,7 +66,7 @@
 TimerStore::TimerStore(HealthChecker* hc) :
   _health_checker(hc)
 {
-  _tick_timestamp = to_short_wheel_resolution(wall_time_ms());
+  _tick_timestamp = to_short_wheel_resolution(timestamp_ms());
 }
 
 TimerStore::~TimerStore()
@@ -122,8 +122,8 @@ void TimerStore::add_timer(Timer* t)
     Timer* existing = map_it->second.front();
 
     // Compare timers for precedence, start-time then sequence-number.
-    if ((t->start_time < existing->start_time) ||
-        ((t->start_time == existing->start_time) &&
+    if ((t->start_time_mono_ms < existing->start_time_mono_ms) ||
+        ((t->start_time_mono_ms == existing->start_time_mono_ms) &&
          (t->sequence_number < existing->sequence_number)))
     {
       TRC_DEBUG("The timer in the store is more recent, discard the new timer");
@@ -329,7 +329,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 
   // Now process the required number of ticks. Integer division does the
   // necessary rounding for us.
-  uint64_t current_timestamp = wall_time_ms();
+  uint64_t current_timestamp = timestamp_ms();
   int num_ticks = ((current_timestamp - _tick_timestamp) /
                    SHORT_WHEEL_RESOLUTION_MS);
 
@@ -350,12 +350,12 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 /* Private functions.                                                        */
 /*****************************************************************************/
 
-uint64_t TimerStore::wall_time_ms()
+uint64_t TimerStore::timestamp_ms()
 {
-  uint64_t wall_time;
+  uint64_t time;
   struct timespec ts;
 
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
   {
     // LCOV_EXCL_START
     CL_CHRONOS_NO_SYSTEM_TIME.log(strerror(errno));
@@ -367,10 +367,10 @@ uint64_t TimerStore::wall_time_ms()
 
   // Convert the timestamp to ms (being careful to always store the result in a
   // uinit64 to avoid wrapping).
-  wall_time = ts.tv_sec;
-  wall_time *= 1000;
-  wall_time += (ts.tv_nsec / 1000000);
-  return wall_time;
+  time = ts.tv_sec;
+  time *= 1000;
+  time += (ts.tv_nsec / 1000000);
+  return time;
 }
 
 uint64_t TimerStore::to_short_wheel_resolution(uint64_t t)

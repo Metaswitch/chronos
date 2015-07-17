@@ -59,7 +59,7 @@ protected:
     uint32_t repeat_for = 200;
 
     t1 = new Timer(id, interval, repeat_for);
-    t1->start_time = 1000000;
+    t1->start_time_mono_ms = 1000000;
     t1->sequence_number = 0;
     t1->replicas = replicas;
     t1->callback_url = "http://localhost:80/callback";
@@ -286,7 +286,7 @@ TEST_F(TestTimer, ToJSON)
   uint32_t repeat_for = 2000;
 
   Timer* t2 = new Timer(1, interval, repeat_for);
-  t2->start_time = 1000000;
+  t2->start_time_mono_ms = 1000000;
   t2->sequence_number = 0;
   t2->replicas = t1->replicas;
   t2->callback_url = "http://localhost:80/callback";
@@ -302,7 +302,7 @@ TEST_F(TestTimer, ToJSON)
   ASSERT_NE((void*)NULL, t2);
 
   EXPECT_EQ(2u, t3->id) << json;
-  EXPECT_EQ(1000000u, t3->start_time) << json;
+  EXPECT_EQ(1000000u, t3->start_time_mono_ms) << json;
   EXPECT_EQ(t2->interval, t3->interval) << json;
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
@@ -324,7 +324,7 @@ TEST_F(TestTimer, IsLocal)
 TEST_F(TestTimer, IsTombstone)
 {
   Timer* t2 = Timer::create_tombstone(100, 0);
-  EXPECT_NE(0u, t2->start_time);
+  EXPECT_NE(0u, t2->start_time_mono_ms);
   EXPECT_TRUE(t2->is_tombstone());
   delete t2;
 }
@@ -334,7 +334,7 @@ TEST_F(TestTimer, BecomeTombstone)
   EXPECT_FALSE(t1->is_tombstone());
   t1->become_tombstone();
   EXPECT_TRUE(t1->is_tombstone());
-  EXPECT_EQ(1000000u, t1->start_time);
+  EXPECT_EQ(1000000u, t1->start_time_mono_ms);
   EXPECT_EQ(100u, t1->interval);
   EXPECT_EQ(100u, t1->repeat_for);
 }

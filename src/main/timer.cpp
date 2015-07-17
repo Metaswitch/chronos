@@ -71,10 +71,10 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   _replication_factor(0),
   _replica_tracker(0)
 {
-  // Set the start time to now (using REALTIME)
+  // Set the start time to now
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 
   // Get the cluster view ID from global configuration
   std::string global_cluster_view_id;
@@ -103,7 +103,7 @@ uint64_t Timer::next_pop_time()
     }
   }
 
-  return start_time + ((sequence_number + 1) * interval) + (replica_index * 2 * 1000);
+  return start_time_mono_ms + ((sequence_number + 1) * interval) + (replica_index * 2 * 1000);
 }
 
 // Create the timer's URL from a given hostname

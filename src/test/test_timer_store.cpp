@@ -70,12 +70,12 @@ protected:
 
     // Default some timers to short, mid and long.
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
 
     for (int ii = 0; ii < 3; ++ii)
     {
       timers[ii] = default_timer(ii + 1);
-      timers[ii]->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+      timers[ii]->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
     }
 
     // Timer 1 will pop in 100ms.
@@ -89,7 +89,7 @@ protected:
 
     // Create an out of the blue tombstone for timer one.
     tombstone = Timer::create_tombstone(1, 0);
-    tombstone->start_time = timers[0]->start_time + 50;
+    tombstone->start_time_mono_ms = timers[0]->start_time_mono_ms + 50;
   }
 
   // Since the Timer store owns timers after they've been added, the tests,
@@ -398,7 +398,7 @@ TEST_F(TestTimerStore, UpdateTimer)
 
   // Replace timer one, using a newer timer with the same ID.
   timers[1]->id = 1;
-  timers[1]->start_time++;
+  timers[1]->start_time_mono_ms++;
   ts->add_timer(timers[1]);
   cwtest_advance_time_ms(1000000);
 
@@ -424,7 +424,7 @@ TEST_F(TestTimerStore, DontUpdateTimerAge)
 
   // Attempt to replace timer one but the replacement is older
   timers[1]->id = 1;
-  timers[1]->start_time--;
+  timers[1]->start_time_mono_ms--;
   ts->add_timer(timers[1]);
   cwtest_advance_time_ms(1000000);
 
@@ -607,8 +607,8 @@ TEST_F(TestTimerStore, MixtureOfTimerLengths)
 
   // Move on by 1hr. Nothing has popped.
   cwtest_advance_time_ms(60 * 60 * 1000);
-  timers[1]->start_time += (60 * 60 * 1000);
-  timers[2]->start_time += (60 * 60 * 1000);
+  timers[1]->start_time_mono_ms += (60 * 60 * 1000);
+  timers[2]->start_time_mono_ms += (60 * 60 * 1000);
   ts->get_next_timers(next_timers);
   EXPECT_EQ(0u, next_timers.size());
 
@@ -618,7 +618,7 @@ TEST_F(TestTimerStore, MixtureOfTimerLengths)
 
   // Move on by 1s. Nothing has popped.
   cwtest_advance_time_ms(1 * 1000);
-  timers[2]->start_time += (1 * 1000);
+  timers[2]->start_time_mono_ms += (1 * 1000);
   ts->get_next_timers(next_timers);
   EXPECT_EQ(0u, next_timers.size());
 
@@ -643,14 +643,14 @@ TEST_F(TestTimerStore, TimerPopsOnTheHour)
   std::unordered_set<Timer*> next_timers;
   uint64_t pop_time_ms;
 
-  pop_time_ms = (timers[0]->start_time / (60 * 60 * 1000));
+  pop_time_ms = (timers[0]->start_time_mono_ms / (60 * 60 * 1000));
   pop_time_ms += 2;
   pop_time_ms *= (60 * 60 * 1000);
-  timers[0]->interval = pop_time_ms - timers[0]->start_time;
+  timers[0]->interval = pop_time_ms - timers[0]->start_time_mono_ms;
   ts->add_timer(timers[0]);
 
   // Move on to the pop time. The timer pops correctly.
-  cwtest_advance_time_ms(pop_time_ms - timers[0]->start_time + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(pop_time_ms - timers[0]->start_time_mono_ms + TIMER_GRANULARITY_MS);
   ts->get_next_timers(next_timers);
   EXPECT_EQ(1u, next_timers.size());
   next_timers.clear();

@@ -167,8 +167,8 @@ private:
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.
   uint64_t _tick_timestamp;
 
-  // Return the current wall time in ms.
-  static uint64_t wall_time_ms();
+  // Return the current timestamp in ms.
+  static uint64_t timestamp_ms();
 
   // Utility functions to locate a Timer's correct home in the store's timer
   // wheels.
