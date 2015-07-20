@@ -1,7 +1,8 @@
-/** @file test_timer.cpp
+/**
+ * @file test_timer.cpp
  *
- * Project Clearwater - IMS in the Cloud Copyright (C) 2013  Metaswitch
- * Networks Ltd
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2013  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
