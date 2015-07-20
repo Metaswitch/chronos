@@ -61,6 +61,13 @@ uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 
 static Hasher hasher;
 
+inline uint64_t clock_gettime_ms(int clock_id)
+{
+  struct timespec time;
+  clock_gettime(clock_id, &time);
+  return ((time.tv_sec * 1000) + (time.tv_nsec / 1000000));
+}
+
 Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   id(id),
   interval(interval),
@@ -73,9 +80,7 @@ Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
   _replica_tracker(0)
 {
   // Set the start time to now
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  start_time_mono_ms = clock_gettime_ms(CLOCK_MONOTONIC);
 
   // Get the cluster view ID from global configuration
   std::string global_cluster_view_id;
@@ -178,13 +183,6 @@ std::string Timer::to_json()
   TRC_DEBUG("Built replication body: %s", body.c_str());
 
   return body;
-}
-
-inline uint64_t clock_gettime_ms(int clock_id)
-{
-  struct timespec time;
-  clock_gettime(clock_id, &time);
-  return ((time.tv_sec * 1000) + (time.tv_nsec / 1000));
 }
 
 void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
