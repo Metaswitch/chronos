@@ -109,7 +109,7 @@ During a net-split, the timer may pop multiple times, once on each partition.  O
 
 ## Internal API
 
-Chronos nodes in a cluster communicate through an internal API that forms a superset of the public API and is documented here for developers.  This API is designed to be extensible to allow the API to change from release to release without breaking backwards compatibility.
+Chronos nodes in a cluster communicate through an internal API which is documented here for developers.  This API is designed to be extensible to allow the API to change from release to release without breaking backwards compatibility.
 
 ### Mainline Uses
 
@@ -151,7 +151,7 @@ Each of the attributes that overlap with the public API are used in the same way
 
 #### Replicating a Timer Pop
 
-When one Chronos instance pops a timer it informs all other replicas of the timer by sending a PUT message (same JSON body as above) with the appropriate `sequnence-number` set.  The receiving nodes should prepare to pop the timer at the next interval (if appropriate).
+When one Chronos instance pops a timer it informs all other replicas that it did by sending a PUT message (same JSON body as above) with the appropriate `start-time-delta` and `sequence-number` set.  The receiving nodes should prepare to pop the timer at the end of the next interval.
 
 #### Replicating a Timer Deletion
 
