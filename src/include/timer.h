@@ -115,7 +115,7 @@ public:
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
   TimerID id;
-  uint64_t start_time_mono_ms;
+  uint32_t start_time_mono_ms;
   uint32_t interval;
   uint32_t repeat_for;
   uint32_t sequence_number;
