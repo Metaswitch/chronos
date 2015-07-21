@@ -48,7 +48,7 @@
 
 // Macros to help log timer details.
 #define TIMER_LOG_FMT "ID:       %lu\n"                                        \
-                      "Start:    %lu\n"                                        \
+                      "Start:    %u\n"                                         \
                       "Interval: %u\n"                                         \
                       "Repeat:   %u\n"                                         \
                       "Seq:      %u\n"                                         \
