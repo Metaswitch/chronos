@@ -6,7 +6,7 @@ This document covers the external interface exposed by the Chronos network timer
 
 The timer service runs like a timer heap: clients request a timer to pop after a certain interval, or to pop regularly at a given rate over a given interval, and the timer service notifies the client (through a client-supplied callback) when the timer pops.
 
-## API Definition
+## Public API Definition
 
 ### Adding and modifying timers
 
@@ -105,13 +105,61 @@ Always a `201 OK` assuming the request was valid.  A `400 Bad Request` otherwise
 
 The timer pop is guaranteed to occur **after** the interval specified, but is not guaranteed to occur exactly on the interval (due to scheduling considerations, implementation details of the redundancy model and network latency).
 
-The accuracy of the timer service is only as good as the accuracy of the system clock on the timer nodes themselves.  If the system clock are skewed by a large amount (&gt;&gt; 1 second) then multiple timer nodes may pop for the same sequence number of the same timer.  To prevent this, we recommend running a time-synchronizing service on each of your timer nodes (NTPd/PTPd) to keep their clocks in sync.
-
 During a net-split, the timer may pop multiple times, once on each partition.  Once the net-split is healed, the next timer pop will resolve the multi-headed-ness and from then on the timer will only pop once per interval.
+
+## Internal API
+
+Chronos nodes in a cluster communicate through an internal API which is documented here for developers.  This API is designed to be extensible to allow the API to change from release to release without breaking backwards compatibility.
+
+### Mainline Uses
+
+The only request type sent over the API in mainline cases is a PUT which is used for three purposes:
+
+ * Telling the receiving node that it has been chosen as a replica for the given timer.
+ * Telling the receiving node that the given timer has been popped by an earlier replica.
+ * Telling the receiving node that the given timer has been deleted and should not be popped.
+
+#### Replicating a Timer Creation
+
+As with the public API, the URL shall be `/timers/<timer-id>` and the body shall be a JSON block:
+
+    {
+      "timing": {
+        "interval": <ms>,
+        "repeat-for": <ms>
+        "start-time-delta": <ms>
+        "sequence-number": <int>
+      },
+      "callback": {
+        "http": {
+          "uri": <callback-uri>,
+          "opaque": <opaque-data>
+        }
+      },
+      "reliability": {
+        "cluster-view-id": <cluster-view-id>,
+        "replicas": [<replica-1>, ...]
+      }
+    }
+
+Each of the attributes that overlap with the public API are used in the same way, the new attributes are used as followed:
+
+ * `timing/start-time-delta` - The delta to apply to the current time to compensate for time that the timer was programmed on the sending node.
+ * `timing/sequence-number` - The instance of the timer that is next to pop (always 0 for one-shot timers)
+ * `reliability/cluster-view-id` - The ID of the current cluster topology (used for error-checking and to spot inconsistencies in the cluster)
+ * `reliability/replicas` - The ordered list of the replicas for the timer, the receiving node can use this to work out when it should pop the timer.
+
+#### Replicating a Timer Pop
+
+When one Chronos instance pops a timer it informs all other replicas that it did by sending a PUT message (same JSON body as above) with the appropriate `start-time-delta` and `sequence-number` set.  The receiving nodes should prepare to pop the timer at the end of the next interval.
+
+#### Replicating a Timer Deletion
+
+When a timer is deleted by a client or after the final timer pop, the handling node sends a PUT to the replicas for that timer specifying an empty `callback` section (indicating that this is a tombstone record) and with an appropriate `start-time-delta` and `sequence-number`.  A tombstone should be stored for one more `interval` of time to prevent out-of-date replication requests from re-creating deleted timers.
 
 ### Resynchronization requests
 
-The timer service supports two types of request to allow Chronos nodes to resynchronize timers. 
+The timer service supports two types of request to allow Chronos nodes to resynchronize timers.
 
 Resynchronizing timers between nodes is carried out by each Chronos node sending a series of GETs and DELETEs to all the other Chronos nodes in the Chronos cluster. The resynchronization process is described in more detail [here](doc/scaling.md).
 
@@ -119,13 +167,13 @@ Resynchronizing timers between nodes is carried out by each Chronos node sending
 
     GET /timers
 
-This URL requests information about timers that are on the receiving node that the requesting node will be a replica for under new cluster configuration. 
- 
+This URL requests information about timers that are on the receiving node that the requesting node will be a replica for under new cluster configuration.
+
 It takes three mandatory parameters
 
 * `node-for-replicas=<address>` - The address of the node to check for replica status (typically the requesting node). This must match a node in the Chronos cluster
-* `sync-mode=<sync-mode>` - The synchronization mode. The only currently supported value is SCALE. 
-* `cluster-view-id=<cluster-view-id>` - The requesting node's view of the current cluster configuration. 
+* `sync-mode=<sync-mode>` - The synchronization mode. The only currently supported value is SCALE.
+* `cluster-view-id=<cluster-view-id>` - The requesting node's view of the current cluster configuration.
 
 The request should also include a `Range` header, holding how many timers should be returned in one response, e.g.:
 
@@ -164,13 +212,13 @@ The JSON body in the response has the format:
                ]
     }
 
-This JSON body contains enough information for the requesting node to add the timer to their timer wheel, and to optionally replicate the timer to other nodes. The `Timer` object contains the information to recreate the timer on the node, the `TimerID` holds the timer's ID, and the `OldReplicas` list holds where the replicas for the timer were under the old cluster configuration. 
+This JSON body contains enough information for the requesting node to add the timer to their timer wheel, and to optionally replicate the timer to other nodes. The `Timer` object contains the information to recreate the timer on the node, the `TimerID` holds the timer's ID, and the `OldReplicas` list holds where the replicas for the timer were under the old cluster configuration.
 
 #### Request (DELETE)
 
     DELETE /timers/references
 
-This URL requests that the receiving node delete their references to a set of timers. 
+This URL requests that the receiving node delete their references to a set of timers.
 
 The DELETE body consists of the IDs of all the timers the node has just processed, paired with the replica number of the node for each timer. It has the format:
 
@@ -180,7 +228,7 @@ The DELETE body consists of the IDs of all the timers the node has just processe
             ]
     }
 
-The `ReplicaIndex` is the index of the timer in the replica list (where 0 represents the primary). The `ID` is the timer ID. 
+The `ReplicaIndex` is the index of the timer in the replica list (where 0 represents the primary). The `ID` is the timer ID.
 
 #### Response (DELETE)
 

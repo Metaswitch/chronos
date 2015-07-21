@@ -286,8 +286,8 @@ TEST_F(TestTimerHandler, FutureTimerPop)
 
   // Start the timer right now.
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  timer->start_time = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  timer->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
 
   // Since we only allocates timers on millisecond intervals, round the
   // time down to a millisecond.
