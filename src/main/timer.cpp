@@ -552,7 +552,9 @@ Timer* Timer::from_json_obj(TimerID id,
       // start time.
       uint64_t start_time_delta;
       JSON_GET_INT_64_MEMBER(timing, "start-time-delta", start_time_delta);
-      timer->start_time_mono_ms = clock_gettime_ms(CLOCK_MONOTONIC) + start_time_delta;
+
+      // This cast is safe as this sum is deliberately designed to wrap over UINT_MAX.
+      timer->start_time_mono_ms = (uint32_t)(clock_gettime_ms(CLOCK_MONOTONIC) + start_time_delta);
     }
     else if (timing.HasMember("start-time"))
     {
@@ -561,7 +563,9 @@ Timer* Timer::from_json_obj(TimerID id,
       JSON_GET_INT_64_MEMBER(timing, "start-time", real_start_time);
       uint64_t real_time = clock_gettime_ms(CLOCK_REALTIME);
       uint64_t mono_time = clock_gettime_ms(CLOCK_MONOTONIC);
-      timer->start_time_mono_ms = mono_time + (real_start_time - real_time);
+
+      // This cast is safe as this sum is deliberately designed to wrap over UINT_MAX.
+      timer->start_time_mono_ms = (uint32_t)(mono_time + real_start_time - real_time);
     }
 
     if (timing.HasMember("sequence-number"))
