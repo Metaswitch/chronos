@@ -8,8 +8,6 @@ MK_DIR := ${ROOT}/mk
 TARGET := chronos_alarm_header
 TARGET_TEST := chronos_alarm_header_test
 
-#TARGET_SOURCES_BUILD := modules/cpp-common/src/alarm_headers.cpp
-#TARGET_SOURCES_TEST := 
 TARGET_SOURCES := alarm_header.cpp \
                   json_alarms.cpp \
                   alarmdefinition.cpp

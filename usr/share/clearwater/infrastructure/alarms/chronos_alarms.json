@@ -3,6 +3,7 @@
         {
             "index": 3000,
             "cause": "SOFTWARE_ERROR",
+            "name": "CHRONOS_PROCESS_FAIL",
             "levels": [
                 {
                     "severity": "CLEARED",
@@ -19,6 +20,7 @@
         {
             "index": 3001,
             "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
+            "name": "CHRONOS_TIMER_POP_ERROR",
             "levels": [
                 {
                     "severity": "CLEARED",
@@ -35,6 +37,7 @@
         {
             "index": 3002,
             "cause": "DATABASE_INCONSISTENCY",
+            "name": "CHRONOS_SCALE_IN_PROGRESS",
             "levels": [
                 {
                     "severity": "CLEARED",
