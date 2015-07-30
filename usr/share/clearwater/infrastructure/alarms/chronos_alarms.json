@@ -1,0 +1,52 @@
+{
+    "alarms": [
+        {
+            "index": 3000,
+            "cause": "SOFTWARE_ERROR",
+            "levels": [
+                {
+                    "severity": "CLEARED",
+                    "details": "The Chronos process has been restored to normal operation.",
+                    "description": "Chronos: Process failure cleared"
+                },
+                {
+                    "severity": "MAJOR",
+                    "details": "Monit has detected that the Chronos process has failed. A restart will automatically be attempted. If this alarm does not clear, the Chronos process may have been stopped or an unrecoverable failure may have occurred.",
+                    "description": "Chronos: Process failure"
+                }
+            ]
+        },
+        {
+            "index": 3001,
+            "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
+            "levels": [
+                {
+                    "severity": "CLEARED",
+                    "details": "Chronos local timer delivery restored to normal operation.",
+                    "description": "Chronos: Timer pop error cleared"
+                },
+                {
+                    "severity": "MAJOR",
+                    "details": "Chronos was unable to pop a timer on the last replica due to a local delivery error. If this alarm does not clear, the local Chronos client cannot be contacted and may have failed.",
+                    "description": "Chronos: Timer pop error"
+                }
+            ]
+        },
+        {
+            "index": 3002,
+            "cause": "DATABASE_INCONSISTENCY",
+            "levels": [
+                {
+                    "severity": "CLEARED",
+                    "details": "The local Chronos process is synchronized with the rest of the cluster. Chronos resynchronization is no longer blocking a scale-up or scale-down operation (a different type of resynchronization operation may still be in progress though.",
+                    "description": "Chronos: Chronos timers are synchronized"
+                },
+                {
+                    "severity": "MINOR",
+                    "details": "The local Chronos process is resynchronizing with the rest of the cluster. Service should be unaffected. If a scale-up or scale-down operation is in progress, wait for resynchronization to finish before completing the operation.",
+                    "description": "Chronos: Chronos database resynchronization in progress"
+                }
+            ]
+        }
+    ]
+}

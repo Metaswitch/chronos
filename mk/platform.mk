@@ -120,3 +120,6 @@ ${OBJ_DIR_TEST}/%.o: $(UT_DIR)/%.cpp
 	$(CXX) -MMD $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_TEST) $(TARGET_ARCH) -c -o $@ $<
 
 -include $(DEPS)
+
+print-% :
+	@echo '$*=$($*)'

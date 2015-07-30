@@ -76,7 +76,7 @@ include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
 deb: build deb-only
 
 .PHONY: build
-build: ${SUBMODULES} ${TARGET_BIN}
+build: ${SUBMODULES} alarms ${TARGET_BIN}
 
 # Define JUSTTEST=<testname> to test just that test.  Easier than
 # passing the --gtest_filter in EXTRA_TEST_ARGS.
@@ -115,6 +115,11 @@ distclean: $(patsubst %, %_distclean, ${SUBMODULES})
 .PHONY: resync_test
 resync_test: build
 	./scripts/chronos_resync.py
+
+alarms:
+	${MAKE} -f alarms-header.mk
+	${BUILD_DIR}/bin/alarm_header -j "usr/share/clearwater/infrastructure/alarms/chronos_alarms.json" -n "chronos"
+	mv chronos_alarmdefinition.h ${BUILD_DIR}/usr/include/
 
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test
