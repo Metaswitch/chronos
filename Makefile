@@ -76,7 +76,7 @@ include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
 deb: build deb-only
 
 .PHONY: build
-build: ${SUBMODULES} alarms ${TARGET_BIN}
+build: ${BUILD_DIR}/usr/include/chronos_alarmdefinition.h ${SUBMODULES} ${TARGET_BIN}
 
 # Define JUSTTEST=<testname> to test just that test.  Easier than
 # passing the --gtest_filter in EXTRA_TEST_ARGS.
@@ -112,14 +112,19 @@ clean: $(patsubst %, %_clean, ${SUBMODULES})
 distclean: $(patsubst %, %_distclean, ${SUBMODULES})
 	rm -rf ${ROOT}/build
 
+${BUILD_DIR}/bin/chronos_alarm_header : modules/cpp-common/src/json_alarms.cpp \
+                                        modules/cpp-common/src/alarm_header.cpp \
+                                        modules/cpp-common/src/alarmdefinition.cpp \
+                                        alarms-header.mk
+	${MAKE} -f alarms-header.mk
+
+${BUILD_DIR}/usr/include/chronos_alarmdefinition.h : ${BUILD_DIR}/bin/chronos_alarm_header ${ROOT}/usr/share/clearwater/infrastructure/alarms/chronos_alarms.json
+	${BUILD_DIR}/bin/chronos_alarm_header -j "${ROOT}/usr/share/clearwater/infrastructure/alarms/chronos_alarms.json" -n "chronos"
+	mv ${ROOT}/chronos_alarmdefinition.h $@
+
 .PHONY: resync_test
 resync_test: build
 	./scripts/chronos_resync.py
-
-alarms:
-	${MAKE} -f alarms-header.mk
-	${BUILD_DIR}/bin/alarm_header -j "usr/share/clearwater/infrastructure/alarms/chronos_alarms.json" -n "chronos"
-	mv chronos_alarmdefinition.h ${BUILD_DIR}/usr/include/
 
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test
