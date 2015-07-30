@@ -51,6 +51,7 @@
 #include "exception_handler.h"
 #include <getopt.h>
 #include "chronos_internal_connection.h"
+#include "chronos_alarmdefinition.h"
 
 #include <iostream>
 #include <cassert>
