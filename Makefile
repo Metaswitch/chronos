@@ -76,7 +76,7 @@ include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
 deb: build deb-only
 
 .PHONY: build
-build: ${BUILD_DIR}/usr/include/chronos_alarmdefinition.h ${SUBMODULES} ${TARGET_BIN}
+build: ${SUBMODULES} ${BUILD_DIR}/usr/include/chronos_alarmdefinition.h ${TARGET_BIN}
 
 # Define JUSTTEST=<testname> to test just that test.  Easier than
 # passing the --gtest_filter in EXTRA_TEST_ARGS.
