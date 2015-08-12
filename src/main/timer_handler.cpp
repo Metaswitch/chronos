@@ -48,9 +48,14 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
 }
 
 TimerHandler::TimerHandler(TimerStore* store,
-                           Callback* callback) :
+                           Callback* callback,
+                           SNMP::ContinuousAccumulatorTable* total_timers_table,
+                           SNMP::U32Scalar* current_timers_scalar) :
                            _store(store),
                            _callback(callback),
+                           _total_timers_table(total_timers_table),
+                           _current_timers_scalar(current_timers_scalar),
+                           _timer_count(0),
                            _terminate(false),
                            _nearest_new_timer(-1)
 {
@@ -97,6 +102,8 @@ void TimerHandler::add_timer(Timer* timer)
   TRC_DEBUG("Adding timer:  %lu", timer->id);
   pthread_mutex_lock(&_mutex);
   _store->add_timer(timer);
+  _timer_count++;
+  update_statistics(_timer_count);
   pthread_mutex_unlock(&_mutex);
 }
 
@@ -104,7 +111,7 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
                                                     int replica_index)
 {
   pthread_mutex_lock(&_mutex);
-  _store->update_replica_tracker_for_timer(id, 
+  _store->update_replica_tracker_for_timer(id,
                                            replica_index);
   pthread_mutex_unlock(&_mutex);
 }
@@ -115,9 +122,9 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            std::string& get_response)
 {
   pthread_mutex_lock(&_mutex);
-  HTTPCode rc = _store->get_timers_for_node(request_node, 
-                                            max_responses, 
-                                            cluster_view_id, 
+  HTTPCode rc = _store->get_timers_for_node(request_node,
+                                            max_responses,
+                                            cluster_view_id,
                                             get_response);
   pthread_mutex_unlock(&_mutex);
 
@@ -143,6 +150,8 @@ void TimerHandler::run() {
     if (!next_timers.empty())
     {
       TRC_DEBUG("Have a timer to pop");
+      _timer_count -= next_timers.size();
+      update_statistics(_timer_count);
       pthread_mutex_unlock(&_mutex);
       pop(next_timers);
       pthread_mutex_lock(&_mutex);
@@ -174,8 +183,8 @@ void TimerHandler::run() {
     _store->get_next_timers(next_timers);
   }
 
-  for (std::unordered_set<Timer*>::iterator it = next_timers.begin(); 
-                                            it != next_timers.end(); 
+  for (std::unordered_set<Timer*>::iterator it = next_timers.begin();
+                                            it != next_timers.end();
                                             ++it)
   {
     delete *it;
@@ -194,8 +203,8 @@ void TimerHandler::run() {
 // thus empties the passed in set.
 void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 {
-  for (std::unordered_set<Timer*>::iterator it = timers.begin(); 
-                                            it != timers.end(); 
+  for (std::unordered_set<Timer*>::iterator it = timers.begin();
+                                            it != timers.end();
                                             ++it)
   {
     pop(*it);
@@ -223,4 +232,17 @@ void TimerHandler::pop(Timer* timer)
 
   // The callback takes ownership of the timer at this point.
   _callback->perform(timer); timer = NULL;
+}
+
+// Report an update to the number of timers to statistics
+void TimerHandler::update_statistics(uint32_t sample)
+{
+  if (_total_timers_table != NULL)
+  {
+    _total_timers_table->accumulate(_timer_count);
+  }
+  if (_current_timers_scalar != NULL)
+  {
+    _current_timers_scalar->value = _timer_count;
+  }
 }

@@ -47,11 +47,13 @@
 
 #include "timer_store.h"
 #include "callback.h"
+#include "snmp_continuous_accumulator_table.h"
+#include "snmp_scalar.h"
 
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Callback*);
+  TimerHandler(TimerStore*, Callback*, SNMP::ContinuousAccumulatorTable*, SNMP::U32Scalar*);
   virtual ~TimerHandler();
   virtual void add_timer(Timer*);
   virtual void update_replica_tracker_for_timer(TimerID id,
@@ -72,11 +74,15 @@ private:
   void pop(std::unordered_set<Timer*>&);
   void pop(Timer*);
   void signal_new_timer(unsigned int);
+  void update_statistics(uint32_t);
 
   TimerStore* _store;
   Callback* _callback;
+  SNMP::ContinuousAccumulatorTable* _total_timers_table;
+  SNMP::U32Scalar* _current_timers_scalar;
 
   pthread_t _handler_thread;
+  uint32_t _timer_count;
   volatile bool _terminate;
   volatile unsigned int _nearest_new_timer;
   pthread_mutex_t _mutex;

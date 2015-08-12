@@ -16,11 +16,12 @@ TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := src/main/main.cpp
 TARGET_SOURCES_TEST := $(wildcard src/test/*.cpp) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp))
-TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp
+
+TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp snmp_continuous_accumulator_table.cpp snmp_scalar.cpp snmp_agent.cpp snmp_row.cpp snmp_counter_table.cpp
 TARGET_EXTRA_OBJS_TEST := gmock-all.o gtest-all.o
 INCLUDE_DIR := ${ROOT}/src/include
 LIB_DIR := ${INSTALL_DIR}/lib
-CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror 
+CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror
 CPPFLAGS_BUILD := -O0
 CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNIT_TEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
 LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp \
@@ -84,7 +85,7 @@ ifdef JUSTTEST
   EXTRA_TEST_ARGS ?= --gtest_filter=$(JUSTTEST)
 endif
 
-.PHONY: test 
+.PHONY: test
 test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test coverage coverage-check
 
 .PHONY: run_test

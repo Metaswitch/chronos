@@ -52,6 +52,10 @@
 #include <getopt.h>
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
+#include "snmp_continuous_accumulator_table.h"
+#include "snmp_counter_table.h"
+#include "snmp_scalar.h"
+#include "snmp_agent.h"
 
 #include <iostream>
 #include <cassert>
@@ -155,6 +159,23 @@ int main(int argc, char** argv)
 {
   Alarm* timer_pop_alarm = NULL;
   Alarm* scale_operation_alarm = NULL;
+  SNMP::U32Scalar* remaining_nodes_scalar = NULL;
+  SNMP::CounterTable* timers_processed_table = NULL;
+  SNMP::CounterTable* invalid_timers_processed_table = NULL;
+  SNMP::ContinuousAccumulatorTable* total_timers_table = NULL;
+  SNMP::U32Scalar* current_timers_scalar = NULL;
+
+
+  // Sets up SNMP statistics
+  snmp_setup("chronos");
+
+  total_timers_table = SNMP::ContinuousAccumulatorTable::create("chronos_total_timers_table",
+                                                                ".1.2.826.0.1.1578918.9.10.4");
+  current_timers_scalar = new SNMP::U32Scalar("chronos_current_timers_scalar",
+                                              ".1.2.826.0.1.1578918.9.10.5");
+
+  // Must be called after all SNMP tables have been registered
+  init_snmp_handler_threads("chronos");
 
   // Initialize cURL before creating threads
   curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -177,7 +198,7 @@ int main(int argc, char** argv)
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration
-  __globals = new Globals(options.config_file, 
+  __globals = new Globals(options.config_file,
                           options.cluster_config_file);
 
   boost::filesystem::path p = argv[0];
@@ -228,11 +249,13 @@ int main(int argc, char** argv)
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
   HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
-  TimerHandler* handler = new TimerHandler(store, callback);
+  TimerHandler* handler = new TimerHandler(store, callback,
+                                           total_timers_table,
+                                           current_timers_scalar);
   callback->start(handler);
 
-  // Create a Chronos internal connection class for scaling operations. 
-  // This uses HTTPConnection from cpp-common so needs various 
+  // Create a Chronos internal connection class for scaling operations.
+  // This uses HTTPConnection from cpp-common so needs various
   // resolvers
   std::vector<std::string> dns_servers;
   __globals->get_dns_servers(dns_servers);
@@ -252,16 +275,20 @@ int main(int argc, char** argv)
 
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
 
-  std::string stats[] = {"chronos_scale_nodes_to_query",
-                         "chronos_scale_timers_processed",
-                         "chronos_scale_invalid_timers_processed"};
-  LastValueCache* lvc = new LastValueCache(3, stats, "chronos");
+  remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
+                                                ".1.2.826.0.1.1578918.9.10.1");
+  timers_processed_table = SNMP::CounterTable::create("chronos_processed_timers_table",
+                                                                    ".1.2.826.0.1.1578918.9.10.2");
+  invalid_timers_processed_table = SNMP::CounterTable::create("chronos_invalid_timers_processed_table",
+                                                                    ".1.2.826.0.1.1578918.9.10.3");
 
   ChronosInternalConnection* chronos_internal_connection =
-            new ChronosInternalConnection(http_resolver, 
-                                          handler, 
-                                          handler_rep, 
-                                          lvc,
+            new ChronosInternalConnection(http_resolver,
+                                          handler,
+                                          handler_rep,
+                                          remaining_nodes_scalar,
+                                          timers_processed_table,
+                                          invalid_timers_processed_table,
                                           scale_operation_alarm);
 
   // Finally, set up the HTTPStack and handlers

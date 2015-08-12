@@ -49,9 +49,9 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
 
-MATCHER(IsTombstone, "is a tombstone") 
-{ 
-  return arg->is_tombstone(); 
+MATCHER(IsTombstone, "is a tombstone")
+{
+  return arg->is_tombstone();
 }
 
 MATCHER(IsNotTombstone, "is not a tombstone")
@@ -70,10 +70,12 @@ protected:
     _resolver = new FakeHttpResolver("10.42.42.42");
     _replicator = new MockReplicator();
     _th = new MockTimerHandler();
-    _chronos = new ChronosInternalConnection(_resolver, 
+    _chronos = new ChronosInternalConnection(_resolver,
                                              _th,
-                                             _replicator, 
-                                             NULL, 
+                                             _replicator,
+                                             NULL,
+                                             NULL,
+                                             NULL,
                                              NULL);
     __globals->get_cluster_addresses(_cluster_addresses);
     __globals->get_cluster_local_ip(_local_ip);
@@ -172,7 +174,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   _cluster_addresses.push_back("10.0.0.4:9999");
 
-  // Timers from 10.0.0.2/10.0.0.3/10.0.0.4 - One timer that's having its replica list reordered. 
+  // Timers from 10.0.0.2/10.0.0.3/10.0.0.4 - One timer that's having its replica list reordered.
   // This isn't a valid response (as it should be different for .2/.3/.4), but it's sufficient
   fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.1:9999\", \"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.3:9999\", \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}}]}";
 
