@@ -41,6 +41,8 @@
 #include "mock_replicator.h"
 #include "base.h"
 #include "test_interposer.hpp"
+#include "snmp_continuous_accumulator_table.h"
+#include "snmp_scalar.h"
 
 #include "timer_handler.h"
 
@@ -76,6 +78,11 @@ protected:
   // Accessor functions into the timer handler's private variables
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
+  //SNMP::ContinuousAccumulatorTable* _fake_table = SNMP::ContinuousAccumulatorTable::create("","");
+  //SNMP::U32Scalar* _fake_scalar = new SNMP::U32Scalar("","");
+  SNMP::ContinuousAccumulatorTable* _fake_table = NULL;
+  SNMP::U32Scalar* _fake_scalar = NULL;
+
   MockTimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
@@ -91,7 +98,7 @@ TEST_F(TestTimerHandler, StartUpAndShutDown)
   EXPECT_CALL(*_store, get_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 }
 
@@ -108,7 +115,7 @@ TEST_F(TestTimerHandler, PopOneTimer)
 
   EXPECT_CALL(*_callback, perform(timer));
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -128,7 +135,7 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -149,7 +156,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -173,7 +180,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -201,7 +208,7 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -226,7 +233,7 @@ TEST_F(TestTimerHandler, EmptyStore)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
   // The first timer has been handled, but the store's now empty.  Pretend the store
@@ -247,7 +254,7 @@ TEST_F(TestTimerHandler, AddTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_store, add_timer(timer)).Times(1);
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
   _th->add_timer(timer);
@@ -268,7 +275,7 @@ TEST_F(TestTimerHandler, LeakTest)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(timers));
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 }
 
@@ -305,7 +312,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_callback, perform(_));
 
-  _th = new TimerHandler(_store, _callback);
+  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
   cwtest_advance_time_ms(100);

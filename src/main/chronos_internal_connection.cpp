@@ -52,11 +52,13 @@
 #include "globals.h"
 #include "chronos_pd_definitions.h"
 
-ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver, 
-                                                     TimerHandler* handler, 
+ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
+                                                     TimerHandler* handler,
                                                      Replicator* replicator,
-                                                     LastValueCache* lvc,
-                                                     Alarm* alarm) :
+                                                     Alarm* alarm,
+                                                     SNMP::U32Scalar* remaining_nodes_scalar,
+                                                     SNMP::CounterTable* timers_processed_table,
+                                                     SNMP::CounterTable* invalid_timers_processed_table) :
   _http(new HttpConnection("",
                            false,
                            resolver,
@@ -65,31 +67,29 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _handler(handler),
   _replicator(replicator),
   _alarm(alarm),
-  _nodes_to_query_stat(new Statistic("chronos_scale_nodes_to_query", lvc)),
-  _timers_processed_stat(new StatisticCounter("chronos_scale_timers_processed", lvc)),
-  _invalid_timers_processed_stat(new StatisticCounter("chronos_scale_invalid_timers_processed", lvc))
+  _remaining_nodes_scalar(remaining_nodes_scalar),
+  _timers_processed_table(timers_processed_table),
+  _invalid_timers_processed_table(invalid_timers_processed_table)
 {
-  // Create an updater to control when Chronos should resynchronise. This uses 
+  // Create an updater to control when Chronos should resynchronise. This uses
   // SIGUSR1 rather than the default SIGHUP, and we shouldn't resynchronise
   // on start up (note this may change in future work)
   _updater = new Updater<void, ChronosInternalConnection>
-                   (this, 
-                   std::mem_fun(&ChronosInternalConnection::resynchronize), 
-                   &_sigusr1_handler, 
+                   (this,
+                   std::mem_fun(&ChronosInternalConnection::resynchronize),
+                   &_sigusr1_handler,
                    false);
-  
+
   // Zero the statistic to start with
-  std::vector<std::string> no_stats;
-  no_stats.push_back(std::to_string(0));
-  _nodes_to_query_stat->report_change(no_stats);
+  if (_remaining_nodes_scalar != NULL)
+  {
+    _remaining_nodes_scalar->value = 0;
+  }
 }
 
 ChronosInternalConnection::~ChronosInternalConnection()
 {
   delete _updater; _updater = NULL;
-  delete _invalid_timers_processed_stat; _invalid_timers_processed_stat = NULL;
-  delete _timers_processed_stat; _timers_processed_stat = NULL;
-  delete _nodes_to_query_stat; _nodes_to_query_stat = NULL;
   delete _http; _http = NULL;
 }
 
@@ -103,15 +103,15 @@ void ChronosInternalConnection::resynchronize()
 
   if (leaving_nodes.size() > 0)
   {
-    cluster_nodes.insert(cluster_nodes.end(), 
-                         leaving_nodes.begin(), 
+    cluster_nodes.insert(cluster_nodes.end(),
+                         leaving_nodes.begin(),
                          leaving_nodes.end());
   }
 
   // Shuffle the lists (so the same Chronos node doesn't get queried by
   // all the other nodes at the same time) and remove the local node
   srand(time(NULL));
-  std::random_shuffle(cluster_nodes.begin(), cluster_nodes.end()); 
+  std::random_shuffle(cluster_nodes.begin(), cluster_nodes.end());
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
   cluster_nodes.erase(std::remove(cluster_nodes.begin(),
@@ -135,10 +135,10 @@ void ChronosInternalConnection::resynchronize()
                                           ++it, --nodes_remaining)
   {
     // Update the number of nodes to query
-    std::vector<std::string> updated_values;
-    updated_values.push_back(std::to_string(nodes_remaining));
-    _nodes_to_query_stat->report_change(updated_values);
-    updated_values.clear();
+    if (_remaining_nodes_scalar != NULL)
+    {
+      _remaining_nodes_scalar->value = nodes_remaining;
+    }
 
     std::string address;
     int port;
@@ -150,15 +150,15 @@ void ChronosInternalConnection::resynchronize()
       __globals->get_bind_port(port);
       // LCOV_EXCL_STOP
     }
-    
+
     std::string server_to_sync = address + ":" + std::to_string(port);
-    HTTPCode rc = resynchronise_with_single_node(server_to_sync, 
+    HTTPCode rc = resynchronise_with_single_node(server_to_sync,
                                                  cluster_nodes,
                                                  localhost);
     if (rc != HTTP_OK)
     {
       TRC_WARNING("Resynchronisation with node %s failed with rc %d",
-                  server_to_sync.c_str(), 
+                  server_to_sync.c_str(),
                   rc);
       CL_CHRONOS_RESYNC_ERROR.log(server_to_sync.c_str());
     }
@@ -174,9 +174,10 @@ void ChronosInternalConnection::resynchronize()
     _alarm->clear();   // LCOV_EXCL_LINE - No alarms in UT
   }
 
-  std::vector<std::string> finished_value;
-  finished_value.push_back(std::to_string(0));
-  _nodes_to_query_stat->report_change(finished_value);
+  if (_remaining_nodes_scalar != NULL)
+  {
+    _remaining_nodes_scalar->value = 0;
+  }
 }
 
 HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
@@ -198,11 +199,11 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
   {
     std::map<TimerID, int> delete_map;
 
-    rc = send_get(server_to_sync, 
-                  localhost, 
-                  PARAM_SYNC_MODE_VALUE_SCALE, 
+    rc = send_get(server_to_sync,
+                  localhost,
+                  PARAM_SYNC_MODE_VALUE_SCALE,
                   cluster_view_id,
-                  MAX_TIMERS_IN_RESPONSE, 
+                  MAX_TIMERS_IN_RESPONSE,
                   response);
 
     if ((rc == HTTP_PARTIAL_CONTENT) ||
@@ -263,7 +264,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
 
             bool store_timer = false;
             std::string error_str;
-            bool replicated_timer; 
+            bool replicated_timer;
             Timer* timer = Timer::from_json_obj(timer_id,
                                                 0,
                                                 error_str,
@@ -286,7 +287,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
 
             // Decide what we're going to do with this timer.
             int old_level = 0;
-            bool in_old_replica_list = get_replica_level(old_level, 
+            bool in_old_replica_list = get_replica_level(old_level,
                                                          localhost,
                                                          old_replicas);
             int new_level = 0;
@@ -299,7 +300,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
 
             if (in_new_replica_list)
             {
-              // Add the timer to my store if I can. 
+              // Add the timer to my store if I can.
               if (in_old_replica_list)
               {
                 if (old_level >= new_level)
@@ -328,7 +329,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
                 }
                 else
                 {
-                  // We can potentially replicate the timer to one of these nodes. 
+                  // We can potentially replicate the timer to one of these nodes.
                   // Check whether the new replica was involved previously
                   int old_rep_level = 0;
                   bool is_new_rep_in_old_rep = get_replica_level(old_rep_level,
@@ -348,8 +349,8 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
                 }
               }
 
-              // Now loop through the old replicas. We can send a tombstone 
-              // replication to any node that used to be a replica and was 
+              // Now loop through the old replicas. We can send a tombstone
+              // replication to any node that used to be a replica and was
               // higher in the replica list than the new replica.
               index = 0;
               for (std::vector<std::string>::iterator it = old_replicas.begin();
@@ -373,7 +374,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
               }
             }
 
-            // Add the timer to the store if we can. This is done 
+            // Add the timer to the store if we can. This is done
             // last so we don't invalidate the pointer to the timer.
             if (store_timer)
             {
@@ -385,14 +386,21 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             }
 
             // Finally, note that we processed the timer
-            _timers_processed_stat->increment();
+            if (_timers_processed_table != NULL)
+            {
+              _timers_processed_table->increment();
+            }
+
           }
           catch (JsonFormatError err)
           {
-            // A single entry is badly formatted. This is unexpected but we'll try 
-            // to keep going and process the rest of the timers. 
+            // A single entry is badly formatted. This is unexpected but we'll try
+            // to keep going and process the rest of the timers.
             count_invalid_timers++;
-            _invalid_timers_processed_stat->increment();
+            if (_invalid_timers_processed_table != NULL)
+            {
+              _invalid_timers_processed_table->increment();
+            }
             TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
                      err._file, err._line);
           }
@@ -401,7 +409,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
         // Check if we were able to successfully process any timers - if not
         // then bail out as there's something wrong with the node we're
         // querying
-        if ((total_timers != 0) && 
+        if ((total_timers != 0) &&
            (count_invalid_timers == total_timers))
         {
           TRC_WARNING("Unable to process any timer entries in GET response");
@@ -429,11 +437,11 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
           if (delete_rc != HTTP_ACCEPTED)
           {
             // We've received an error response to the DELETE request. There's
-            // not much more we can do here (a timeout will have already 
+            // not much more we can do here (a timeout will have already
             // been retried). A failed DELETE won't prevent the scaling operation
             // from finishing, it just means that we'll tell other nodes
-            // about timers inefficiently. 
-            TRC_INFO("Error response (%d) to DELETE request to %s", 
+            // about timers inefficiently.
+            TRC_INFO("Error response (%d) to DELETE request to %s",
                      delete_rc,
                     (*it).c_str());
           }
@@ -443,10 +451,10 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
     else
     {
       // We've received an error response to the GET request. A timeout
-      // will already have been retried by the underlying HTTPConnection, 
+      // will already have been retried by the underlying HTTPConnection,
       // so don't retry again
-      TRC_WARNING("Error response (%d) to GET request to %s", 
-                  rc, 
+      TRC_WARNING("Error response (%d) to GET request to %s",
+                  rc,
                   server_to_sync.c_str());
     }
   }
@@ -490,7 +498,7 @@ std::string ChronosInternalConnection::create_delete_body(std::map<TimerID, int>
   rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
   writer.StartObject();
 
-  writer.String(JSON_IDS); 
+  writer.String(JSON_IDS);
   writer.StartArray();
 
   for (std::map<TimerID, int>::iterator it = delete_map.begin();
@@ -520,7 +528,7 @@ bool ChronosInternalConnection::get_replica_presence(std::string current_node,
   return get_replica_level(unused_index, current_node, replicas);
 }
 
-bool ChronosInternalConnection::get_replica_level(int& index, 
+bool ChronosInternalConnection::get_replica_level(int& index,
                                                   std::string current_node,
                                                   std::vector<std::string> replicas)
 {

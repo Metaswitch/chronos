@@ -44,16 +44,20 @@
 #include "updater.h"
 #include "statistic.h"
 #include "counter.h"
+#include "snmp_counter_table.h"
+#include "snmp_scalar.h"
 
 /// @class ChronosInternalConnection
 class ChronosInternalConnection
 {
 public:
   ChronosInternalConnection(HttpResolver* resolver,
-                            TimerHandler* handler, 
+                            TimerHandler* handler,
                             Replicator* replicator,
-                            LastValueCache* lvc,
-                            Alarm* alarm);
+                            Alarm* alarm,
+                            SNMP::U32Scalar* _remaining_nodes_scalar = NULL,
+                            SNMP::CounterTable* _timers_processed_table = NULL,
+                            SNMP::CounterTable* _invalid_timers_processed_table = NULL);
   virtual ~ChronosInternalConnection();
 
   // Performs a scale-up/down operation by resynchronising
@@ -65,9 +69,9 @@ private:
   TimerHandler* _handler;
   Replicator* _replicator;
   Alarm* _alarm;
-  Statistic* _nodes_to_query_stat;
-  StatisticCounter* _timers_processed_stat;
-  StatisticCounter* _invalid_timers_processed_stat;
+  SNMP::U32Scalar* _remaining_nodes_scalar;
+  SNMP::CounterTable* _timers_processed_table;
+  SNMP::CounterTable* _invalid_timers_processed_table;
   Updater<void, ChronosInternalConnection>* _updater;
 
   // Creates the body to use in a delete request. This is a JSON
@@ -100,9 +104,9 @@ private:
                             std::string& response);
 
   // Resynchronises with a single Chronos node (used in scale
-  // operations). 
+  // operations).
   virtual HTTPCode resynchronise_with_single_node(
-                            const std::string server_to_sync, 
+                            const std::string server_to_sync,
                             std::vector<std::string> cluster_nodes,
                             std::string localhost);
 };
