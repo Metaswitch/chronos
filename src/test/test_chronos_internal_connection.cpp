@@ -73,9 +73,6 @@ protected:
     _chronos = new ChronosInternalConnection(_resolver,
                                              _th,
                                              _replicator,
-                                             NULL,
-                                             NULL,
-                                             NULL,
                                              NULL);
     __globals->get_cluster_addresses(_cluster_addresses);
     __globals->get_cluster_local_ip(_local_ip);

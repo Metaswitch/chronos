@@ -54,10 +54,10 @@ public:
   ChronosInternalConnection(HttpResolver* resolver,
                             TimerHandler* handler,
                             Replicator* replicator,
-                            SNMP::U32Scalar* _remaining_nodes_scalar,
-                            SNMP::CounterTable* _timers_processed_table,
-                            SNMP::CounterTable* _invalid_timers_processed_table,
-                            Alarm* alarm);
+                            Alarm* alarm,
+                            SNMP::U32Scalar* _remaining_nodes_scalar = NULL,
+                            SNMP::CounterTable* _timers_processed_table = NULL,
+                            SNMP::CounterTable* _invalid_timers_processed_table = NULL);
   virtual ~ChronosInternalConnection();
 
   // Performs a scale-up/down operation by resynchronising

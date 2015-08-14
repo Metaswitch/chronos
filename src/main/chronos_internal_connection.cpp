@@ -55,10 +55,10 @@
 ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                                                      TimerHandler* handler,
                                                      Replicator* replicator,
-                                                     SNMP::U32Scalar* _remaining_nodes_scalar,
-                                                     SNMP::CounterTable* _timers_processed_table,
-                                                     SNMP::CounterTable* _invalid_timers_processed_table,
-                                                     Alarm* alarm) :
+                                                     Alarm* alarm,
+                                                     SNMP::U32Scalar* remaining_nodes_scalar,
+                                                     SNMP::CounterTable* timers_processed_table,
+                                                     SNMP::CounterTable* invalid_timers_processed_table) :
   _http(new HttpConnection("",
                            false,
                            resolver,
@@ -67,9 +67,9 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _handler(handler),
   _replicator(replicator),
   _alarm(alarm),
-  _remaining_nodes_scalar(_remaining_nodes_scalar),
-  _timers_processed_table(_timers_processed_table),
-  _invalid_timers_processed_table(_invalid_timers_processed_table)
+  _remaining_nodes_scalar(remaining_nodes_scalar),
+  _timers_processed_table(timers_processed_table),
+  _invalid_timers_processed_table(invalid_timers_processed_table)
 {
   // Create an updater to control when Chronos should resynchronise. This uses
   // SIGUSR1 rather than the default SIGHUP, and we shouldn't resynchronise

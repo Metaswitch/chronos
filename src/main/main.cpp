@@ -165,7 +165,6 @@ int main(int argc, char** argv)
   SNMP::ContinuousAccumulatorTable* total_timers_table = NULL;
   SNMP::U32Scalar* current_timers_scalar = NULL;
 
-
   // Sets up SNMP statistics
   snmp_setup("chronos");
 
@@ -286,10 +285,10 @@ int main(int argc, char** argv)
             new ChronosInternalConnection(http_resolver,
                                           handler,
                                           handler_rep,
+                                          scale_operation_alarm,
                                           remaining_nodes_scalar,
                                           timers_processed_table,
-                                          invalid_timers_processed_table,
-                                          scale_operation_alarm);
+                                          invalid_timers_processed_table);
 
   // Finally, set up the HTTPStack and handlers
   HttpStack* http_stack = HttpStack::get_instance();
@@ -349,6 +348,12 @@ int main(int argc, char** argv)
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
+
+  delete remaining_nodes_scalar;
+  delete timers_processed_table;
+  delete invalid_timers_processed_table;
+  delete total_timers_table;
+  delete current_timers_scalar;
 
   hc->terminate();
   pthread_join(health_check_thread, NULL);
