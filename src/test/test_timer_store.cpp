@@ -65,6 +65,34 @@ protected:
     // I mark the hours, every one, Nor have I yet outrun the Sun.
     // My use and value, unto you, Are gauged by what you have to do.
     cwtest_completely_control_time();
+
+    // Rollback the time to 45 minutes before the timer would overflow
+    // See whether we've already overflown
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
+
+    if (now_ms >= ((uint64_t)(1) << 32))
+    {
+      // Align with overflow point
+      cwtest_reverse_time_ms(now_ms - ((uint64_t)(1) << 32));
+    }
+    else
+    {
+      // Align with overflow point
+      cwtest_advance_time_ms(((uint64_t)(1) << 32) - now_ms);
+    }
+
+    // Rollback 45 minutes
+    cwtest_reverse_time_ms(45 * 60 * 1000);
+
+    // We are now at a point in time where timestamps will exist in 32
+    // bit integers, but will overflow in 45 minutes time.
+
+    // Default some timers to short, mid and long.
+    struct timespec new_time;
+    clock_gettime(CLOCK_MONOTONIC, &new_time);
+
     hc = new HealthChecker();
     ts = new TimerStore(hc);
 
@@ -697,8 +725,8 @@ TEST_F(TestTimerStore, DeleteOverdueTimer)
   delete tombstone;
 }
 
-// Test that marking some of the replicas as being informed 
-// doesn't change the timer if it's got an up-to-date 
+// Test that marking some of the replicas as being informed
+// doesn't change the timer if it's got an up-to-date
 // cluster view ID
 TEST_F(TestTimerStore, UpdateReplicaTrackerValueForNewTimer)
 {
@@ -784,7 +812,7 @@ TEST_F(TestTimerStore, SelectTimers)
 TEST_F(TestTimerStore, SelectTimersTakeInformationalTimers)
 {
   std::unordered_set<Timer*> next_timers;
-  
+
   // Add a timer to the store, then update it with a new cluster view ID.
   timers[0]->cluster_view_id = "old-cluster-view-id";
   ts->add_timer(timers[0]);
@@ -803,7 +831,7 @@ TEST_F(TestTimerStore, SelectTimersTakeInformationalTimers)
   delete tombstone;
 }
 
-// Test that if there are no timers for the requesting node, 
+// Test that if there are no timers for the requesting node,
 // that trying to get the timers returns an empty list
 TEST_F(TestTimerStore, SelectTimersNoMatchesReqNode)
 {
@@ -835,10 +863,10 @@ TEST_F(TestTimerStore, SelectTimersNoMatchesClusterID)
   delete tombstone;
 }
 
-// Test that updating a timer with a new cluster ID causes the original 
-// timer to be saved off. 
+// Test that updating a timer with a new cluster ID causes the original
+// timer to be saved off.
 //
-// WARNING: In this test we look directly in the timer store as there's no 
+// WARNING: In this test we look directly in the timer store as there's no
 // other way to test what's in the timer map (when it's not also in the timer
 // wheel)
 TEST_F(TestTimerStore, UpdateClusterViewID)
@@ -855,12 +883,12 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
   EXPECT_EQ(1u, map_it->second.front()->id);
 
   // Add a new timer with the same ID, and an updated Cluster View ID
-  timers[1]->id = 1; 
-  timers[1]->cluster_view_id = "updated-cluster-view-id"; 
+  timers[1]->id = 1;
+  timers[1]->cluster_view_id = "updated-cluster-view-id";
   ts->add_timer(timers[1]);
 
   // Find this timer in the store, and check there's a saved timer. The saved
-  // timer has the old cluster view ID, and the new timer has the new one. 
+  // timer has the old cluster view ID, and the new timer has the new one.
   map_it = ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());
   EXPECT_EQ(2u, map_it->second.size());
@@ -869,7 +897,7 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
   EXPECT_EQ(1u, map_it->second.back()->id);
   EXPECT_EQ("cluster-view-id", map_it->second.back()->cluster_view_id);
 
-  // Add a new timer with the same ID, an updated Cluster View ID, 
+  // Add a new timer with the same ID, an updated Cluster View ID,
   // and make it a tombstone
   timers[2]->id = 1;
   timers[2]->cluster_view_id = "updated-again-cluster-view-id";
@@ -891,8 +919,8 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
   delete tombstone;
 }
 
-// Test that the store uses the saved timers (rather than the timers in the 
-// timer wheel) when updating the replica tracker or handling get requests. 
+// Test that the store uses the saved timers (rather than the timers in the
+// timer wheel) when updating the replica tracker or handling get requests.
 //
 // WARNING: In this test we look directly in the timer store as there's no
 // other way to test what's in the timer map (when it's not also in the timer
@@ -900,23 +928,23 @@ TEST_F(TestTimerStore, UpdateClusterViewID)
 TEST_F(TestTimerStore, ModifySavedTimers)
 {
   // Add a timer to the store with an old cluster ID and three replicas
-  timers[0]->cluster_view_id = "old-cluster-view-id"; 
+  timers[0]->cluster_view_id = "old-cluster-view-id";
   timers[0]->_replica_tracker = 7;
   timers[0]->replicas.push_back("10.0.0.2:9999");
   timers[0]->replicas.push_back("10.0.0.3:9999");
   ts->add_timer(timers[0]);
 
-  // Add a timer to the store with the same ID as the previous timer, 
-  // but an updated cluster-view ID. This will take the original timer 
+  // Add a timer to the store with the same ID as the previous timer,
+  // but an updated cluster-view ID. This will take the original timer
   // out of the timer wheel and save it just in the map
-  timers[1]->id = 1; 
+  timers[1]->id = 1;
   timers[1]->_replica_tracker = 7;
   timers[1]->replicas.push_back("10.0.0.2:9999");
   timers[1]->replicas.push_back("10.0.0.3:9999");
   ts->add_timer(timers[1]);
 
   // Update the replica tracker for Timer ID 1. This should update the
-  // saved timer to mark that the third replica has been informed, not 
+  // saved timer to mark that the third replica has been informed, not
   // the new first timer.
   ts->update_replica_tracker_for_timer(1u, 2);
   std::map<TimerID, std::vector<Timer*>>::iterator map_it =
@@ -926,7 +954,7 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
   EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
 
-  // Now update the timer. This should change the first timer but not the 
+  // Now update the timer. This should change the first timer but not the
   // second timer in the timer map
   timers[2]->id = 1;
   timers[2]->_replica_tracker = 7;
@@ -940,8 +968,8 @@ TEST_F(TestTimerStore, ModifySavedTimers)
   EXPECT_EQ(3u, map_it->second.back()->replicas.size());
 
   // Finally, update the replica tracker to mark all replicas
-  // as having been informed for Timer ID 1. This should 
-  // delete the saved timer. 
+  // as having been informed for Timer ID 1. This should
+  // delete the saved timer.
   ts->update_replica_tracker_for_timer(1u, 0);
   map_it = ts->_timer_lookup_table.find(1);
   EXPECT_TRUE(map_it != ts->_timer_lookup_table.end());

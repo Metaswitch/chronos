@@ -60,15 +60,15 @@ public:
   // Get the next bucket of timers to pop.
   virtual void get_next_timers(std::unordered_set<Timer*>&);
 
-  // Mark which replicas have been informed for an individual timer. 
+  // Mark which replicas have been informed for an individual timer.
   // If all replicas are informed, then the timer will be tombstoned
   // NOTE -> This is currently only valid for scale down.
-  virtual void update_replica_tracker_for_timer(TimerID id, 
+  virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);
 
-  // Get timer information from the store for timers where 
+  // Get timer information from the store for timers where
   // request_node should be a replica
-  virtual HTTPCode get_timers_for_node(std::string request_node, 
+  virtual HTTPCode get_timers_for_node(std::string request_node,
                                        int max_responses,
                                        std::string cluster_view_id,
                                        std::string& get_response);
@@ -131,12 +131,12 @@ private:
 
   // A table of all known timers. Only the first timer in the timer list
   // is in the timer wheel - any other timers are stored for use when
-  // resynchronising between Chronos's. 
+  // resynchronising between Chronos's.
   std::map<TimerID, std::vector<Timer*>> _timer_lookup_table;
 
   // Health checker, which is notified when a timer is successfully added.
   HealthChecker* _health_checker;
-  
+
   // Constants controlling the size and resolution of the timer wheels.
   static const int SHORT_WHEEL_RESOLUTION_MS = 10;
   static const int SHORT_WHEEL_NUM_BUCKETS = 100;
@@ -183,8 +183,8 @@ private:
   // Utility methods to convert a timestamp to the resolution used by the
   // wheels.  These round down (so to 10ms accuracy, 12345 -> 12340, but 12340
   // -> 12340).
-  static uint64_t to_short_wheel_resolution(uint64_t t);
-  static uint64_t to_long_wheel_resolution(uint64_t t);
+  static uint32_t to_short_wheel_resolution(uint64_t t);
+  static uint32_t to_long_wheel_resolution(uint64_t t);
 
   // Refill timer wheels from the longer duration stores.
   //
@@ -208,7 +208,7 @@ private:
                   std::unordered_set<Timer*>& set);
 
   // Update a timer object with the current cluster configuration. Store off
-  // the old set of replicas, and return whether the requesting node is 
+  // the old set of replicas, and return whether the requesting node is
   // one of the new replicas
   bool timer_is_on_node(std::string request_node,
                         std::string cluster_view_id,
@@ -220,6 +220,9 @@ private:
 
   // Save the tombstone values from an existing timer
   void set_tombstone_values(Timer* t, Timer* existing);
+
+  // Compare two numbers that might have overflown
+  bool overflow_less_than(uint32_t a, uint32_t b);
 
 };
 
