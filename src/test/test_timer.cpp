@@ -92,7 +92,7 @@ TEST_F(TestTimer, FromJSONTests)
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  uint64_t mono_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  uint32_t mono_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   clock_gettime(CLOCK_REALTIME, &ts);
   uint64_t real_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 
@@ -233,7 +233,7 @@ TEST_F(TestTimer, FromJSONTests)
   // If delta-start-time was provided, use that
   timer = Timer::from_json(1, 0x11011100011101, delta_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
-  EXPECT_EQ("", err); EXPECT_EQ((uint32_t)(mono_time - 200), timer->start_time_mono_ms);
+  EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, timer->start_time_mono_ms);
   delete timer;
 
   // If absolute start time was proved (and no delta-time), use that.
@@ -243,7 +243,7 @@ TEST_F(TestTimer, FromJSONTests)
 
   // Note that this compares to monotonic time (but the offest is the same as
   // the offset to realtime when we made the JSON string).
-  EXPECT_EQ((uint32_t)(mono_time - 300), timer->start_time_mono_ms);
+  EXPECT_EQ(mono_time - 300, timer->start_time_mono_ms);
   delete timer;
 
   // Restore real time

@@ -74,7 +74,7 @@ public:
                                        std::string& get_response);
 
   // Give the UT test fixture access to our member variables
-  friend class TestTimerStore;
+//  friend class TestTimerStore;
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
