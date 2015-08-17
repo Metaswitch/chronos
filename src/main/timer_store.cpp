@@ -330,7 +330,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
   // Now process the required number of ticks. Integer division does the
   // necessary rounding for us.
   uint32_t current_timestamp = timestamp_ms();
-  uint32_t num_ticks = ((current_timestamp - _tick_timestamp) /
+  uint32_t num_ticks = ((current_timestamp - (uint32_t)(_tick_timestamp)) /
                    SHORT_WHEEL_RESOLUTION_MS);
 
   for (int ii = 0; ii < (int)(num_ticks); ++ii)
