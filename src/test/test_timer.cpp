@@ -92,7 +92,7 @@ TEST_F(TestTimer, FromJSONTests)
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  uint64_t mono_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  uint32_t mono_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   clock_gettime(CLOCK_REALTIME, &ts);
   uint64_t real_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 
