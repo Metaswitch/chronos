@@ -183,8 +183,8 @@ private:
   // Utility methods to convert a timestamp to the resolution used by the
   // wheels.  These round down (so to 10ms accuracy, 12345 -> 12340, but 12340
   // -> 12340).
-  static uint32_t to_short_wheel_resolution(uint64_t t);
-  static uint32_t to_long_wheel_resolution(uint64_t t);
+  static uint64_t to_short_wheel_resolution(uint64_t t);
+  static uint64_t to_long_wheel_resolution(uint64_t t);
 
   // Refill timer wheels from the longer duration stores.
   //

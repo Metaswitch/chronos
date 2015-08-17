@@ -373,14 +373,14 @@ uint64_t TimerStore::timestamp_ms()
   return time;
 }
 
-uint32_t TimerStore::to_short_wheel_resolution(uint64_t t)
+uint64_t TimerStore::to_short_wheel_resolution(uint64_t t)
 {
-  return (uint32_t)(t - (t % SHORT_WHEEL_RESOLUTION_MS));
+  return (t - (t % SHORT_WHEEL_RESOLUTION_MS));
 }
 
-uint32_t TimerStore::to_long_wheel_resolution(uint64_t t)
+uint64_t TimerStore::to_long_wheel_resolution(uint64_t t)
 {
-  return (uint32_t)(t - (t % LONG_WHEEL_RESOLUTION_MS));
+  return (t - (t % LONG_WHEEL_RESOLUTION_MS));
 }
 
 TimerStore::Bucket* TimerStore::short_wheel_bucket(Timer* timer)
