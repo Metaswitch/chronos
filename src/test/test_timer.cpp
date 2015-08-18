@@ -54,10 +54,10 @@ protected:
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
     TimerID id = (TimerID)UINT_MAX + 10;
-    uint32_t interval = 100;
+    uint32_t interval_ms = 100;
     uint32_t repeat_for = 200;
 
-    t1 = new Timer(id, interval, repeat_for);
+    t1 = new Timer(id, interval_ms, repeat_for);
     t1->start_time_mono_ms = 1000000;
     t1->sequence_number = 0;
     t1->replicas = replicas;
@@ -227,13 +227,13 @@ TEST_F(TestTimer, FromJSONTests)
   timer = Timer::from_json(1, 0x11011100011101, no_repeat_for, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
-  EXPECT_EQ(timer->interval, timer->repeat_for);
+  EXPECT_EQ(timer->interval_ms, timer->repeat_for);
   delete timer;
 
   // If delta-start-time was provided, use that
   timer = Timer::from_json(1, 0x11011100011101, delta_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
-  EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, timer->start_time_mono_ms);
+  EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, (uint32_t)(timer->start_time_mono_ms));
   delete timer;
 
   // If absolute start time was proved (and no delta-time), use that.
@@ -243,7 +243,7 @@ TEST_F(TestTimer, FromJSONTests)
 
   // Note that this compares to monotonic time (but the offest is the same as
   // the offset to realtime when we made the JSON string).
-  EXPECT_EQ(mono_time - 300, timer->start_time_mono_ms);
+  EXPECT_EQ(mono_time - 300, (uint32_t)(timer->start_time_mono_ms));
   delete timer;
 
   // Restore real time
@@ -324,10 +324,10 @@ TEST_F(TestTimer, ToJSON)
   // We need to use a new timer here, because the values we use in
   // testing (100ms and 200ms) are too short to be specified on the
   // JSON interface (which counts in seconds).
-  uint32_t interval = 1000;
+  uint32_t interval_ms = 1000;
   uint32_t repeat_for = 2000;
 
-  Timer* t2 = new Timer(1, interval, repeat_for);
+  Timer* t2 = new Timer(1, interval_ms, repeat_for);
   t2->start_time_mono_ms = 1000000;
   t2->sequence_number = 0;
   t2->replicas = t1->replicas;
@@ -348,8 +348,8 @@ TEST_F(TestTimer, ToJSON)
   ASSERT_NE((void*)NULL, t2);
 
   EXPECT_EQ(2u, t3->id) << json;
-  EXPECT_EQ(1000000u, t3->start_time_mono_ms) << json;
-  EXPECT_EQ(t2->interval, t3->interval) << json;
+  EXPECT_EQ(1000000u, (uint32_t)(t3->start_time_mono_ms)) << json;
+  EXPECT_EQ(t2->interval_ms, t3->interval_ms) << json;
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
   EXPECT_EQ(t2->replicas, t3->replicas) << json;
@@ -383,7 +383,7 @@ TEST_F(TestTimer, BecomeTombstone)
   t1->become_tombstone();
   EXPECT_TRUE(t1->is_tombstone());
   EXPECT_EQ(1000000u, t1->start_time_mono_ms);
-  EXPECT_EQ(100u, t1->interval);
+  EXPECT_EQ(100u, t1->interval_ms);
   EXPECT_EQ(100u, t1->repeat_for);
 }
 

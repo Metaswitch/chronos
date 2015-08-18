@@ -127,7 +127,7 @@ void HTTPCallback::worker_thread_entry_point()
     {
       // Check if the next pop occurs before the repeat-for interval and,
       // if not, convert to a tombstone to indicate the timer is dead.
-      if ((timer->sequence_number + 1) * timer->interval > timer->repeat_for)
+      if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
       {
         timer->become_tombstone();
       }

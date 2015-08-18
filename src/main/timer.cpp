@@ -68,9 +68,9 @@ inline uint64_t clock_gettime_ms(int clock_id)
   return ((time.tv_sec * 1000) + (time.tv_nsec / 1000000));
 }
 
-Timer::Timer(TimerID id, uint32_t interval, uint32_t repeat_for) :
+Timer::Timer(TimerID id, uint64_t interval_ms, uint32_t repeat_for) :
   id(id),
-  interval(interval),
+  interval_ms(interval_ms),
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
@@ -109,7 +109,7 @@ uint64_t Timer::next_pop_time()
     }
   }
 
-  return start_time_mono_ms + ((sequence_number + 1) * interval) + (replica_index * 2 * 1000);
+  return start_time_mono_ms + ((sequence_number + 1) * interval_ms) + (replica_index * 2 * 1000);
 }
 
 // Create the timer's URL from a given hostname
@@ -194,7 +194,7 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     {
       uint64_t realtime = clock_gettime_ms(CLOCK_REALTIME);
       uint64_t monotime = clock_gettime_ms(CLOCK_MONOTONIC);
-      int32_t delta = start_time_mono_ms - monotime;
+      int32_t delta = (uint32_t)(start_time_mono_ms) - monotime;
       writer->String("start-time");
       writer->Int64(realtime + delta);
       writer->String("start-time-delta");
@@ -202,7 +202,7 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
       writer->String("sequence-number");
       writer->Int(sequence_number);
       writer->String("interval");
-      writer->Int(interval/1000);
+      writer->Int(interval_ms/1000);
       writer->String("repeat-for");
       writer->Int(repeat_for/1000);
     }
@@ -270,7 +270,7 @@ void Timer::become_tombstone()
 
   // Since we're not bringing the start-time forward we have to extend the
   // repeat-for to ensure the tombstone gets added to the replica's store.
-  repeat_for = interval * (sequence_number + 1);
+  repeat_for = interval_ms * (sequence_number + 1);
 }
 
 bool Timer::is_matching_cluster_view_id(std::string cluster_view_id_to_match)
@@ -521,8 +521,8 @@ Timer* Timer::from_json_obj(TimerID id,
     JSON_ASSERT_OBJECT(timing);
 
     JSON_ASSERT_CONTAINS(timing, "interval");
-    rapidjson::Value& interval = timing["interval"];
-    JSON_ASSERT_INT(interval);
+    rapidjson::Value& interval_ms = timing["interval"];
+    JSON_ASSERT_INT(interval_ms);
 
     // Extract the repeat-for parameter, if it's absent, set it to the interval
     // instead.
@@ -533,10 +533,10 @@ Timer* Timer::from_json_obj(TimerID id,
     }
     else
     {
-      repeat_for_int = interval.GetInt();
+      repeat_for_int = interval_ms.GetInt();
     }
 
-    if ((interval.GetInt() == 0) && (repeat_for_int != 0))
+    if ((interval_ms.GetInt() == 0) && (repeat_for_int != 0))
     {
       // If the interval time is 0 and the repeat_for_int isn't then reject the timer.
       error = "Can't have a zero interval time with a non-zero (%s) repeat-for time",
@@ -544,7 +544,7 @@ Timer* Timer::from_json_obj(TimerID id,
       return NULL;
     }
 
-    timer = new Timer(id, (interval.GetInt() * 1000), (repeat_for_int * 1000));
+    timer = new Timer(id, (interval_ms.GetInt() * 1000), (repeat_for_int * 1000));
 
     if (timing.HasMember("start-time-delta"))
     {
@@ -553,8 +553,7 @@ Timer* Timer::from_json_obj(TimerID id,
       uint64_t start_time_delta;
       JSON_GET_INT_64_MEMBER(timing, "start-time-delta", start_time_delta);
 
-      // This cast is safe as this sum is deliberately designed to wrap over UINT_MAX.
-      timer->start_time_mono_ms = (uint32_t)(clock_gettime_ms(CLOCK_MONOTONIC) + start_time_delta);
+      timer->start_time_mono_ms = clock_gettime_ms(CLOCK_MONOTONIC) + start_time_delta;
     }
     else if (timing.HasMember("start-time"))
     {
@@ -564,8 +563,7 @@ Timer* Timer::from_json_obj(TimerID id,
       uint64_t real_time = clock_gettime_ms(CLOCK_REALTIME);
       uint64_t mono_time = clock_gettime_ms(CLOCK_MONOTONIC);
 
-      // This cast is safe as this sum is deliberately designed to wrap over UINT_MAX.
-      timer->start_time_mono_ms = (uint32_t)(mono_time + real_start_time - real_time);
+      timer->start_time_mono_ms = mono_time + real_start_time - real_time;
     }
 
     if (timing.HasMember("sequence-number"))

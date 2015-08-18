@@ -73,9 +73,6 @@ public:
                                        std::string cluster_view_id,
                                        std::string& get_response);
 
-  // Give the UT test fixture access to our member variables
-//  friend class TestTimerStore;
-
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
   // - A short timer wheel consisting of 100 10ms buckets (1s in total).
@@ -220,9 +217,6 @@ private:
 
   // Save the tombstone values from an existing timer
   void set_tombstone_values(Timer* t, Timer* existing);
-
-  // Compare two numbers that might have overflown
-  bool overflow_less_than(uint32_t a, uint32_t b);
 
 };
 

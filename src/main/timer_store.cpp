@@ -57,7 +57,7 @@
                       "%s"
 #define TIMER_LOG_PARAMS(T) (T)->id,                                           \
                             (T)->start_time_mono_ms,                           \
-                            (T)->interval,                                     \
+                            (T)->interval_ms,                                     \
                             (T)->repeat_for,                                   \
                             (T)->sequence_number,                              \
                             (T)->callback_url.c_str(),                         \
@@ -122,7 +122,7 @@ void TimerStore::add_timer(Timer* t)
     Timer* existing = map_it->second.front();
 
     // Compare timers for precedence, start-time then sequence-number.
-    if (overflow_less_than(t->start_time_mono_ms, existing->start_time_mono_ms) ||
+    if ((t->start_time_mono_ms < existing->start_time_mono_ms) ||
         ((t->start_time_mono_ms == existing->start_time_mono_ms) &&
          (t->sequence_number < existing->sequence_number)))
     {
@@ -195,7 +195,7 @@ void TimerStore::add_timer(Timer* t)
   uint64_t next_pop_time = t->next_pop_time();
   Bucket* bucket;
 
-  if (overflow_less_than(next_pop_time, _tick_timestamp))
+  if (next_pop_time < _tick_timestamp)
   {
     // The timer should have already popped so put it in the overdue timers,
     // and warn the user.
@@ -210,15 +210,15 @@ void TimerStore::add_timer(Timer* t)
                 TIMER_LOG_PARAMS(t));
     _overdue_timers.insert(t);
   }
-  else if (overflow_less_than(to_short_wheel_resolution(next_pop_time),
-           to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
+  else if (to_short_wheel_resolution(next_pop_time) <
+           to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS))
   {
 
     bucket = short_wheel_bucket(next_pop_time);
     bucket->insert(t);
   }
-  else if (overflow_less_than(to_long_wheel_resolution(next_pop_time),
-           to_long_wheel_resolution(_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
+  else if (to_long_wheel_resolution(next_pop_time) <
+           to_long_wheel_resolution(_tick_timestamp + LONG_WHEEL_PERIOD_MS))
   {
     bucket = long_wheel_bucket(next_pop_time);
     bucket->insert(t);
@@ -329,11 +329,11 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 
   // Now process the required number of ticks. Integer division does the
   // necessary rounding for us.
-  uint32_t current_timestamp = timestamp_ms();
-  uint32_t num_ticks = ((current_timestamp - (uint32_t)(_tick_timestamp)) /
+  uint64_t current_timestamp = timestamp_ms();
+  int32_t num_ticks = ((current_timestamp - _tick_timestamp) /
                    SHORT_WHEEL_RESOLUTION_MS);
 
-  for (int ii = 0; ii < (int)(num_ticks); ++ii)
+  for (int ii = 0; ii < num_ticks; ++ii)
   {
     // Pop all timers in the current bucket.
     Bucket* bucket = short_wheel_bucket(_tick_timestamp);
@@ -446,7 +446,7 @@ void TimerStore::refill_long_wheel()
     Timer* timer = _extra_heap.back();
 
     while ((timer != NULL) &&
-           (overflow_less_than(timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))
+           (timer->next_pop_time() < _tick_timestamp + LONG_WHEEL_PERIOD_MS))
     {
       // Remove timer from heap
       _extra_heap.pop_back();
@@ -706,12 +706,7 @@ void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
   {
     // Learn the interval so that this tombstone lasts long enough to catch
     // errors.
-    t->interval = existing->interval;
-    t->repeat_for = existing->interval;
+    t->interval_ms = existing->interval_ms;
+    t->repeat_for = existing->interval_ms;
   }
-}
-
-bool TimerStore::overflow_less_than(uint32_t a, uint32_t b)
-{
-  return ((a - b) > ((uint32_t)(1) << 31));
 }
