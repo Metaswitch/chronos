@@ -133,12 +133,12 @@ do_wait_sync() {
   sleep 2
 
   # Query Chronos via the 0MQ socket, parse out the number of Chronos nodes
-  # still needing to be queried, and check if it's 0. 
+  # still needing to be queried, and check if it's 0.
   # If not, wait for 5s and try again.
   while true
   do
     # Retrieve the statistics.
-    nodes=`/usr/share/clearwater/chronos/bin/cw_stat chronos chronos_scale_nodes_to_query`
+    nodes=`snmpget -Oqv -M. -v2c -c clearwater sprout-1.ajw3.cw-ngv.com .1.2.826.0.1.1578918.9.10.1`
 
     # If the nodes left to query is 0 or unset, we're finished
     if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]
@@ -147,7 +147,7 @@ do_wait_sync() {
     fi
 
     # If the statistic is unknown then the SNMP handler isn't installed. Give up
-    if [ "$nodes" = 'Unknown statistic "chronos_scale_nodes_to_query"' ]
+    if [ "$nodes" = 'Invalid OID: ".1.2.826.0.1.1578918.9.10.1"' ]
     then
       echo "SNMP statistics are not supported on this box. Please install the required packages and retry"
       break
