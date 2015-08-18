@@ -1,10 +1,10 @@
 # This file lists filenames for which we do not currently expect 100%
 # coverage. These include files from cpp-common as they're tested
-# elsewhere, and some files in Chronos that still need UTs. 
+# elsewhere, and some files in Chronos that still need UTs.
 # New files should have 100% code coverage (by lines); it may
 # be acceptable to use exclusion markers to achieve this.
 
-# Currently untested Chronos files. These should only be in 
+# Currently untested Chronos files. These should only be in
 # here temporarily
 src/main/replicator.cpp
 src/main/globals.cpp
@@ -12,7 +12,7 @@ src/main/murmur/MurmurHash3.cpp
 src/main/http_callback.cpp
 src/main/timer_handler.cpp
 
-# cpp-common files 
+# cpp-common files
 modules/cpp-common/src/baseresolver.cpp
 modules/cpp-common/src/httpstack.cpp
 modules/cpp-common/src/httpstack_utils.cpp
@@ -33,3 +33,8 @@ modules/cpp-common/src/dnsparser.cpp
 modules/cpp-common/src/logger.cpp
 modules/cpp-common/src/utils.cpp
 modules/cpp-common/src/zmq_lvc.cpp
+modules/cpp-common/src/snmp_agent.cpp
+modules/cpp-common/src/snmp_row.cpp
+modules/cpp-common/src/snmp_scalar.cpp
+modules/cpp-common/src/snmp_counter_table.cpp
+modules/cpp-common/src/snmp_continuous_accumulator_table.cpp

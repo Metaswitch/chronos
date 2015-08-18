@@ -102,20 +102,20 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
-  // Mark which replicas have been informed about the timer 
+  // Mark which replicas have been informed about the timer
   int update_replica_tracker(int replica_index);
 
-  // Return whether a particular replica has been informed about a timer  
+  // Return whether a particular replica has been informed about a timer
   bool has_replica_been_informed(int replica_index);
 
-  // Update the cluster information stored in the timer (replica list and 
+  // Update the cluster information stored in the timer (replica list and
   // cluster view ID)
   void update_cluster_information();
 
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
   TimerID id;
-  uint32_t start_time_mono_ms;
+  uint64_t start_time_mono_ms;
   uint32_t interval;
   uint32_t repeat_for;
   uint32_t sequence_number;
@@ -130,8 +130,8 @@ private:
 
   // The replica tracker is used to track which replicas need to be informed
   // if the replica is being moved off the current node (e.g. during scale
-  // down). Each bit corresponds to a replica in the timer's replica list, 
-  // where the primary replica corresponds to the least significant bit, 
+  // down). Each bit corresponds to a replica in the timer's replica list,
+  // where the primary replica corresponds to the least significant bit,
   // the second replica to the next least significant bit, and so on...
   uint32_t _replica_tracker;
 
