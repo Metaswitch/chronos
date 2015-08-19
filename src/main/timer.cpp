@@ -51,6 +51,7 @@
 #include <map>
 #include <atomic>
 #include <time.h>
+#include <cmath>
 
 uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 {
@@ -61,14 +62,17 @@ uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 
 static Hasher hasher;
 
-inline uint64_t clock_gettime_ms(int clock_id)
+inline uint32_t clock_gettime_ms(int clock_id)
 {
-  struct timespec time;
-  clock_gettime(clock_id, &time);
-  return ((time.tv_sec * 1000) + (time.tv_nsec / 1000000));
+  struct timespec now;
+  clock_gettime(clock_id, &now);
+  uint64_t time = now.tv_sec;
+  time *= 1000;
+  time += std::floor(now.tv_nsec / 1000000.0);
+  return time;
 }
 
-Timer::Timer(TimerID id, uint64_t interval_ms, uint32_t repeat_for) :
+Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   id(id),
   interval_ms(interval_ms),
   repeat_for(repeat_for),
@@ -93,7 +97,7 @@ Timer::~Timer()
 }
 
 // Returns the next pop time in ms.
-uint64_t Timer::next_pop_time()
+uint32_t Timer::next_pop_time()
 {
   std::string localhost;
   int replica_index = 0;
@@ -192,9 +196,9 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->String("timing");
     writer->StartObject();
     {
-      uint64_t realtime = clock_gettime_ms(CLOCK_REALTIME);
-      uint64_t monotime = clock_gettime_ms(CLOCK_MONOTONIC);
-      int32_t delta = (uint32_t)(start_time_mono_ms) - monotime;
+      uint32_t realtime = clock_gettime_ms(CLOCK_REALTIME);
+      uint32_t monotime = clock_gettime_ms(CLOCK_MONOTONIC);
+      int32_t delta = start_time_mono_ms - monotime;
       writer->String("start-time");
       writer->Int64(realtime + delta);
       writer->String("start-time-delta");

@@ -135,13 +135,13 @@ private:
   HealthChecker* _health_checker;
 
   // Constants controlling the size and resolution of the timer wheels.
-  static const int SHORT_WHEEL_RESOLUTION_MS = 10;
-  static const int SHORT_WHEEL_NUM_BUCKETS = 100;
+  static const int SHORT_WHEEL_RESOLUTION_MS = 8;
+  static const int SHORT_WHEEL_NUM_BUCKETS = 128;
   static const int SHORT_WHEEL_PERIOD_MS =
                                  (SHORT_WHEEL_RESOLUTION_MS * SHORT_WHEEL_NUM_BUCKETS);
 
   static const int LONG_WHEEL_RESOLUTION_MS = SHORT_WHEEL_PERIOD_MS;
-  static const int LONG_WHEEL_NUM_BUCKETS = 3600;
+  static const int LONG_WHEEL_NUM_BUCKETS = 4096;
   static const int LONG_WHEEL_PERIOD_MS =
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
 
@@ -162,10 +162,10 @@ private:
 
   // Timestamp of the next tick to process. This is stored in ms, and is always
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.
-  uint64_t _tick_timestamp;
+  uint32_t _tick_timestamp;
 
   // Return the current timestamp in ms.
-  static uint64_t timestamp_ms();
+  static uint32_t timestamp_ms();
 
   // Utility functions to locate a Timer's correct home in the store's timer
   // wheels.
@@ -174,14 +174,14 @@ private:
 
   // Utility functions to locate a bucket in the timer wheels based on a
   // timestamp.
-  Bucket* short_wheel_bucket(uint64_t t);
-  Bucket* long_wheel_bucket(uint64_t t);
+  Bucket* short_wheel_bucket(uint32_t t);
+  Bucket* long_wheel_bucket(uint32_t t);
 
   // Utility methods to convert a timestamp to the resolution used by the
   // wheels.  These round down (so to 10ms accuracy, 12345 -> 12340, but 12340
   // -> 12340).
-  static uint64_t to_short_wheel_resolution(uint64_t t);
-  static uint64_t to_long_wheel_resolution(uint64_t t);
+  static uint32_t to_short_wheel_resolution(uint32_t t);
+  static uint32_t to_long_wheel_resolution(uint32_t t);
 
   // Refill timer wheels from the longer duration stores.
   //
@@ -217,6 +217,9 @@ private:
 
   // Save the tombstone values from an existing timer
   void set_tombstone_values(Timer* t, Timer* existing);
+
+  // Compare two number that might have overflown
+  bool overflow_less_than(uint32_t a, uint32_t b);
 
 };
 

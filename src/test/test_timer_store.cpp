@@ -34,6 +34,8 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
+#include <cmath>
+
 #include "timer_store.h"
 #include "timer_helper.h"
 #include "test_interposer.hpp"
@@ -46,63 +48,53 @@
 
 using ::testing::MatchesRegex;
 
+static uint32_t get_time_ms()
+{
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  // Overflow to a 32 bit number is intentional
+  return ((now.tv_sec * 1000) + (now.tv_nsec / 1000000));
+}
+
+
 // The timer store has a granularity of 10ms. This means that timers may pop up
 // to 10ms late. As a result the timer store tests often add this granularity
 // when advancing time to guarantee that a timer has popped.
-const int TIMER_GRANULARITY_MS = 10;
+const int TIMER_GRANULARITY_MS = 8;
 
 class Overflow2h {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 2 hours
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - (2 * 60 * 60 * 1000));
+    cwtest_advance_time_ms(( - get_time_ms()) - (2 * 60 * 60 * 1000));
   }
 };
 
 class Overflow45m {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 45 minutes
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - (45 * 60 * 1000));
+    cwtest_advance_time_ms(( - get_time_ms()) - (45 * 60 * 1000));
   }
 };
 
 class Overflow45s {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 45 seconds
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - (45000));
+    cwtest_advance_time_ms(( - get_time_ms()) - (45000));
   }
 };
 
 class Overflow45ms {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 45ms
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - 45);
+    cwtest_advance_time_ms(( - get_time_ms()) - 45);
   }
 };
 
 class NoOverflow {
   static void set_time() {
     // Set the time to be just after overflow
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
-    cwtest_advance_time_ms( - (uint32_t)(now_ms));
+    cwtest_advance_time_ms( - get_time_ms());
   }
 };
 
@@ -130,14 +122,11 @@ protected:
     hc = new HealthChecker();
     ts = new TimerStore(hc);
 
-    // Default some timers to short, mid and long.
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
+    // Default some timers to short, mid and long
     for (int ii = 0; ii < 3; ++ii)
     {
       timers[ii] = default_timer(ii + 1);
-      timers[ii]->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+      timers[ii]->start_time_mono_ms = get_time_ms();
     }
 
     // Timer 1 will pop in 100ms.
@@ -186,8 +175,14 @@ TYPED_TEST(TestTimerStore, NearGetNextTimersTest)
   std::unordered_set<Timer*> next_timers;
   TestFixture::ts->get_next_timers(next_timers);
 
+  struct timespec now2;
+  clock_gettime(CLOCK_MONOTONIC, &now2);
+
   ASSERT_EQ(0u, next_timers.size());
   cwtest_advance_time_ms(100 + TIMER_GRANULARITY_MS);
+
+  struct timespec now3;
+  clock_gettime(CLOCK_MONOTONIC, &now3);
 
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());

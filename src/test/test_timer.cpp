@@ -54,8 +54,8 @@ protected:
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
     TimerID id = (TimerID)UINT_MAX + 10;
-    uint32_t interval_ms = 100;
-    uint32_t repeat_for = 200;
+    uint64_t interval_ms = 100;
+    uint64_t repeat_for = 200;
 
     t1 = new Timer(id, interval_ms, repeat_for);
     t1->start_time_mono_ms = 1000000;
@@ -94,7 +94,7 @@ TEST_F(TestTimer, FromJSONTests)
   clock_gettime(CLOCK_MONOTONIC, &ts);
   uint32_t mono_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
   clock_gettime(CLOCK_REALTIME, &ts);
-  uint64_t real_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+  uint32_t real_time = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 
   std::vector<std::string> failing_test_data;
 
@@ -233,7 +233,7 @@ TEST_F(TestTimer, FromJSONTests)
   // If delta-start-time was provided, use that
   timer = Timer::from_json(1, 0x11011100011101, delta_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
-  EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, (uint32_t)(timer->start_time_mono_ms));
+  EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, timer->start_time_mono_ms);
   delete timer;
 
   // If absolute start time was proved (and no delta-time), use that.
@@ -243,7 +243,7 @@ TEST_F(TestTimer, FromJSONTests)
 
   // Note that this compares to monotonic time (but the offest is the same as
   // the offset to realtime when we made the JSON string).
-  EXPECT_EQ(mono_time - 300, (uint32_t)(timer->start_time_mono_ms));
+  EXPECT_EQ(mono_time - 300, timer->start_time_mono_ms);
   delete timer;
 
   // Restore real time
@@ -324,8 +324,8 @@ TEST_F(TestTimer, ToJSON)
   // We need to use a new timer here, because the values we use in
   // testing (100ms and 200ms) are too short to be specified on the
   // JSON interface (which counts in seconds).
-  uint32_t interval_ms = 1000;
-  uint32_t repeat_for = 2000;
+  uint64_t interval_ms = 1000;
+  uint64_t repeat_for = 2000;
 
   Timer* t2 = new Timer(1, interval_ms, repeat_for);
   t2->start_time_mono_ms = 1000000;
