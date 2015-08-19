@@ -439,7 +439,7 @@ void TimerStore::maybe_refill_wheels()
 }
 
 // Refill the long timer wheel by taking all timers from the heap that are due
-// to pop in < 1hr.
+// to pop in < long wheel timer total.
 void TimerStore::refill_long_wheel()
 {
   if (!_extra_heap.empty())
