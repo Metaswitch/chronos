@@ -371,7 +371,6 @@ uint32_t TimerStore::timestamp_ms()
   // uinit64 to avoid wrapping).
   time = ts.tv_sec;
   time *= 1000;
-  //return (uint64_t)((ts.tv_sec * 1000) + std::floor(ts.tv_nsec / 1000000.0));
   time += ts.tv_nsec / 1000000;
   return time;
 }
