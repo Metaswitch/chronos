@@ -414,7 +414,7 @@ TYPED_TEST(TestTimerStore, ReallyLongTimer)
 
 TYPED_TEST(TestTimerStore, DeleteNearTimer)
 {
-  uint64_t interval_ms = TestFixture::timers[0]->interval_ms;
+  uint32_t interval_ms = TestFixture::timers[0]->interval_ms;
   TestFixture::ts->add_timer(TestFixture::timers[0]);
   TestFixture::ts->delete_timer(1);
   std::unordered_set<Timer*> next_timers;
@@ -428,7 +428,7 @@ TYPED_TEST(TestTimerStore, DeleteNearTimer)
 
 TYPED_TEST(TestTimerStore, DeleteMidTimer)
 {
-  uint64_t interval_ms = TestFixture::timers[2]->interval_ms;
+  uint32_t interval_ms = TestFixture::timers[2]->interval_ms;
   TestFixture::ts->add_timer(TestFixture::timers[1]);
   TestFixture::ts->delete_timer(2);
   std::unordered_set<Timer*> next_timers;
@@ -442,7 +442,7 @@ TYPED_TEST(TestTimerStore, DeleteMidTimer)
 
 TYPED_TEST(TestTimerStore, DeleteLongTimer)
 {
-  uint64_t interval_ms = TestFixture::timers[2]->interval_ms;
+  uint32_t interval_ms = TestFixture::timers[2]->interval_ms;
   TestFixture::ts->add_timer(TestFixture::timers[2]);
   TestFixture::ts->delete_timer(3);
   cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
@@ -703,7 +703,7 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 TYPED_TEST(TestTimerStore, TimerPopsOnTheHour)
 {
   std::unordered_set<Timer*> next_timers;
-  uint64_t pop_time_ms;
+  uint32_t pop_time_ms;
 
   pop_time_ms = (TestFixture::timers[0]->start_time_mono_ms / (60 * 60 * 1000));
   pop_time_ms += 2;

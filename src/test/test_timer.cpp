@@ -54,8 +54,8 @@ protected:
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
     TimerID id = (TimerID)UINT_MAX + 10;
-    uint64_t interval_ms = 100;
-    uint64_t repeat_for = 200;
+    uint32_t interval_ms = 100;
+    uint32_t repeat_for = 200;
 
     t1 = new Timer(id, interval_ms, repeat_for);
     t1->start_time_mono_ms = 1000000;
@@ -324,8 +324,8 @@ TEST_F(TestTimer, ToJSON)
   // We need to use a new timer here, because the values we use in
   // testing (100ms and 200ms) are too short to be specified on the
   // JSON interface (which counts in seconds).
-  uint64_t interval_ms = 1000;
-  uint64_t repeat_for = 2000;
+  uint32_t interval_ms = 1000;
+  uint32_t repeat_for = 2000;
 
   Timer* t2 = new Timer(1, interval_ms, repeat_for);
   t2->start_time_mono_ms = 1000000;
@@ -348,7 +348,7 @@ TEST_F(TestTimer, ToJSON)
   ASSERT_NE((void*)NULL, t2);
 
   EXPECT_EQ(2u, t3->id) << json;
-  EXPECT_EQ(1000000u, (uint32_t)(t3->start_time_mono_ms)) << json;
+  EXPECT_EQ(1000000u, t3->start_time_mono_ms) << json;
   EXPECT_EQ(t2->interval_ms, t3->interval_ms) << json;
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
