@@ -34,8 +34,6 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <cmath>
-
 #include "globals.h"
 #include "timer_store.h"
 #include "log.h"

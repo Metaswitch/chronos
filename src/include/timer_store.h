@@ -219,7 +219,7 @@ private:
   // Save the tombstone values from an existing timer
   void set_tombstone_values(Timer* t, Timer* existing);
 
-  // Compare two number that might have overflown
+  // Compare two numbers that might have overflown
   bool overflow_less_than(uint32_t a, uint32_t b);
 
 };

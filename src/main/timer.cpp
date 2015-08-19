@@ -51,7 +51,6 @@
 #include <map>
 #include <atomic>
 #include <time.h>
-#include <cmath>
 
 uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 {
@@ -68,7 +67,7 @@ inline uint32_t clock_gettime_ms(int clock_id)
   clock_gettime(clock_id, &now);
   uint64_t time = now.tv_sec;
   time *= 1000;
-  time += std::floor(now.tv_nsec / 1000000.0);
+  time += now.tv_nsec / 1000000;
   return time;
 }
 

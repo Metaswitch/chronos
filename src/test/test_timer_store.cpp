@@ -34,8 +34,6 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <cmath>
-
 #include "timer_store.h"
 #include "timer_helper.h"
 #include "test_interposer.hpp"
@@ -54,7 +52,10 @@ static uint32_t get_time_ms()
   clock_gettime(CLOCK_MONOTONIC, &now);
 
   // Overflow to a 32 bit number is intentional
-  return ((now.tv_sec * 1000) + (now.tv_nsec / 1000000));
+  uint64_t time = now.tv_sec;
+  time *= 1000;
+  time += now.tv_nsec / 1000000;
+  return time;
 }
 
 
@@ -175,14 +176,8 @@ TYPED_TEST(TestTimerStore, NearGetNextTimersTest)
   std::unordered_set<Timer*> next_timers;
   TestFixture::ts->get_next_timers(next_timers);
 
-  struct timespec now2;
-  clock_gettime(CLOCK_MONOTONIC, &now2);
-
   ASSERT_EQ(0u, next_timers.size());
   cwtest_advance_time_ms(100 + TIMER_GRANULARITY_MS);
-
-  struct timespec now3;
-  clock_gettime(CLOCK_MONOTONIC, &now3);
 
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
