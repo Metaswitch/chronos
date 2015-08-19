@@ -124,7 +124,7 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
 {
   std::unordered_set<Timer*> timers;
   Timer* timer = default_timer(1);
-  timer->repeat_for = timer->interval * 2;
+  timer->repeat_for = timer->interval_ms * 2;
   timers.insert(timer);
 
   EXPECT_CALL(*_store, get_next_timers(_)).
@@ -191,9 +191,9 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
   std::unordered_set<Timer*> timers1;
   std::unordered_set<Timer*> timers2;
   Timer* timer1 = default_timer(1);
-  timer1->repeat_for = timer1->interval * 2;
+  timer1->repeat_for = timer1->interval_ms * 2;
   Timer* timer2 = default_timer(2);
-  timer2->repeat_for = timer2->interval * 2;
+  timer2->repeat_for = timer2->interval_ms * 2;
   timers1.insert(timer1);
   timers2.insert(timer2);
 
@@ -288,7 +288,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   cwtest_completely_control_time();
 
   Timer* timer = default_timer(1);
-  timer->interval = 100;
+  timer->interval_ms = 100;
   timer->repeat_for = 100;
 
   // Start the timer right now.

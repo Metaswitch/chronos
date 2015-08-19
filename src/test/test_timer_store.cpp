@@ -46,63 +46,56 @@
 
 using ::testing::MatchesRegex;
 
+static uint32_t get_time_ms()
+{
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  // Overflow to a 32 bit number is intentional
+  uint64_t time = now.tv_sec;
+  time *= 1000;
+  time += now.tv_nsec / 1000000;
+  return time;
+}
+
+
 // The timer store has a granularity of 10ms. This means that timers may pop up
 // to 10ms late. As a result the timer store tests often add this granularity
 // when advancing time to guarantee that a timer has popped.
-const int TIMER_GRANULARITY_MS = 10;
+const int TIMER_GRANULARITY_MS = 8;
 
 class Overflow2h {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 2 hours
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - (2 * 60 * 60 * 1000));
+    cwtest_advance_time_ms(( - get_time_ms()) - (2 * 60 * 60 * 1000));
   }
 };
 
 class Overflow45m {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 45 minutes
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - (45 * 60 * 1000));
+    cwtest_advance_time_ms(( - get_time_ms()) - (45 * 60 * 1000));
   }
 };
 
 class Overflow45s {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 45 seconds
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - (45000));
+    cwtest_advance_time_ms(( - get_time_ms()) - (45000));
   }
 };
 
 class Overflow45ms {
   static void set_time() {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
     // Align with overflow point minus 45ms
-    cwtest_advance_time_ms(( - (uint32_t)(now_ms)) - 45);
+    cwtest_advance_time_ms(( - get_time_ms()) - 45);
   }
 };
 
 class NoOverflow {
   static void set_time() {
     // Set the time to be just after overflow
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t now_ms = (now.tv_sec * 1000) + (now.tv_nsec / 1000000);
-
-    cwtest_advance_time_ms( - (uint32_t)(now_ms));
+    cwtest_advance_time_ms( - get_time_ms());
   }
 };
 
@@ -130,24 +123,21 @@ protected:
     hc = new HealthChecker();
     ts = new TimerStore(hc);
 
-    // Default some timers to short, mid and long.
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
+    // Default some timers to short, mid and long
     for (int ii = 0; ii < 3; ++ii)
     {
       timers[ii] = default_timer(ii + 1);
-      timers[ii]->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+      timers[ii]->start_time_mono_ms = get_time_ms();
     }
 
     // Timer 1 will pop in 100ms.
-    timers[0]->interval = 100;
+    timers[0]->interval_ms = 100;
 
     // Timer 2 will pop strictly after 1 second.
-    timers[1]->interval = 10000 + 200;
+    timers[1]->interval_ms = 10000 + 200;
 
     // Timer 3 will pop strictly after 1 hour
-    timers[2]->interval = (3600 * 1000) + 300;
+    timers[2]->interval_ms = (3600 * 1000) + 300;
 
     // Create an out of the blue tombstone for timer one.
     tombstone = Timer::create_tombstone(1, 0);
@@ -202,7 +192,7 @@ TYPED_TEST(TestTimerStore, NearGetNextTimersTest)
 
 TYPED_TEST(TestTimerStore, NearGetNextTimersOffsetTest)
 {
-  TestFixture::timers[0]->interval = 1600;
+  TestFixture::timers[0]->interval_ms = 1600;
 
   TestFixture::ts->add_timer(TestFixture::timers[0]);
 
@@ -253,7 +243,7 @@ TYPED_TEST(TestTimerStore, LongGetNextTimersTest)
   TestFixture::ts->get_next_timers(next_timers);
 
   ASSERT_EQ(0u, next_timers.size());
-  cwtest_advance_time_ms(TestFixture::timers[2]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(TestFixture::timers[2]->interval_ms + TIMER_GRANULARITY_MS);
 
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
@@ -269,7 +259,7 @@ TYPED_TEST(TestTimerStore, LongGetNextTimersTest)
 TYPED_TEST(TestTimerStore, MultiNearGetNextTimersTest)
 {
   // Shorten timer two to be under 1 second.
-  TestFixture::timers[1]->interval = 400;
+  TestFixture::timers[1]->interval_ms = 400;
 
   TestFixture::ts->add_timer(TestFixture::timers[0]);
   TestFixture::ts->add_timer(TestFixture::timers[1]);
@@ -294,14 +284,14 @@ TYPED_TEST(TestTimerStore, ClashingMultiMidGetNextTimersTest)
 {
   // Lengthen timer one to be in the same second bucket as timer two but different ms
   // buckets.
-  TestFixture::timers[0]->interval = 10000 + 100;
+  TestFixture::timers[0]->interval_ms = 10000 + 100;
 
   TestFixture::ts->add_timer(TestFixture::timers[0]);
   TestFixture::ts->add_timer(TestFixture::timers[1]);
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(TestFixture::timers[0]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[0] = *next_timers.begin();
@@ -309,7 +299,7 @@ TYPED_TEST(TestTimerStore, ClashingMultiMidGetNextTimersTest)
 
   next_timers.clear();
 
-  cwtest_advance_time_ms(TestFixture::timers[1]->interval - TestFixture::timers[0]->interval);
+  cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms - TestFixture::timers[0]->interval_ms);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[1] = *next_timers.begin();
@@ -326,14 +316,14 @@ TYPED_TEST(TestTimerStore, ClashingMultiMidGetNextTimersTest)
 TYPED_TEST(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 {
   // Lengthen timer one to be in a different second bucket than timer two.
-  TestFixture::timers[0]->interval = 9000 + 100;
+  TestFixture::timers[0]->interval_ms = 9000 + 100;
 
   TestFixture::ts->add_timer(TestFixture::timers[0]);
   TestFixture::ts->add_timer(TestFixture::timers[1]);
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(TestFixture::timers[0]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[0] = *next_timers.begin();
@@ -341,7 +331,7 @@ TYPED_TEST(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 
   next_timers.clear();
 
-  cwtest_advance_time_ms(TestFixture::timers[1]->interval - TestFixture::timers[0]->interval);
+  cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms - TestFixture::timers[0]->interval_ms);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[1] = *next_timers.begin();
@@ -356,8 +346,8 @@ TYPED_TEST(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
 {
   // Lengthen timer one and two to be in the extra heap.
-  TestFixture::timers[0]->interval = (3600 * 1000) + 100;
-  TestFixture::timers[1]->interval = (3600 * 1000) + 200;
+  TestFixture::timers[0]->interval_ms = (3600 * 1000) + 100;
+  TestFixture::timers[1]->interval_ms = (3600 * 1000) + 200;
 
   TestFixture::ts->add_timer(TestFixture::timers[0]);
   TestFixture::ts->add_timer(TestFixture::timers[1]);
@@ -365,7 +355,7 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
 
   std::unordered_set<Timer*> next_timers;
 
-  cwtest_advance_time_ms(TestFixture::timers[0]->interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[0] = *next_timers.begin();
@@ -373,7 +363,7 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
 
   next_timers.clear();
 
-  cwtest_advance_time_ms(TestFixture::timers[1]->interval - TestFixture::timers[0]->interval);
+  cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms - TestFixture::timers[0]->interval_ms);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[1] = *next_timers.begin();
@@ -381,7 +371,7 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
 
   next_timers.clear();
 
-  cwtest_advance_time_ms(TestFixture::timers[2]->interval - TestFixture::timers[1]->interval);
+  cwtest_advance_time_ms(TestFixture::timers[2]->interval_ms - TestFixture::timers[1]->interval_ms);
   TestFixture::ts->get_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   TestFixture::timers[2] = *next_timers.begin();
@@ -396,7 +386,7 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
 TYPED_TEST(TestTimerStore, ReallyLongTimer)
 {
   // Lengthen timer three to really long (10 hours)
-  TestFixture::timers[2]->interval = (3600 * 1000) * 10;
+  TestFixture::timers[2]->interval_ms = (3600 * 1000) * 10;
   TestFixture::ts->add_timer(TestFixture::timers[2]);
 
   std::unordered_set<Timer*> next_timers;
@@ -419,11 +409,11 @@ TYPED_TEST(TestTimerStore, ReallyLongTimer)
 
 TYPED_TEST(TestTimerStore, DeleteNearTimer)
 {
-  uint64_t interval = TestFixture::timers[0]->interval;
+  uint32_t interval_ms = TestFixture::timers[0]->interval_ms;
   TestFixture::ts->add_timer(TestFixture::timers[0]);
   TestFixture::ts->delete_timer(1);
   std::unordered_set<Timer*> next_timers;
-  cwtest_advance_time_ms(interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
   delete TestFixture::timers[1];
@@ -433,11 +423,11 @@ TYPED_TEST(TestTimerStore, DeleteNearTimer)
 
 TYPED_TEST(TestTimerStore, DeleteMidTimer)
 {
-  uint64_t interval = TestFixture::timers[2]->interval;
+  uint32_t interval_ms = TestFixture::timers[2]->interval_ms;
   TestFixture::ts->add_timer(TestFixture::timers[1]);
   TestFixture::ts->delete_timer(2);
   std::unordered_set<Timer*> next_timers;
-  cwtest_advance_time_ms(interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
   delete TestFixture::timers[0];
@@ -447,10 +437,10 @@ TYPED_TEST(TestTimerStore, DeleteMidTimer)
 
 TYPED_TEST(TestTimerStore, DeleteLongTimer)
 {
-  uint64_t interval = TestFixture::timers[2]->interval;
+  uint32_t interval_ms = TestFixture::timers[2]->interval_ms;
   TestFixture::ts->add_timer(TestFixture::timers[2]);
   TestFixture::ts->delete_timer(3);
-  cwtest_advance_time_ms(interval + TIMER_GRANULARITY_MS);
+  cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
   std::unordered_set<Timer*> next_timers;
   TestFixture::ts->get_next_timers(next_timers);
   EXPECT_TRUE(next_timers.empty());
@@ -564,7 +554,7 @@ TYPED_TEST(TestTimerStore, OverwriteWithTombstone)
 
   Timer* extracted = *next_timers.begin();
   EXPECT_TRUE(extracted->is_tombstone());
-  EXPECT_EQ(100u, extracted->interval);
+  EXPECT_EQ(100u, extracted->interval_ms);
   EXPECT_EQ(100u, extracted->repeat_for);
 
   delete TestFixture::timers[1];
@@ -576,8 +566,8 @@ TYPED_TEST(TestTimerStore, OverwriteWithTombstone)
 // we should be able to reliably update/TestFixture::tombstone timers.
 TYPED_TEST(TestTimerStore, Non10msShortTimerUpdate)
 {
-  // Offset the interval of the first timer so it's not a multiple of 10ms.
-  TestFixture::timers[0]->interval += 4;
+  // Offset the interval_ms of the first timer so it's not a multiple of 10ms.
+  TestFixture::timers[0]->interval_ms += 4;
 
   TestFixture::ts->add_timer(TestFixture::timers[0]);
 
@@ -620,7 +610,7 @@ TYPED_TEST(TestTimerStore, Non10msShortTimerUpdate)
 TYPED_TEST(TestTimerStore, Non10msMediumTimerUpdate)
 {
   // Offset the interval of the second timer so it's not a multiple of 10ms.
-  TestFixture::timers[1]->interval += 4;
+  TestFixture::timers[1]->interval_ms += 4;
 
   TestFixture::ts->add_timer(TestFixture::timers[1]);
 
@@ -669,7 +659,7 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 
   // Timers all pop 1hr, 1s, 500ms from the start of the test.
   // Set timer 1.
-  TestFixture::timers[0]->interval = ((60 * 60 * 1000) + (1 * 1000) + 500);
+  TestFixture::timers[0]->interval_ms = ((60 * 60 * 1000) + (1 * 1000) + 500);
   TestFixture::ts->add_timer(TestFixture::timers[0]);
 
   // Move on by 1hr. Nothing has popped.
@@ -680,7 +670,7 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
   EXPECT_EQ(0u, next_timers.size());
 
   // Timer 2 pops in 1s, 500ms
-  TestFixture::timers[1]->interval = ((1 * 1000) + 500);
+  TestFixture::timers[1]->interval_ms = ((1 * 1000) + 500);
   TestFixture::ts->add_timer(TestFixture::timers[1]);
 
   // Move on by 1s. Nothing has popped.
@@ -690,7 +680,7 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
   EXPECT_EQ(0u, next_timers.size());
 
   // Timer 3 pops in 500ms.
-  TestFixture::timers[2]->interval = 500;
+  TestFixture::timers[2]->interval_ms = 500;
   TestFixture::ts->add_timer(TestFixture::timers[2]);
 
   // Move on by 500ms. All timers pop.
@@ -708,12 +698,12 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 TYPED_TEST(TestTimerStore, TimerPopsOnTheHour)
 {
   std::unordered_set<Timer*> next_timers;
-  uint64_t pop_time_ms;
+  uint32_t pop_time_ms;
 
   pop_time_ms = (TestFixture::timers[0]->start_time_mono_ms / (60 * 60 * 1000));
   pop_time_ms += 2;
   pop_time_ms *= (60 * 60 * 1000);
-  TestFixture::timers[0]->interval = pop_time_ms - TestFixture::timers[0]->start_time_mono_ms;
+  TestFixture::timers[0]->interval_ms = pop_time_ms - TestFixture::timers[0]->start_time_mono_ms;
   TestFixture::ts->add_timer(TestFixture::timers[0]);
 
   // Move on to the pop time. The timer pops correctly.
