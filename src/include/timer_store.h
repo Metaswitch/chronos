@@ -81,9 +81,9 @@ private:
   // - A set of overdue timers.
   //
   // New timers are placed into on of these structures:
-  // - The short wheel if due to pop in the next second.
-  // - The long wheel if due to pop in the next hour (but not the next second).
-  // - The heap if due to pop >=1hr in the future.
+  // - The short wheel if due to pop in ~the next second.
+  // - The long wheel if due to pop in ~the next hour (but not ~the next second).
+  // - The heap if due to pop ~>=1hr in the future.
   // - The overdue set if they should have already popped.
   //
   // Timers in the overdue set are popped whenever `get_next_timers` is called.

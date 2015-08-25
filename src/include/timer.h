@@ -122,6 +122,7 @@ public:
   std::string cluster_view_id;
   std::vector<std::string> replicas;
   std::vector<std::string> extra_replicas;
+  std::vector<std::string> tags;
   std::string callback_url;
   std::string callback_body;
 

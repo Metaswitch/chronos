@@ -83,6 +83,7 @@ private:
 
   pthread_t _handler_thread;
   uint32_t _timer_count;
+  std::map<std::string, int> _tag_count = {};
   volatile bool _terminate;
   volatile unsigned int _nearest_new_timer;
   pthread_mutex_t _mutex;

@@ -56,6 +56,7 @@ TimerHandler::TimerHandler(TimerStore* store,
                            _total_timers_table(total_timers_table),
                            _current_timers_scalar(current_timers_scalar),
                            _timer_count(0),
+                           _tag_count({}),
                            _terminate(false),
                            _nearest_new_timer(-1)
 {
