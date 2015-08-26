@@ -45,26 +45,43 @@
 #include <map>
 #include <string>
 
+struct TimerPair {
+  Timer* active_timer;
+  Timer* information_timer;
+
+  bool operator==(const TimerPair &other) const
+  {
+    return (active_timer->id == other.active_timer->id &&
+            information_timer->id == other.information_timer->id);
+  }
+
+  bool operator<(const TimerPair &other) const
+  {
+    return (active_timer->id < other.active_timer->id);
+  }
+};
+
+namespace std
+{
+  template <>
+  struct hash<TimerPair>
+  {
+    size_t operator()(const TimerPair& tp) const
+    {
+      return (hash<uint64_t>()(tp.active_timer->id));
+    }
+  };
+}
 
 class TimerStore
 {
 public:
-  struct TimerPair {
-    Timer* active_timer;
-    Timer* information_timer;
-
-    bool operator==(const TimerPair &other) const
-    {
-      return (active_timer == other.active_timer &&
-              information_timer == other.information_timer);
-    }
-  };
 
   TimerStore(HealthChecker* hc);
   virtual ~TimerStore();
 
   // Insert a timer (with an ID that doesn't exist already)
-  virtual void insert(TimerPair);
+  virtual void insert(TimerPair, TimerID, uint32_t, std::string);
 
   // Fetch a timer by ID, populate the TimerPair, and return whether the
   // value was found or not
@@ -196,8 +213,8 @@ private:
 
   // Utility functions to locate a Timer's correct home in the store's timer
   // wheels.
-  //Bucket* short_wheel_bucket(Timer* timer);
-  //Bucket* long_wheel_bucket(Timer* timer);
+  Bucket* short_wheel_bucket(TimerPair timer);
+  Bucket* long_wheel_bucket(TimerPair timer);
 
   // Utility functions to locate a bucket in the timer wheels based on a
   // timestamp.
@@ -250,17 +267,6 @@ private:
 
 };
 
-namespace std
-{
-  template <>
-  struct hash<TimerStore::TimerPair>
-  {
-    size_t operator()(const TimerStore::TimerPair& tp) const
-    {
-      return hash<int>()(tp.active_timer->id);
-    }
-  };
- }
 
 #endif
 

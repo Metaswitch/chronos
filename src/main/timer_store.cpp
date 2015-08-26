@@ -55,13 +55,13 @@
                       "URL:      %s\n"                                         \
                       "Body:\n"                                                \
                       "%s"
-#define TIMER_LOG_PARAMS(T) (T)->id,                                           \
-                            (T)->start_time_mono_ms,                           \
-                            (T)->interval_ms,                                     \
-                            (T)->repeat_for,                                   \
-                            (T)->sequence_number,                              \
-                            (T)->callback_url.c_str(),                         \
-                            (T)->callback_body.c_str()
+#define TIMER_LOG_PARAMS(T) (T).active_timer->id,                                           \
+                            (T).active_timer->start_time_mono_ms,                           \
+                            (T).active_timer->interval_ms,                                     \
+                            (T).active_timer->repeat_for,                                   \
+                            (T).active_timer->sequence_number,                              \
+                            (T).active_timer->callback_url.c_str(),                         \
+                            (T).active_timer->callback_body.c_str()
 
 TimerStore::TimerStore(HealthChecker* hc) :
   _health_checker(hc)
@@ -72,17 +72,13 @@ TimerStore::TimerStore(HealthChecker* hc) :
 TimerStore::~TimerStore()
 {
   // Delete the timers in the lookup table as they will never pop now.
-  for (std::map<TimerID, std::vector<Timer*>>::iterator it =
+  for (std::map<TimerID, TimerPair>::iterator it =
                                                 _timer_lookup_table.begin();
                                                 it != _timer_lookup_table.end();
                                                 ++it)
   {
-    for (std::vector<Timer*>::iterator it_timer = it->second.begin();
-                                       it_timer != it->second.end();
-                                       ++it_timer)
-    {
-      delete *it_timer;
-    }
+    delete it->second.active_timer;
+    delete it->second.information_timer;
   }
 
   _timer_lookup_table.clear();
@@ -100,7 +96,7 @@ TimerStore::~TimerStore()
   _extra_heap.clear();
 }
 
-void TimerStore::insert(TimerPair* tp,
+void TimerStore::insert(TimerPair tp,
                         TimerID id,
                         uint32_t next_pop_time,
                         std::string cluster_view_id)
@@ -151,6 +147,21 @@ void TimerStore::insert(TimerPair* tp,
   // We've successfully added a timer, so confirm to the
   // health-checker that we're still healthy.
   _health_checker->health_check_passed();
+}
+
+bool TimerStore::fetch(TimerID id, TimerPair&)
+{
+  return true;
+}
+
+void TimerStore::fetch_next_timers(std::unordered_set<TimerPair>&)
+{
+}
+
+bool TimerStore::get_by_view_id(std::string cluster_view_id,
+                                std::vector<TimerPair>&)
+{
+  return true;
 }
 
 /*
@@ -343,6 +354,7 @@ void TimerStore::delete_timer_from_timer_wheel(Timer* timer)
       num_erased = bucket->erase(timer);
 
       if (num_erased == 0)
+
       {
         std::vector<Timer*>::iterator heap_it;
         heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
@@ -436,14 +448,14 @@ uint32_t TimerStore::to_long_wheel_resolution(uint32_t t)
   return (t - (t % LONG_WHEEL_RESOLUTION_MS));
 }
 
-TimerStore::Bucket* TimerStore::short_wheel_bucket(Timer* timer)
+TimerStore::Bucket* TimerStore::short_wheel_bucket(TimerPair timer)
 {
-  return short_wheel_bucket(timer->next_pop_time());
+  return short_wheel_bucket(timer.active_timer->next_pop_time());
 }
 
-TimerStore::Bucket* TimerStore::long_wheel_bucket(Timer* timer)
+TimerStore::Bucket* TimerStore::long_wheel_bucket(TimerPair timer)
 {
-  return long_wheel_bucket(timer->next_pop_time());
+  return long_wheel_bucket(timer.active_timer->next_pop_time());
 }
 
 TimerStore::Bucket* TimerStore::short_wheel_bucket(uint32_t t)
@@ -496,10 +508,10 @@ void TimerStore::refill_long_wheel()
   if (!_extra_heap.empty())
   {
     std::pop_heap(_extra_heap.begin(), _extra_heap.end());
-    Timer* timer = _extra_heap.back();
+    TimerPair timer = _extra_heap.back();
 
-    while ((timer != NULL) &&
-           (overflow_less_than(timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))
+    while ((timer.active_timer != NULL) &&
+           (overflow_less_than(timer.active_timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))
     {
       // Remove timer from heap
       _extra_heap.pop_back();
@@ -513,7 +525,7 @@ void TimerStore::refill_long_wheel()
       }
       else
       {
-        timer = NULL;
+        timer.active_timer = NULL;
       }
     }
 
@@ -535,7 +547,7 @@ void TimerStore::refill_short_wheel()
                         it != long_bucket->end();
                         ++it)
   {
-    Timer* timer = *it;
+    TimerPair timer = *it;
     Bucket* short_bucket = short_wheel_bucket(timer);
     short_bucket->insert(timer);
   }
@@ -548,7 +560,7 @@ void TimerStore::refill_short_wheel()
 // couldn't find in the buckets and the heap.  It's an expensive operation but
 // is a last ditch effort to restore consistency.
 // LCOV_EXCL_START
-void TimerStore::purge_timer_from_wheels(Timer* t)
+/*void TimerStore::purge_timer_from_wheels(Timer* t)
 {
   TRC_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
 
@@ -567,7 +579,7 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
       TRC_WARNING("  Deleting timer %lu from long wheel bucket %d", t->id, ii);
     }
   }
-}
+}*/
 // LCOV_EXCL_STOP
 
 /*void TimerStore::update_replica_tracker_for_timer(TimerID id,

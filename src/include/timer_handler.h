@@ -72,7 +72,7 @@ public:
 #endif
 
 private:
-  void pop(std::unordered_set<TimerStore::TimerPair>&);
+  void pop(std::unordered_set<TimerPair>&);
   void pop(Timer*);
   bool timer_is_on_node(std::string, std::string, Timer*, std::vector<std::string>&);
   void set_tombstone_values(Timer* timer, Timer* existing);

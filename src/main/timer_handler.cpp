@@ -102,11 +102,11 @@ TimerHandler::~TimerHandler()
 
 void TimerHandler::add_timer_to_store(Timer* timer)
 {
-  TimerStore::TimerPair store_timers;
+  TimerPair store_timers;
   bool successful = _store->fetch(timer->id, store_timers);
 
 
-  TimerStore::TimerPair new_timer;
+  TimerPair new_timer;
 
   if (successful)
   {
@@ -168,7 +168,11 @@ void TimerHandler::add_timer_to_store(Timer* timer)
       // so we delete the reference to the old pair, and insert the new pair
       delete store_timers.active_timer;
       delete store_timers.information_timer;
-      _store->insert(new_timer);
+
+      TimerID id = new_timer.active_timer->id;
+      uint32_t next_pop_time = new_timer.active_timer->next_pop_time();
+      std::string cluster_view_id = new_timer.active_timer->cluster_view_id;
+      _store->insert(new_timer, id, next_pop_time, cluster_view_id);
     }
   }
 }
@@ -208,7 +212,7 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
                                                     int replica_index)
 {
   pthread_mutex_lock(&_mutex);
-  TimerStore::TimerPair store_timers;
+  TimerPair store_timers;
   bool successful = _store->fetch(id, store_timers);
 
   if (successful)
@@ -263,7 +267,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            std::string& get_response)
 {
   pthread_mutex_lock(&_mutex);
-  std::vector<TimerStore::TimerPair> timers;
+  std::vector<TimerPair> timers;
   bool successful = _store->get_by_view_id(cluster_view_id, timers);
 
   if (successful)
@@ -281,7 +285,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   writer.StartArray();
 
   int retrieved_timers = 0;
-  for (std::vector<TimerStore::TimerPair>::iterator it = timers.begin();
+  for (std::vector<TimerPair>::iterator it = timers.begin();
                                         it != timers.end();
                                         ++it)
   {
@@ -400,7 +404,7 @@ bool TimerHandler::timer_is_on_node(std::string request_node,
 // until we're terminated).  If we are woken while waiting for one set of timers to
 // pop, check the timer store to make sure we're holding the nearest timers.
 void TimerHandler::run() {
-  std::unordered_set<TimerStore::TimerPair> next_timers;
+  std::unordered_set<TimerPair> next_timers;
   std::unordered_set<Timer*>::iterator sample_timer;
 
   pthread_mutex_lock(&_mutex);
@@ -445,7 +449,7 @@ void TimerHandler::run() {
     _store->fetch_next_timers(next_timers);
   }
 
-  for (std::unordered_set<TimerStore::TimerPair>::iterator it = next_timers.begin();
+  for (std::unordered_set<TimerPair>::iterator it = next_timers.begin();
                                             it != next_timers.end();
                                             ++it)
   {
@@ -474,9 +478,9 @@ void TimerHandler::run() {
 
 // Pop a set of timers, this function takes ownership of the timers and
 // thus empties the passed in set.
-void TimerHandler::pop(std::unordered_set<TimerStore::TimerPair>& timers)
+void TimerHandler::pop(std::unordered_set<TimerPair>& timers)
 {
-  for (std::unordered_set<TimerStore::TimerPair>::iterator it = timers.begin();
+  for (std::unordered_set<TimerPair>::iterator it = timers.begin();
                                             it != timers.end();
                                             ++it)
   {
