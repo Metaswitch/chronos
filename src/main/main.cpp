@@ -173,6 +173,13 @@ int main(int argc, char** argv)
   current_timers_scalar = new SNMP::U32Scalar("chronos_current_timers_scalar",
                                               ".1.2.826.0.1.1578918.9.10.5");
 
+  remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
+                                                ".1.2.826.0.1.1578918.9.10.1");
+  timers_processed_table = SNMP::CounterTable::create("chronos_processed_timers_table",
+                                                                    ".1.2.826.0.1.1578918.9.10.2");
+  invalid_timers_processed_table = SNMP::CounterTable::create("chronos_invalid_timers_processed_table",
+                                                                    ".1.2.826.0.1.1578918.9.10.3");
+
   // Must be called after all SNMP tables have been registered
   init_snmp_handler_threads("chronos");
 
@@ -273,13 +280,6 @@ int main(int argc, char** argv)
   }
 
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
-
-  remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
-                                                ".1.2.826.0.1.1578918.9.10.1");
-  timers_processed_table = SNMP::CounterTable::create("chronos_processed_timers_table",
-                                                                    ".1.2.826.0.1.1578918.9.10.2");
-  invalid_timers_processed_table = SNMP::CounterTable::create("chronos_invalid_timers_processed_table",
-                                                                    ".1.2.826.0.1.1578918.9.10.3");
 
   ChronosInternalConnection* chronos_internal_connection =
             new ChronosInternalConnection(http_resolver,

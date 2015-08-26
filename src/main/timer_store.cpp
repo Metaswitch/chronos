@@ -57,7 +57,7 @@
                       "%s"
 #define TIMER_LOG_PARAMS(T) (T)->id,                                           \
                             (T)->start_time_mono_ms,                           \
-                            (T)->interval,                                     \
+                            (T)->interval_ms,                                     \
                             (T)->repeat_for,                                   \
                             (T)->sequence_number,                              \
                             (T)->callback_url.c_str(),                         \
@@ -192,7 +192,7 @@ void TimerStore::add_timer(Timer* t)
   // will live in bucket 33. But this is the bucket that is about to pop, so the
   // timer must actually go in to the long wheel.  The same logic applies for
   // the 1s buckets (where timers due to pop in >=1hr need to go into the heap).
-  uint64_t next_pop_time = t->next_pop_time();
+  uint32_t next_pop_time = t->next_pop_time();
   Bucket* bucket;
 
   if (overflow_less_than(next_pop_time, _tick_timestamp))
@@ -330,7 +330,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
   // Now process the required number of ticks. Integer division does the
   // necessary rounding for us.
   uint32_t current_timestamp = timestamp_ms();
-  uint32_t num_ticks = ((current_timestamp - (uint32_t)(_tick_timestamp)) /
+  uint32_t num_ticks = ((current_timestamp - _tick_timestamp) /
                    SHORT_WHEEL_RESOLUTION_MS);
 
   for (int ii = 0; ii < (int)(num_ticks); ++ii)
@@ -350,7 +350,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 /* Private functions.                                                        */
 /*****************************************************************************/
 
-uint64_t TimerStore::timestamp_ms()
+uint32_t TimerStore::timestamp_ms()
 {
   uint64_t time;
   struct timespec ts;
@@ -369,16 +369,16 @@ uint64_t TimerStore::timestamp_ms()
   // uinit64 to avoid wrapping).
   time = ts.tv_sec;
   time *= 1000;
-  time += (ts.tv_nsec / 1000000);
+  time += ts.tv_nsec / 1000000;
   return time;
 }
 
-uint64_t TimerStore::to_short_wheel_resolution(uint64_t t)
+uint32_t TimerStore::to_short_wheel_resolution(uint32_t t)
 {
   return (t - (t % SHORT_WHEEL_RESOLUTION_MS));
 }
 
-uint64_t TimerStore::to_long_wheel_resolution(uint64_t t)
+uint32_t TimerStore::to_long_wheel_resolution(uint32_t t)
 {
   return (t - (t % LONG_WHEEL_RESOLUTION_MS));
 }
@@ -393,13 +393,13 @@ TimerStore::Bucket* TimerStore::long_wheel_bucket(Timer* timer)
   return long_wheel_bucket(timer->next_pop_time());
 }
 
-TimerStore::Bucket* TimerStore::short_wheel_bucket(uint64_t t)
+TimerStore::Bucket* TimerStore::short_wheel_bucket(uint32_t t)
 {
   size_t bucket_index = (t / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
   return &_short_wheel[bucket_index];
 }
 
-TimerStore::Bucket* TimerStore::long_wheel_bucket(uint64_t t)
+TimerStore::Bucket* TimerStore::long_wheel_bucket(uint32_t t)
 {
   size_t bucket_index = (t / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
   return &_long_wheel[bucket_index];
@@ -437,7 +437,7 @@ void TimerStore::maybe_refill_wheels()
 }
 
 // Refill the long timer wheel by taking all timers from the heap that are due
-// to pop in < 1hr.
+// to pop in < long wheel timer total.
 void TimerStore::refill_long_wheel()
 {
   if (!_extra_heap.empty())
@@ -706,8 +706,8 @@ void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
   {
     // Learn the interval so that this tombstone lasts long enough to catch
     // errors.
-    t->interval = existing->interval;
-    t->repeat_for = existing->interval;
+    t->interval_ms = existing->interval_ms;
+    t->repeat_for = existing->interval_ms;
   }
 }
 
