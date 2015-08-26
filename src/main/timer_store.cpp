@@ -100,12 +100,65 @@ TimerStore::~TimerStore()
   _extra_heap.clear();
 }
 
+void TimerStore::insert(TimerPair* tp,
+                        TimerID id,
+                        uint32_t next_pop_time,
+                        std::string cluster_view_id)
+{
+  Bucket* bucket;
+
+  if (overflow_less_than(next_pop_time, _tick_timestamp))
+  {
+    // The timer should have already popped so put it in the overdue timers,
+    // and warn the user.
+    //
+    // We can't just put the timer in the next bucket to pop.  We need to know
+    // what bucket to look in when deleting timers, and this is derived from
+    // the pop time. So if we put the timer in the wrong bucket we can't find
+    // it to delete it.
+    TRC_WARNING("Modifying timer after pop time (current time is %lu). "
+                "Window condition detected.\n" TIMER_LOG_FMT,
+                _tick_timestamp,
+                TIMER_LOG_PARAMS(tp));
+    _overdue_timers.insert(tp);
+  }
+  else if (overflow_less_than(to_short_wheel_resolution(next_pop_time),
+           to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
+  {
+
+    bucket = short_wheel_bucket(next_pop_time);
+    bucket->insert(tp);
+  }
+  else if (overflow_less_than(to_long_wheel_resolution(next_pop_time),
+           to_long_wheel_resolution(_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
+  {
+    bucket = long_wheel_bucket(next_pop_time);
+    bucket->insert(tp);
+  }
+  else
+  {
+    // Timer is too far in the future to be handled by the wheels, put it in
+    // the extra heap.
+    TRC_WARNING("Adding timer to extra heap, consider re-building with a larger "
+                "LONG_WHEEL_NUM_BUCKETS constant");
+    _extra_heap.push_back(tp);
+    std::push_heap(_extra_heap.begin(), _extra_heap.end());
+  }
+
+  // Finally, add the timer to the lookup table.
+  _timer_lookup_table.insert(std::pair<TimerID, TimerPair>(id, tp));
+
+  // We've successfully added a timer, so confirm to the
+  // health-checker that we're still healthy.
+  _health_checker->health_check_passed();
+}
+
+/*
 // Give a timer to the data store.  At this point the data store takes ownership
 // of the timer and the caller should not reference it again (as the timer store
 // may delete it at any time).
 void TimerStore::add_timer(Timer* t)
-{
-  std::vector<Timer*> timers;
+{  std::vector<Timer*> timers;
 
   // First check if this timer already exists.
   std::map<TimerID, std::vector<Timer*>>::iterator map_it =
@@ -345,7 +398,7 @@ void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
     maybe_refill_wheels();
   }
 }
-
+*/
 /*****************************************************************************/
 /* Private functions.                                                        */
 /*****************************************************************************/
@@ -404,7 +457,7 @@ TimerStore::Bucket* TimerStore::long_wheel_bucket(uint32_t t)
   size_t bucket_index = (t / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
   return &_long_wheel[bucket_index];
 }
-
+/*
 void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
                             std::unordered_set<Timer*>& set)
 {
@@ -416,7 +469,7 @@ void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
     set.insert(*it);
   }
   bucket->clear();
-}
+}*/
 
 // Refill the timer buckets from the longer lived store. This function is safe
 // to call at any time - if no changes are needed no work is done.
@@ -517,7 +570,7 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
 }
 // LCOV_EXCL_STOP
 
-void TimerStore::update_replica_tracker_for_timer(TimerID id,
+/*void TimerStore::update_replica_tracker_for_timer(TimerID id,
                                                   int replica_index)
 {
   // Check if the timer exists.
@@ -701,7 +754,7 @@ bool TimerStore::timer_is_on_node(std::string request_node,
 }
 
 void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
-{
+
   if (t->is_tombstone())
   {
     // Learn the interval so that this tombstone lasts long enough to catch
@@ -709,7 +762,7 @@ void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
     t->interval_ms = existing->interval_ms;
     t->repeat_for = existing->interval_ms;
   }
-}
+}*/
 
 bool TimerStore::overflow_less_than(uint32_t a, uint32_t b)
 {

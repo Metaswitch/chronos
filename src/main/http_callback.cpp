@@ -125,16 +125,10 @@ void HTTPCallback::worker_thread_entry_point()
     CURLcode curl_rc = curl_easy_perform(curl);
     if (curl_rc == CURLE_OK)
     {
-      // Check if the next pop occurs before the repeat-for interval and,
-      // if not, convert to a tombstone to indicate the timer is dead.
-      if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
-      {
-        timer->become_tombstone();
-      }
       _replicator->replicate(timer);
-      _handler->add_timer(timer);
+      _handler->return_timer_to_store(timer, true);
       timer = NULL; // We relinquish control of the timer when we give
-                    // it to the store.
+                    // it back to the store.
       if (_timer_pop_alarm)
       {
         _timer_pop_alarm->clear();
@@ -158,7 +152,7 @@ void HTTPCallback::worker_thread_entry_point()
         _timer_pop_alarm->set();
       }
 
-      delete timer;
+      _handler->return_timer_to_store(timer, false);
     }
 
     // Tidy up request-speciifc objects

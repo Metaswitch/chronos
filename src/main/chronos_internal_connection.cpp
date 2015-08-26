@@ -378,7 +378,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             // last so we don't invalidate the pointer to the timer.
             if (store_timer)
             {
-              _handler->add_timer(timer);
+              _handler->add_timer_to_store(timer);
             }
             else
             {
