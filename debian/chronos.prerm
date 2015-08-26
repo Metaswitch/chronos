@@ -51,11 +51,24 @@ set -e
 # the debian-policy package
 
 NAME=chronos
+log_directory=/var/log/$NAME
+
+remove_logging() {
+    if [ -d "$log_directory" ]; then
+        rm -r $log_directory
+    fi
+}
 
 case "$1" in
     remove|upgrade|deconfigure)
         rm -f /etc/monit/conf.d/$NAME.monit
         reload clearwater-monit || true
+
+        if [ $1 != "upgrade" ]; then
+            # We shouldn't do this cleanup on upgrade - deleting the
+            # logs loses valuable information
+            remove_logging
+        fi
     ;;
     
     failed-upgrade)
