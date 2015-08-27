@@ -107,8 +107,11 @@ void TimerHandler::add_timer_to_store(Timer* timer)
   TimerPair new_timer;
   new_timer.active_timer = timer;
 
+  TRC_DEBUG("Performed fetch operation");
+
   if (successful)
   {
+    TRC_DEBUG("Found an existing timer with the same ID");
     Timer* existing = store_timers.active_timer;
 
     // Compare timers for precedence, start-time then sequence number.
@@ -274,11 +277,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
 {
   pthread_mutex_lock(&_mutex);
   std::vector<TimerPair> timers;
-  bool successful = _store->get_by_view_id(cluster_view_id, timers);
-
-  if (successful)
-  {
-  }
+  bool finished = _store->get_by_view_id(cluster_view_id, max_responses, timers);
 
   TRC_DEBUG("Get timers for %s", request_node.c_str());
 
@@ -317,7 +316,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
         {
           // The timer will have a replica on the requesting node. Add this
           // entry to the JSON document
-          //
+
           // Add in Old Timer ID
           writer.String(JSON_TIMER_ID);
           writer.Int(timer_copy->id);
@@ -365,7 +364,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   pthread_mutex_unlock(&_mutex);
 
   return ((max_responses != 0) &&
-          (retrieved_timers == max_responses)) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
+          (!finished)) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
@@ -380,7 +379,7 @@ bool TimerHandler::timer_is_on_node(std::string request_node,
     // Store the old replica list
     std::string localhost;
     __globals->get_cluster_local_ip(localhost);
-    old_replicas = timer->replicas;
+old_replicas = timer->replicas;
 
     // Calculate whether the new request node is interested in the timer. This
     // updates the replica list in the timer object to be the new replica list

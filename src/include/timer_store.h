@@ -122,29 +122,7 @@ public:
 
   // Fetch timers with a given view ID, and populate the vector with 1000
   // relevant timers
-  virtual bool get_by_view_id(std::string cluster_view_id, std::vector<TimerPair>&);
-
-  // Add a timer to the store.
-  //virtual void add_timer(Timer*);
-
-  // Remove a timer by ID from the store.
-  //virtual void delete_timer(TimerID);
-
-  // Get the next bucket of timers to pop.
-  //virtual void get_next_timers(std::unordered_set<Timer*>&);
-
-  // Mark which replicas have been informed for an individual timer.
-  // If all replicas are informed, then the timer will be tombstoned
-  // NOTE -> This is currently only valid for scale down.
- // virtual void update_replica_tracker_for_timer(TimerID id,
-  //                                              int replica_index);
-
-  // Get timer information from the store for timers where
-  // request_node should be a replica
- // virtual HTTPCode get_timers_for_node(std::string request_node,
-    //                                   int max_responses,
-      //                                 std::string cluster_view_id,
-        //                               std::string& get_response);
+  virtual bool get_by_view_id(std::string cluster_view_id, int max_responses, std::vector<TimerPair>&);
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
@@ -200,10 +178,13 @@ private:
   // the heap may need to be searched, although the timer is guaranteed to be in
   // only one of them (and the heap is searched last for efficiency).
 
-  // A table of all known timers. Only the first timer in the timer list
-  // is in the timer wheel - any other timers are stored for use when
+  // A table of all known timers indexed by ID. Only the active timer in the
+  // TimerPair is in the timer wheel - any other timers are stored for use when
   // resynchronising between Chronos's.
-  std::map<TimerID, TimerPair> _timer_lookup_table;
+  std::map<TimerID, TimerPair> _timer_lookup_id_table;
+
+  // A table of all know timers indexed by cluster view id.
+  std::map<std::string, std::vector<TimerPair>> _timer_view_id_table;
 
   // Health checker, which is notified when a timer is successfully added.
   HealthChecker* _health_checker;
@@ -278,19 +259,8 @@ private:
   void pop_bucket(TimerStore::Bucket* bucket,
                   std::unordered_set<TimerPair>& set);
 
-  // Update a timer object with the current cluster configuration. Store off
-  // the old set of replicas, and return whether the requesting node is
-  // one of the new replicas
- // bool timer_is_on_node(std::string request_node,
-  //                      std::string cluster_view_id,
-   //                     Timer* timer,
-    //                    std::vector<std::string>& old_replicas);
-
   // Delete a timer from the timer wheel
   void remove_timer_from_timer_wheel(TimerPair timer);
-
-  // Save the tombstone values from an existing timer
-  //void set_tombstone_values(Timer* t, Timer* existing);
 
   // Compare two numbers that might have overflown
   bool overflow_less_than(uint32_t a, uint32_t b);
