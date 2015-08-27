@@ -37,6 +37,7 @@
 #include "timer_helper.h"
 #include "pthread_cond_var_helper.h"
 #include "mock_timer_store.h"
+#include "mock_timer_handler.h"
 #include "mock_callback.h"
 #include "mock_replicator.h"
 #include "base.h"
@@ -95,23 +96,25 @@ protected:
 
 TEST_F(TestTimerHandler, StartUpAndShutDown)
 {
-  EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
   _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 }
 
 TEST_F(TestTimerHandler, PopOneTimer)
 {
-  std::unordered_set<Timer*> timers;
+  std::unordered_set<TimerPair> timers;
   Timer* timer = default_timer(1);
-  timers.insert(timer);
+  TimerPair pair;
+  pair.active_timer = timer;
+  timers.insert(pair);
 
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
   EXPECT_CALL(*_callback, perform(timer));
 
@@ -122,16 +125,18 @@ TEST_F(TestTimerHandler, PopOneTimer)
 
 TEST_F(TestTimerHandler, PopRepeatedTimer)
 {
-  std::unordered_set<Timer*> timers;
+  std::unordered_set<TimerPair> timers;
   Timer* timer = default_timer(1);
+  TimerPair pair;
+  pair.active_timer = timer;
   timer->repeat_for = timer->interval_ms * 2;
-  timers.insert(timer);
+  timers.insert(pair);
 
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
@@ -142,16 +147,20 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
 
 TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
 {
-  std::unordered_set<Timer*> timers;
+  std::unordered_set<TimerPair> timers;
   Timer* timer1 = default_timer(1);
+  TimerPair pair1;
+  pair1.active_timer = timer1;
   Timer* timer2 = default_timer(2);
-  timers.insert(timer1);
-  timers.insert(timer2);
+  TimerPair pair2;
+  pair2.active_timer = timer2;
+  timers.insert(pair1);
+  timers.insert(pair2);
 
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
@@ -164,18 +173,22 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
 
 TEST_F(TestTimerHandler, PopMultipleTimersSeries)
 {
-  std::unordered_set<Timer*> timers1;
-  std::unordered_set<Timer*> timers2;
+  std::unordered_set<TimerPair> timers1;
+  std::unordered_set<TimerPair> timers2;
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
-  timers1.insert(timer1);
-  timers2.insert(timer2);
+  TimerPair pair1;
+  TimerPair pair2;
+  pair1.active_timer = timer1;
+  pair2.active_timer = timer2;
+  timers1.insert(pair1);
+  timers2.insert(pair2);
 
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers1)).
                        WillOnce(SetArgReferee<0>(timers2)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
@@ -188,22 +201,26 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
 
 TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
 {
-  std::unordered_set<Timer*> timers1;
-  std::unordered_set<Timer*> timers2;
+  std::unordered_set<TimerPair> timers1;
+  std::unordered_set<TimerPair> timers2;
   Timer* timer1 = default_timer(1);
   timer1->repeat_for = timer1->interval_ms * 2;
   Timer* timer2 = default_timer(2);
   timer2->repeat_for = timer2->interval_ms * 2;
-  timers1.insert(timer1);
-  timers2.insert(timer2);
+  TimerPair pair1;
+  TimerPair pair2;
+  pair1.active_timer = timer1;
+  pair2.active_timer = timer2;
+  timers1.insert(pair1);
+  timers2.insert(pair2);
 
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers1)).
                        WillOnce(SetArgReferee<0>(timers2)).
                        WillOnce(SetArgReferee<0>(timers2)).
                        WillOnce(SetArgReferee<0>(timers1)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
@@ -216,19 +233,23 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
 
 TEST_F(TestTimerHandler, EmptyStore)
 {
-  std::unordered_set<Timer*> timers1;
-  std::unordered_set<Timer*> timers2;
+  std::unordered_set<TimerPair> timers1;
+  std::unordered_set<TimerPair> timers2;
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
-  timers1.insert(timer1);
-  timers2.insert(timer2);
+  TimerPair pair1;
+  TimerPair pair2;
+  pair1.active_timer = timer1;
+  pair2.active_timer = timer2;
+  timers1.insert(pair1);
+  timers2.insert(pair2);
 
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers1)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(timers2)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
@@ -247,17 +268,22 @@ TEST_F(TestTimerHandler, EmptyStore)
 TEST_F(TestTimerHandler, AddTimer)
 {
   Timer* timer = default_timer(1);
+  //TimerPair pair;
+  //pair.active_timer = timer;
 
   // Once we add the timer, we'll poll the store for a new timer, expect an extra
-  // call to get_next_timers().
-  EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-  EXPECT_CALL(*_store, add_timer(timer)).Times(1);
+  // call to fetch_next_timers().
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+  EXPECT_CALL(*_store, fetch(_, _)).Times(1);
+  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+
   _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
-  _th->add_timer(timer);
+  _th->add_timer_to_store(timer);
+
   _cond()->block_till_waiting();
 
   delete timer;
@@ -265,14 +291,16 @@ TEST_F(TestTimerHandler, AddTimer)
 
 TEST_F(TestTimerHandler, LeakTest)
 {
+  std::unordered_set<TimerPair> timers;
   Timer* timer = default_timer(1);
-  std::unordered_set<Timer*> timers;
-  timers.insert(timer);
+  TimerPair pair;
+  pair.active_timer = timer;
+  timers.insert(pair);
 
-  // Make sure that the final call to get_next_timers actually returns some.  This
+  // Make sure that the final call to fetch_next_timers actually returns some.  This
   // test should still pass valgrind's checking without leaking the timer.
-  EXPECT_CALL(*_store, get_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(timers));
 
   _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
@@ -288,6 +316,8 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   cwtest_completely_control_time();
 
   Timer* timer = default_timer(1);
+  TimerPair pair;
+  pair.active_timer = timer;
   timer->interval_ms = 100;
   timer->repeat_for = 100;
 
@@ -300,16 +330,16 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   // time down to a millisecond.
   ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % (1000 * 1000));
 
-  std::unordered_set<Timer*> timers;
-  timers.insert(timer);
+  std::unordered_set<TimerPair> timers;
+  timers.insert(pair);
 
   // After the timer pops, we'd expect to get a call back to get the next set of timers.
   // Then the standard one more check during termination.
-  EXPECT_CALL(*_store, get_next_timers(_)).
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
   EXPECT_CALL(*_callback, perform(_));
 
   _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);

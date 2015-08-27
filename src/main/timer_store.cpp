@@ -149,13 +149,48 @@ void TimerStore::insert(TimerPair tp,
   _health_checker->health_check_passed();
 }
 
-bool TimerStore::fetch(TimerID id, TimerPair&)
+bool TimerStore::fetch(TimerID id, TimerPair& timer)
 {
-  return true;
+  std::map<TimerID, TimerPair>::iterator it;
+  it = _timer_lookup_table.find(id);
+
+  if (it != _timer_lookup_table.end())
+  {
+    // The TimerPair is still present in the store.
+    // Remove the active timer from the wheel, and pass ownership
+    // back by populating the timer parameter.
+    TRC_DEBUG("About to remove timer from wheel");
+    remove_timer_from_timer_wheel(it->second);
+    _timer_lookup_table.erase(id);
+
+    timer = it->second;
+    return true;
+  }
+  return false;
 }
 
-void TimerStore::fetch_next_timers(std::unordered_set<TimerPair>&)
+void TimerStore::fetch_next_timers(std::unordered_set<TimerPair>& set)
 {
+  // Always pop the overdue timers, even if we're not processing any ticks.
+  pop_bucket(&_overdue_timers, set);
+
+  // Now process the required number of ticks. Integer division does the
+  // necessary rounding for us.
+  uint32_t current_timestamp = timestamp_ms();
+  uint32_t num_ticks = ((current_timestamp - _tick_timestamp) /
+                   SHORT_WHEEL_RESOLUTION_MS);
+
+  for (int ii = 0; ii < (int)(num_ticks); ++ii)
+  {
+    // Pop all timers in the current bucket.
+    Bucket* bucket = short_wheel_bucket(_tick_timestamp);
+    pop_bucket(bucket, set);
+
+    // Get ready for the next tick - advance the tick time, and refill the
+    // timer wheels.
+    _tick_timestamp += SHORT_WHEEL_RESOLUTION_MS;
+    maybe_refill_wheels();
+  }
 }
 
 bool TimerStore::get_by_view_id(std::string cluster_view_id,
@@ -164,199 +199,41 @@ bool TimerStore::get_by_view_id(std::string cluster_view_id,
   return true;
 }
 
-/*
-// Give a timer to the data store.  At this point the data store takes ownership
-// of the timer and the caller should not reference it again (as the timer store
-// may delete it at any time).
-void TimerStore::add_timer(Timer* t)
-{  std::vector<Timer*> timers;
-
-  // First check if this timer already exists.
-  std::map<TimerID, std::vector<Timer*>>::iterator map_it =
-                                                _timer_lookup_table.find(t->id);
-
-  if (map_it != _timer_lookup_table.end())
-  {
-    // There's already a timer with this ID in the store. We can update the
-    // existing timer, discard the new timer, or add the new timer, and move the
-    // old timer out of the timer wheel, but still save the timer information
-    // in the timer map (this last option is used in scaling operations)
-    TRC_DEBUG("Already a timer with ID %ld in the store", t->id);
-
-    Timer* existing = map_it->second.front();
-
-    // Compare timers for precedence, start-time then sequence-number.
-    if (overflow_less_than(t->start_time_mono_ms, existing->start_time_mono_ms) ||
-        ((t->start_time_mono_ms == existing->start_time_mono_ms) &&
-         (t->sequence_number < existing->sequence_number)))
-    {
-      TRC_DEBUG("The timer in the store is more recent, discard the new timer");
-      delete t;
-      return;
-    }
-    else
-    {
-      // We want to add the timer, so decide whether this is an update, or
-      // if we need to save off the old timer.
-      if (existing->cluster_view_id != t->cluster_view_id)
-      {
-        // The cluster IDs on the new and existing timers are different.
-        // This means that the cluster configuration has changed between
-        // and when the timer was last updated.
-        TRC_DEBUG("Cluster view IDs are different on the new and existing timers");
-
-        if (map_it->second.size() > 1)
-        {
-          // There's already a saved timer, but the new timer doesn't match the
-          // existing timer. This is an error condition, and suggests that
-          // a scaling operation has been started before an old scaling operation
-          // finished, or there was a node failure during a scaling operation.
-          // Either way, the saved timer information is out of date, and is
-          // deleted (by not saving a copy of it when we delete the entire Timer
-          // ID in the next step)
-          TRC_WARNING("Deleting out of date timer from timer map");
-        }
-
-        set_tombstone_values(t, existing);
-
-        // Save the old timer information in the list of timers.
-        Timer* existing_copy = new Timer(*existing);
-        timers.push_back(t);
-        timers.push_back(existing_copy);
-      }
-      else
-      {
-        set_tombstone_values(t, existing);
-        timers.push_back(t);
-
-        if (map_it->second.size() > 1)
-        {
-          Timer* existing_copy = new Timer(*map_it->second.back());
-          timers.push_back(existing_copy);
-        }
-      }
-
-      // Delete the old timer from the timer map and the timer wheel - it will
-      // be added again later on
-      delete_timer(t->id);
-    }
-  }
-  else
-  {
-    // The timer doesn't already exist, so add it to the store.
-    TRC_DEBUG("Adding a new timer to the store with ID %ld", t->id);
-    timers.push_back(t);
-  }
-
-  // Work out where to store the timer (overdue bucket, short wheel, long wheel,
-  // or heap).
-  //
-  // Note that these if tests MUST use less than. For example if _tick_time is
-  // 20,330 a 1s timer will pop at 21,330. When in the short wheel the timer
-  // will live in bucket 33. But this is the bucket that is about to pop, so the
-  // timer must actually go in to the long wheel.  The same logic applies for
-  // the 1s buckets (where timers due to pop in >=1hr need to go into the heap).
-  uint32_t next_pop_time = t->next_pop_time();
-  Bucket* bucket;
-
-  if (overflow_less_than(next_pop_time, _tick_timestamp))
-  {
-    // The timer should have already popped so put it in the overdue timers,
-    // and warn the user.
-    //
-    // We can't just put the timer in the next bucket to pop.  We need to know
-    // what bucket to look in when deleting timers, and this is derived from
-    // the pop time. So if we put the timer in the wrong bucket we can't find
-    // it to delete it.
-    TRC_WARNING("Modifying timer after pop time (current time is %lu). "
-                "Window condition detected.\n" TIMER_LOG_FMT,
-                _tick_timestamp,
-                TIMER_LOG_PARAMS(t));
-    _overdue_timers.insert(t);
-  }
-  else if (overflow_less_than(to_short_wheel_resolution(next_pop_time),
-           to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
-  {
-
-    bucket = short_wheel_bucket(next_pop_time);
-    bucket->insert(t);
-  }
-  else if (overflow_less_than(to_long_wheel_resolution(next_pop_time),
-           to_long_wheel_resolution(_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
-  {
-    bucket = long_wheel_bucket(next_pop_time);
-    bucket->insert(t);
-  }
-  else
-  {
-    // Timer is too far in the future to be handled by the wheels, put it in
-    // the extra heap.
-    TRC_WARNING("Adding timer to extra heap, consider re-building with a larger "
-                "LONG_WHEEL_NUM_BUCKETS constant");
-    _extra_heap.push_back(t);
-    std::push_heap(_extra_heap.begin(), _extra_heap.end());
-  }
-
-  // Finally, add the timer to the lookup table.
-  _timer_lookup_table.insert(std::pair<TimerID, std::vector<Timer*>>(t->id, timers));
-
-  // We've successfully added a timer, so confirm to the
-  // health-checker that we're still healthy.
-  _health_checker->health_check_passed();
-}
-
-// Delete a timer from the store by ID. This deletes all stored
-// information about the timer, deleting it from the timer wheel
-// and the timer map
-void TimerStore::delete_timer(TimerID id)
+void TimerStore::remove_timer_from_timer_wheel(TimerPair timer)
 {
-  std::map<TimerID, std::vector<Timer*>>::iterator it;
-  it = _timer_lookup_table.find(id);
-
-  if (it != _timer_lookup_table.end())
-  {
-    // The timer(s) are still present in the store.
-    // Delete the first timer from the timer wheel, delete any
-    // other timers in the timer list, then erase the entry from
-    // the timer map.
-    Timer* timer = it->second.front();
-    delete_timer_from_timer_wheel(timer);
-
-    for (std::vector<Timer*>::iterator it_timer = it->second.begin();
-                                       it_timer != it->second.end();
-                                       ++it_timer)
-    {
-      delete *it_timer;
-    }
-
-    _timer_lookup_table.erase(id);
-  }
-}
-
-void TimerStore::delete_timer_from_timer_wheel(Timer* timer)
-{
+  TRC_DEBUG("Removing timer from timer wheel");
   Bucket* bucket;
   size_t num_erased;
 
   // Delete the timer from the overdue buckets / timer wheels / heap. Try the
   // overdue bucket first, then the short wheel then the long wheel, then
   // finally the heap.
+  TRC_DEBUG("%d", &_overdue_timers);
+  TRC_DEBUG("%d", _overdue_timers.size());
+  TRC_DEBUG("%d", timer.active_timer);
+  TRC_DEBUG("%d", timer.information_timer);
   num_erased = _overdue_timers.erase(timer);
-
+  TRC_DEBUG("Checking in overdue");
   if (num_erased == 0)
   {
     bucket = short_wheel_bucket(timer);
-    num_erased = bucket->erase(timer);
-
+    TRC_DEBUG("%d", bucket);
+    TRC_DEBUG("%d", bucket->size());
+    TRC_DEBUG("%d", timer.active_timer);
+    TRC_DEBUG("%d", timer.information_timer);
+    Bucket bucket2 = *bucket;
+    TRC_DEBUG("Dereferenced bucket");
+    num_erased = bucket2.erase(timer);
+    TRC_DEBUG("Checked short wheel");
     if (num_erased == 0)
     {
       bucket = long_wheel_bucket(timer);
       num_erased = bucket->erase(timer);
-
+      TRC_DEBUG("Checked long wheel");
       if (num_erased == 0)
 
       {
-        std::vector<Timer*>::iterator heap_it;
+        std::vector<TimerPair>::iterator heap_it;
         heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
 
         if (heap_it != _extra_heap.end())
@@ -380,7 +257,7 @@ void TimerStore::delete_timer_from_timer_wheel(Timer* timer)
     }
   }
 }
-
+/*
 // Retrieve the set of timers to pop.  The timers returned are disowned by the
 // store and must be freed by the caller or returned to the store through
 // `add_timer()`.
@@ -389,26 +266,6 @@ void TimerStore::delete_timer_from_timer_wheel(Timer* timer)
 // will try again later (after a signal that a new timer has been added).
 void TimerStore::get_next_timers(std::unordered_set<Timer*>& set)
 {
-  // Always pop the overdue timers, even if we're not processing any ticks.
-  pop_bucket(&_overdue_timers, set);
-
-  // Now process the required number of ticks. Integer division does the
-  // necessary rounding for us.
-  uint32_t current_timestamp = timestamp_ms();
-  uint32_t num_ticks = ((current_timestamp - _tick_timestamp) /
-                   SHORT_WHEEL_RESOLUTION_MS);
-
-  for (int ii = 0; ii < (int)(num_ticks); ++ii)
-  {
-    // Pop all timers in the current bucket.
-    Bucket* bucket = short_wheel_bucket(_tick_timestamp);
-    pop_bucket(bucket, set);
-
-    // Get ready for the next tick - advance the tick time, and refill the
-    // timer wheels.
-    _tick_timestamp += SHORT_WHEEL_RESOLUTION_MS;
-    maybe_refill_wheels();
-  }
 }
 */
 /*****************************************************************************/
@@ -450,6 +307,8 @@ uint32_t TimerStore::to_long_wheel_resolution(uint32_t t)
 
 TimerStore::Bucket* TimerStore::short_wheel_bucket(TimerPair timer)
 {
+  TRC_DEBUG("%d", timer.active_timer);
+  TRC_DEBUG("%d", timer.active_timer->next_pop_time());
   return short_wheel_bucket(timer.active_timer->next_pop_time());
 }
 
@@ -469,19 +328,19 @@ TimerStore::Bucket* TimerStore::long_wheel_bucket(uint32_t t)
   size_t bucket_index = (t / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
   return &_long_wheel[bucket_index];
 }
-/*
+
 void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
-                            std::unordered_set<Timer*>& set)
+                            std::unordered_set<TimerPair>& set)
 {
   for(TimerStore::Bucket::iterator it = bucket->begin();
                                    it != bucket->end();
                                    ++it)
   {
-    _timer_lookup_table.erase((*it)->id);
+    _timer_lookup_table.erase((*it).active_timer->id);
     set.insert(*it);
   }
   bucket->clear();
-}*/
+}
 
 // Refill the timer buckets from the longer lived store. This function is safe
 // to call at any time - if no changes are needed no work is done.
@@ -560,7 +419,7 @@ void TimerStore::refill_short_wheel()
 // couldn't find in the buckets and the heap.  It's an expensive operation but
 // is a last ditch effort to restore consistency.
 // LCOV_EXCL_START
-/*void TimerStore::purge_timer_from_wheels(Timer* t)
+void TimerStore::purge_timer_from_wheels(TimerPair t)
 {
   TRC_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
 
@@ -568,7 +427,7 @@ void TimerStore::refill_short_wheel()
   {
     if (_short_wheel[ii].erase(t) != 0)
     {
-      TRC_WARNING("  Deleting timer %lu from short wheel bucket %d", t->id, ii);
+      TRC_WARNING("  Deleting timer %lu from short wheel bucket %d", t.active_timer->id, ii);
     }
   }
 
@@ -576,10 +435,10 @@ void TimerStore::refill_short_wheel()
   {
     if (_long_wheel[ii].erase(t) != 0)
     {
-      TRC_WARNING("  Deleting timer %lu from long wheel bucket %d", t->id, ii);
+      TRC_WARNING("  Deleting timer %lu from long wheel bucket %d", t.active_timer->id, ii);
     }
   }
-}*/
+}
 // LCOV_EXCL_STOP
 
 /*void TimerStore::update_replica_tracker_for_timer(TimerID id,

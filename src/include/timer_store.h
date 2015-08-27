@@ -46,13 +46,36 @@
 #include <string>
 
 struct TimerPair {
+  TimerPair() : active_timer(NULL),
+                information_timer(NULL)
+                {}
   Timer* active_timer;
   Timer* information_timer;
 
   bool operator==(const TimerPair &other) const
   {
-    return (active_timer->id == other.active_timer->id &&
-            information_timer->id == other.information_timer->id);
+    if (active_timer == NULL && information_timer == NULL &&
+        other.active_timer == NULL && other.information_timer == NULL)
+    {
+      return true;
+    }
+    if (active_timer != NULL && information_timer != NULL &&
+        other.active_timer != NULL && other.information_timer != NULL)
+    {
+      return (active_timer->id == other.active_timer->id &&
+              information_timer->id == other.information_timer->id);
+    }
+    if (active_timer != NULL && other.active_timer != NULL &&
+        information_timer == NULL && other.information_timer == NULL)
+    {
+      return (active_timer->id == other.active_timer->id);
+    }
+    if (information_timer != NULL && other.information_timer != NULL &&
+        active_timer == NULL && other.active_timer == NULL)
+    {
+      return (information_timer->id == other.information_timer->id);
+    }
+    return false;
   }
 
   bool operator<(const TimerPair &other) const
@@ -68,7 +91,14 @@ namespace std
   {
     size_t operator()(const TimerPair& tp) const
     {
-      return (hash<uint64_t>()(tp.active_timer->id));
+      if (tp.active_timer != NULL)
+      {
+        return (hash<uint64_t>()(tp.active_timer->id));
+      }
+      else
+      {
+        return 0;
+      }
     }
   };
 }
@@ -242,11 +272,11 @@ private:
   // Ensure a timer is no longer stored in the timer wheels.  This is an
   // expensive operation and should only be called when unsure of the timer
   // store's consistency.
-  void purge_timer_from_wheels(Timer* timer);
+  void purge_timer_from_wheels(TimerPair timer);
 
   // Pop a single timer bucket into the set.
-  //void pop_bucket(TimerStore::Bucket* bucket,
-  //                std::unordered_set<Timer*>& set);
+  void pop_bucket(TimerStore::Bucket* bucket,
+                  std::unordered_set<TimerPair>& set);
 
   // Update a timer object with the current cluster configuration. Store off
   // the old set of replicas, and return whether the requesting node is
@@ -257,7 +287,7 @@ private:
     //                    std::vector<std::string>& old_replicas);
 
   // Delete a timer from the timer wheel
-  void delete_timer_from_timer_wheel(Timer* timer);
+  void remove_timer_from_timer_wheel(TimerPair timer);
 
   // Save the tombstone values from an existing timer
   //void set_tombstone_values(Timer* t, Timer* existing);

@@ -46,13 +46,10 @@ class MockTimerStore : public TimerStore
 public:
   MockTimerStore(): TimerStore(NULL) {};
   ~MockTimerStore() {};
-  MOCK_METHOD1(add_timer, void(Timer*));
-  MOCK_METHOD1(delete_timer, void(TimerID));
-  MOCK_METHOD1(get_next_timers, void(std::unordered_set<Timer*>&));
-  MOCK_METHOD2(update_replica_tracker_for_timer, void(TimerID, int));
-  MOCK_METHOD3(get_timers_for_node, HTTPCode(std::string request_node,
-                                             int max_responses,
-                                             std::string& get_response));
+  MOCK_METHOD4(insert, void(TimerPair, TimerID, uint32_t, std::string));
+  MOCK_METHOD2(fetch, bool(TimerID, TimerPair&));
+  MOCK_METHOD1(fetch_next_timers, void(std::unordered_set<TimerPair>&));
+  MOCK_METHOD2(get_by_view_id, bool(std::string, std::vector<TimerPair>&));
 };
 
 #endif

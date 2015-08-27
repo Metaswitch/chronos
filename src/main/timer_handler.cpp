@@ -104,9 +104,8 @@ void TimerHandler::add_timer_to_store(Timer* timer)
 {
   TimerPair store_timers;
   bool successful = _store->fetch(timer->id, store_timers);
-
-
   TimerPair new_timer;
+  new_timer.active_timer = timer;
 
   if (successful)
   {
@@ -174,6 +173,13 @@ void TimerHandler::add_timer_to_store(Timer* timer)
       std::string cluster_view_id = new_timer.active_timer->cluster_view_id;
       _store->insert(new_timer, id, next_pop_time, cluster_view_id);
     }
+  }
+  else
+  {
+    TimerID id = new_timer.active_timer->id;
+    uint32_t next_pop_time = new_timer.active_timer->next_pop_time();
+    std::string cluster_view_id = new_timer.active_timer->cluster_view_id;
+    _store->insert(new_timer, id, next_pop_time, cluster_view_id);
   }
 }
 
@@ -413,6 +419,7 @@ void TimerHandler::run() {
 
   while (!_terminate)
   {
+
     if (!next_timers.empty())
     {
       TRC_DEBUG("Have a timer to pop");
@@ -427,13 +434,13 @@ void TimerHandler::run() {
       struct timespec next_pop;
       clock_gettime(CLOCK_MONOTONIC, &next_pop);
 
-      if (next_pop.tv_nsec < 990 * 1000 * 1000)
+      if (next_pop.tv_nsec < 790 * 1000 * 1000)
       {
         next_pop.tv_nsec += 10 * 1000 * 1000;
       }
       else
       {
-        next_pop.tv_nsec -= 990 * 1000 * 1000;
+        next_pop.tv_nsec -= 790 * 1000 * 1000;
         next_pop.tv_sec += 1;
       }
 
@@ -446,12 +453,14 @@ void TimerHandler::run() {
       }
     }
 
+
     _store->fetch_next_timers(next_timers);
   }
 
+
   for (std::unordered_set<TimerPair>::iterator it = next_timers.begin();
-                                            it != next_timers.end();
-                                            ++it)
+                                               it != next_timers.end();
+                                               ++it)
   {
     delete it->active_timer;
     delete it->information_timer;
