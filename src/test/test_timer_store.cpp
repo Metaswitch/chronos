@@ -510,6 +510,21 @@ TYPED_TEST(TestTimerStore, DeleteLongTimer)
   delete TestFixture::tombstone;
 }
 
+TYPED_TEST(TestTimerStore, FetchNonExistentTimer)
+{
+  TimerID id = TestFixture::timers[2]->id;
+  uint32_t next_pop_time = TestFixture::timers[2]->next_pop_time();
+  std::string cluster_view_id = TestFixture::timers[2]->cluster_view_id;
+  TestFixture::ts->insert(TestFixture::timerpairs[2], id, next_pop_time, cluster_view_id);
+  TimerPair to_delete;
+  bool succ = TestFixture::ts->fetch(id+1, to_delete);
+  EXPECT_FALSE(succ);
+  delete TestFixture::timers[0];
+  delete TestFixture::timers[1];
+  delete TestFixture::tombstone;
+}
+
+
 TYPED_TEST(TestTimerStore, UpdateTimer)
 {
   TimerID id = TestFixture::timers[0]->id;
