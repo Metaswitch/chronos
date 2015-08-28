@@ -39,12 +39,9 @@
 
 #include <cstring>
 
-HTTPCallback::HTTPCallback(Replicator* replicator,
-                           Alarm* timer_pop_alarm) :
+HTTPCallback::HTTPCallback() :
   _q(),
-  _running(false),
-  _replicator(replicator),
-  _timer_pop_alarm(timer_pop_alarm)
+  _running(false)
 {
 }
 
@@ -125,14 +122,9 @@ void HTTPCallback::worker_thread_entry_point()
     CURLcode curl_rc = curl_easy_perform(curl);
     if (curl_rc == CURLE_OK)
     {
-      _replicator->replicate(timer);
       _handler->return_timer_to_store(timer, true);
       timer = NULL; // We relinquish control of the timer when we give
                     // it back to the store.
-      if (_timer_pop_alarm)
-      {
-        _timer_pop_alarm->clear();
-      }
     }
     else
     {
@@ -146,11 +138,6 @@ void HTTPCallback::worker_thread_entry_point()
       TRC_WARNING("Failed to process callback for %lu: URL %s, curl error was: %s", timer->id,
                   timer->callback_url.c_str(),
                   curl_easy_strerror(curl_rc));
-
-      if (_timer_pop_alarm && timer->is_last_replica())
-      {
-        _timer_pop_alarm->set();
-      }
 
       _handler->return_timer_to_store(timer, false);
     }

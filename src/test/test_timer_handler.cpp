@@ -44,6 +44,8 @@
 #include "test_interposer.hpp"
 #include "snmp_continuous_accumulator_table.h"
 #include "snmp_scalar.h"
+#include "globals.h"
+//#include "fakesnmp.hpp"
 
 #include "timer_handler.h"
 
@@ -79,8 +81,7 @@ protected:
   // Accessor functions into the timer handler's private variables
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
-  //SNMP::ContinuousAccumulatorTable* _fake_table = SNMP::ContinuousAccumulatorTable::create("","");
-  //SNMP::U32Scalar* _fake_scalar = new SNMP::U32Scalar("","");
+//  SNMP::ContinuousAccumulatorTable* _fake_table = new SNMP::FakeContinuousAccumulatorTable();
   SNMP::ContinuousAccumulatorTable* _fake_table = NULL;
   SNMP::U32Scalar* _fake_scalar = NULL;
 
@@ -99,7 +100,7 @@ TEST_F(TestTimerHandler, StartUpAndShutDown)
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL,  _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 }
 
@@ -118,7 +119,7 @@ TEST_F(TestTimerHandler, PopOneTimer)
 
   EXPECT_CALL(*_callback, perform(timer));
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -140,7 +141,7 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -165,7 +166,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -193,7 +194,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -225,7 +226,7 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -254,7 +255,7 @@ TEST_F(TestTimerHandler, EmptyStore)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
   // The first timer has been handled, but the store's now empty.  Pretend the store
@@ -279,7 +280,7 @@ TEST_F(TestTimerHandler, AddTimer)
   EXPECT_CALL(*_store, fetch(_, _)).Times(1);
   EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
   _th->add_timer_to_store(timer);
@@ -303,7 +304,7 @@ TEST_F(TestTimerHandler, LeakTest)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(timers));
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 }
 
@@ -342,7 +343,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
   EXPECT_CALL(*_callback, perform(_));
 
-  _th = new TimerHandler(_store, _callback, _fake_table, _fake_scalar);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
   cwtest_advance_time_ms(100);
@@ -355,4 +356,403 @@ TEST_F(TestTimerHandler, FutureTimerPop)
   // you think about it, we are all different people, all through our lives
   // and that's okay, that's good!
   cwtest_reset_time();
+}
+
+// Test that marking some of the replicas as being informed
+// doesn't change the timer if it's got an up-to-date
+// cluster view ID
+TEST_F(TestTimerHandler, UpdateReplicaTrackerValueForNewTimer)
+{
+  cwtest_completely_control_time();
+
+  Timer* timer = default_timer(1);
+
+  TimerPair pair;
+  pair.active_timer = timer;
+
+  std::unordered_set<TimerPair> timers;
+  timers.insert(pair);
+
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  timer->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+  timer->interval_ms = 100;
+  timer->repeat_for = 100;
+
+  // Since we only allocates timers on millisecond intervals, round the
+  // time down to a millisecond.
+  ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % (1000 * 1000));
+
+  timer->_replica_tracker = 15;
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  EXPECT_CALL(*_store, fetch(_, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer);
+
+  EXPECT_CALL(*_store, fetch(_, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(pair),Return(true)));
+
+  _th->update_replica_tracker_for_timer(1u, 1);
+
+  ASSERT_EQ(15u, timer->_replica_tracker);
+
+  delete timer;
+
+  _cond()->block_till_waiting();
+
+  cwtest_reset_time();
+}
+
+// Test that marking some of the replicas as being informed
+// changes the replica tracker if the cluster view ID is
+// different
+TEST_F(TestTimerHandler, UpdateReplicaTrackerValueForOldTimer)
+{
+  cwtest_completely_control_time();
+
+  Timer* timer = default_timer(1);
+  timer->_replica_tracker = 15;
+  timer->cluster_view_id = "different-id";
+
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  timer->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+  timer->interval_ms = 100;
+  timer->repeat_for = 100;
+
+  TimerPair pair;
+  pair.active_timer = timer;
+
+  std::unordered_set<TimerPair> timers;
+  timers.insert(pair);
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  EXPECT_CALL(*_store, fetch(_, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer);
+
+  EXPECT_CALL(*_store, fetch(_,_)).
+                       WillOnce(DoAll(SetArgReferee<1>(pair),Return(true)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->update_replica_tracker_for_timer(1u, 3);
+
+  ASSERT_EQ(7u, timer->_replica_tracker);
+
+  delete timer;
+
+  _cond()->block_till_waiting();
+
+  cwtest_reset_time();
+}
+
+
+// Test that getting timers for a node returns the set of timers
+// (up to the maximum requested)
+TEST_F(TestTimerHandler, SelectTimers)
+{
+  cwtest_completely_control_time();
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 100;
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 10000 + 200;
+  Timer* timer3 = default_timer(3);
+  timer3->interval_ms = (3600 * 1000) + 300;
+
+  TimerPair empty_pair;
+
+  TimerPair pair1;
+  pair1.active_timer = timer1;
+  TimerPair pair2;
+  pair2.active_timer = timer2;
+  TimerPair pair3;
+  pair3.active_timer = timer3;
+
+  std::vector<TimerPair> timers;
+  timers.push_back(pair1);
+  timers.push_back(pair2);
+  timers.push_back(pair3);
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,1,_,_));
+
+  _th->add_timer_to_store(timer1);
+
+  EXPECT_CALL(*_store, fetch(2, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,2,_,_));
+
+  _th->add_timer_to_store(timer2);
+
+  EXPECT_CALL(*_store, fetch(3, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,3,_,_));
+
+  _th->add_timer_to_store(timer3);
+
+  std::string get_response;
+
+  std::string updated_cluster_view_id = "updated-cluster-view-id";
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->set_cluster_view_id(updated_cluster_view_id);
+  __globals->unlock();
+
+  EXPECT_CALL(*_store, get_by_view_id(_, _,_)).
+                       WillOnce(DoAll(SetArgReferee<2>(timers),Return(false)));
+
+  _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
+
+  // Check the GET has the right format. This is two timers out of the three available (as the
+  // max number of timers is set to 2). We're using a simple regex here as we use JSON
+  // parsing in the code.
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[]}}}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+
+  std::string cluster_view_id = "cluster-view-id";
+  cluster_addresses.push_back("10.0.0.2:9999");
+  cluster_addresses.push_back("10.0.0.3:9999");
+  __globals->lock();
+  __globals->set_cluster_view_id(cluster_view_id);
+  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->unlock();
+
+  _cond()->block_till_waiting();
+
+  cwtest_reset_time();
+}
+
+
+// Test that if there are no timers for the requesting node,
+// that trying to get the timers returns an empty list
+TEST_F(TestTimerHandler, SelectTimersTakeInformationalTimers)
+{
+  cwtest_completely_control_time();
+
+  std::unordered_set<TimerPair> next_timers;
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 100;
+  timer1->cluster_view_id = "old-cluster-view-id";
+
+  TimerPair empty_pair;
+
+  TimerPair pair1;
+  pair1.active_timer = timer1;
+
+  Timer* timer2 = default_timer(2);
+  timer2->id = 1;
+  timer2->interval_ms = 1000 + 200;
+
+  TimerPair pair2;
+  pair2.active_timer = timer2;
+
+  std::vector<TimerPair> timers;
+  timers.push_back(pair2);
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  // Add a timer to the store, then update it with a new cluster view ID.
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,1,_,"old-cluster-view-id"));
+
+  _th->add_timer_to_store(timer1);
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(pair1),Return(true)));
+  EXPECT_CALL(*_store, insert(_,1,_,"cluster-view-id"));
+
+  _th->add_timer_to_store(timer2);
+
+  std::string get_response;
+
+  EXPECT_CALL(*_store, get_by_view_id("cluster-view-id", 1, _)).
+                       WillOnce(DoAll(SetArgReferee<2>(timers),Return(false)));
+
+  _th->get_timers_for_node("10.0.0.3:9999", 1, "cluster-view-id", get_response);
+
+  // Check that the response is based on the informational timer, rather than the timer
+  // in the timer wheel (the uri should be callback1 rather than callback2)
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"cluster-view-id\",\"replicas\":\\\[\"10.0.0.3:9999\"]},\"statistics\":\\\{\"tags\":\\\[]}}}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+
+  // timer1 was deleted by update;
+  delete timer2;
+
+  _cond()->block_till_waiting();
+
+  cwtest_reset_time();
+}
+
+// Test that if there are no timers for the requesting node,
+// that trying to get the timers returns an empty list
+TEST_F(TestTimerHandler, SelectTimersNoMatchesReqNode)
+{
+  cwtest_completely_control_time();
+
+  TimerPair empty_pair;
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 100;
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 1000 + 200;
+  Timer* timer3 = default_timer(3);
+  timer3->interval_ms = (3600 * 1000) + 300;
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer1);
+
+  EXPECT_CALL(*_store, fetch(2, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer2);
+
+  EXPECT_CALL(*_store, fetch(3, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer3);
+
+  std::unordered_set<TimerPair> next_timers;
+  std::string get_response;
+
+  EXPECT_CALL(*_store, get_by_view_id("cluster-view-id", 1, _)).
+                       WillOnce(Return(false));
+
+  _th->get_timers_for_node("10.0.0.4:9999", 1, "cluster-view-id", get_response);
+
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  _cond()->block_till_waiting();
+
+  cwtest_reset_time();
+}
+
+
+// Test that if there are no timers with an out of date cluster
+// ID then trying to get the timers returns an empty list
+TEST_F(TestTimerHandler, SelectTimersNoMatchesClusterID)
+{
+  TimerPair empty_pair;
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 100;
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 1000 + 200;
+  Timer* timer3 = default_timer(3);
+  timer3->interval_ms = (3600 * 1000) + 300;
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer1);
+
+  EXPECT_CALL(*_store, fetch(2, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer2);
+
+  EXPECT_CALL(*_store, fetch(3, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer3);
+
+  EXPECT_CALL(*_store, get_by_view_id("cluster-view-id", 1, _)).
+                       WillOnce(Return(false));
+
+  std::string get_response;
+  _th->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
+
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  _cond()->block_till_waiting();
+}
+
+
+// Test that updating a timer with a new cluster ID causes the original
+// timer to be saved off.
+//
+// WARNING: In this test we look directly in the timer store as there's no
+// other way to test what's in the timer map (when it's not also in the timer
+// wheel)
+TEST_F(TestTimerHandler, UpdateClusterViewID)
+{
+  TimerPair empty_pair;
+
+  // Add the first timer with ID 1
+  Timer* timer1 = default_timer(1);
+
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer1);
+
+  // Add a new timer with the same ID, and an updated Cluster View ID
+  Timer* timer2 = default_timer(1);
+  timer2->cluster_view_id = "updated-cluster-view-id";
+
+  EXPECT_CALL(*_store, fetch(1, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_store, insert(_,_,_,_));
+
+  _th->add_timer_to_store(timer2);
+
+  _cond()->block_till_waiting();
 }

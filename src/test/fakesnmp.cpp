@@ -1,8 +1,13 @@
 /**
- * @file http_callback.h
+ * @file fakesnmp.cpp Fake SNMP infrastructure for UT.
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2015  Metaswitch Networks Ltd
+ *
+ * Parts of this module were derived from GPL licensed PJSIP sample code
+ * with the following copyrights.
+ *   Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
+ *   Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,40 +39,21 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef HTTP_CALLBACK_H__
-#define HTTP_CALLBACK_H__
+#include "snmp_internal/snmp_includes.h"
+#include "fakesnmp.hpp"
+#include "snmp_continuous_accumulator_table.h"
+#include "snmp_scalar.h"
 
-#include "callback.h"
-#include "eventq.h"
-#include "timer_handler.h"
-#include "timer.h"
-
-#include <string>
-#include <curl/curl.h>
-
-#define HTTPCALLBACK_THREAD_COUNT 50
-
-class HTTPCallback : public Callback
+namespace SNMP
 {
-public:
-  HTTPCallback();
-  ~HTTPCallback();
-
-  void start(TimerHandler*);
-  void stop();
-
-  std::string protocol() { return "http"; };
-  void perform(Timer*);
-
-  static void* worker_thread_entry_point(void*);
-  void worker_thread_entry_point();
-
-private:
-  pthread_t _worker_threads[HTTPCALLBACK_THREAD_COUNT];
-  eventq<Timer*> _q;
-
-  bool _running;
-  TimerHandler* _handler;
+ContinuousAccumulatorTable* ContinuousAccumulatorTable::create(std::string name, std::string oid)
+{
+  return new FakeContinuousAccumulatorTable();
 };
 
-#endif
+/*U32Scalar* U32Scalar::U32Scalar(std::string name, std::string oid)
+{
+  return new FakeU32Scalar();
+};*/
+
+}

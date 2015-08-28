@@ -82,6 +82,7 @@ TimerStore::~TimerStore()
   }
 
   _timer_lookup_id_table.clear();
+  _timer_view_id_table.clear();
 
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
@@ -164,11 +165,24 @@ bool TimerStore::fetch(TimerID id, TimerPair& timer)
     // The TimerPair is still present in the store.
     // Remove the active timer from the wheel, and pass ownership
     // back by populating the timer parameter.
+    timer = it->second;
+
     TRC_DEBUG("About to remove timer from wheel");
-    remove_timer_from_timer_wheel(it->second);
+    remove_timer_from_timer_wheel(timer);
     _timer_lookup_id_table.erase(id);
 
-    timer = it->second;
+    // Remove from cluster structure
+    std::string cluster_view_id = timer.active_timer->cluster_view_id;
+
+    std::vector<TimerPair> existing_view_timers = _timer_view_id_table[cluster_view_id];
+    existing_view_timers.erase(std::remove_if(existing_view_timers.begin(),
+                                              existing_view_timers.end(),
+                                              [=](TimerPair tp){return tp.active_timer->id==id;}),
+                               existing_view_timers.end());
+    _timer_view_id_table[cluster_view_id] = existing_view_timers;
+
+
+
     TRC_DEBUG("Successfully found an existing timer");
     return true;
   }
@@ -204,7 +218,7 @@ bool TimerStore::get_by_view_id(std::string new_cluster_view_id,
                                 std::vector<TimerPair>& view_timers)
 {
   int timer_count = 0;
-  bool done;
+  bool done = false;
   for (std::map<std::string, std::vector<TimerPair>>::iterator it = _timer_view_id_table.begin();
                                                               it != _timer_view_id_table.end();
                                                               ++it)
@@ -226,7 +240,7 @@ bool TimerStore::get_by_view_id(std::string new_cluster_view_id,
 
       for (int ii = 0; ii < size; ii++)
       {
-        // Clone the vector, as this function does not remove the timers
+        // Clone the vector, as this function should not remove the timers
         std::vector<TimerPair> wrong_view_timers = it->second;
         view_timers.push_back(wrong_view_timers.back());
         wrong_view_timers.pop_back();

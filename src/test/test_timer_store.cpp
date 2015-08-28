@@ -624,131 +624,6 @@ TYPED_TEST(TestTimerStore, AddTombstone)
   delete TestFixture::tombstone;
 }
 
-/*TYPED_TEST(TestTimerStore, OverwriteWithTombstone)
-{
-  TimerID id = TestFixture::timers[0]->id;
-  uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  id = TestFixture::tombstone->id;
-  next_pop_time = TestFixture::tombstone->next_pop_time();
-  cluster_view_id = TestFixture::tombstone->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::tombstonepair, id, next_pop_time, cluster_view_id);
-
-  std::unordered_set<TimerPair> next_timers;
-  cwtest_advance_time_ms(1000000);
-  TestFixture::ts->fetch_next_timers(next_timers);
-  ASSERT_EQ(1u, next_timers.size());
-  Timer* extracted = (*next_timers.begin()).active_timer;
-  EXPECT_TRUE(extracted->is_tombstone());
-  EXPECT_EQ(100u, extracted->interval_ms);
-  EXPECT_EQ(100u, extracted->repeat_for);
-
-  delete TestFixture::timers[1];
-  delete TestFixture::timers[2];
-  delete TestFixture::tombstone;
-}*/
-/*
-// Test for issue #19, even if time is moving in non-10ms steps
-// we should be able to reliably update/TestFixture::tombstone timers.
-TYPED_TEST(TestTimerStore, Non10msShortTimerUpdate)
-{
-  // Offset the interval_ms of the first timer so it's not a multiple of 10ms.
-  TestFixture::timers[0]->interval_ms += 4;
-
-  TimerID id = TestFixture::timers[0]->id;
-  uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-
-  // Move time on more than the timer's shift but less than 10ms, even
-  // after this the timer store should know which bucket the timer is in.
-  cwtest_advance_time_ms(6);
-
-  // Attempting to get a set of timers updates the internal clock in the
-  // timer store.
-  std::unordered_set<TimerPair> next_timers;
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(0u, next_timers.size());
-
-  // Now, to prove the timer store can still find the timer, update it to
-  // a TestFixture::tombstone.
-  id = TestFixture::tombstone->id;
-  next_pop_time = TestFixture::tombstone->next_pop_time();
-  cluster_view_id = TestFixture::tombstone->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::tombstonepair, id, next_pop_time, cluster_view_id);
-
-  // No timers are ready to pop yet
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(0u, next_timers.size());
-
-  // Move on till the TestFixture::tombstone should pop (50 ms offset from timer[0])
-  cwtest_advance_time_ms(150 + TIMER_GRANULARITY_MS);
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(1u, next_timers.size());
-  next_timers.clear();
-
-  // Move on again to ensure there are no more timers in the store.
-  cwtest_advance_time_ms(100000);
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(0u, next_timers.size());
-
-  // timer[0] was deleted when it was updated in the timer store.
-  delete TestFixture::timers[1];
-  delete TestFixture::timers[2];
-  delete TestFixture::tombstone;
-}*/
-
-// Test for issue #19
-TYPED_TEST(TestTimerStore, Non10msMediumTimerUpdate)
-{
-  // Offset the interval of the second timer so it's not a multiple of 10ms.
-  TestFixture::timers[1]->interval_ms += 4;
-
-  TimerID id = TestFixture::timers[1]->id;
-  uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
-
-  // Move time on to less than 1s but closer than the timer's offset, even
-  // after this the timer store should know which bucket the timer is in.
-  cwtest_advance_time_ms(990 + 8);
-
-  // Attempting to get a set of timers updates the internal clock in the
-  // timer store.
-  std::unordered_set<TimerPair> next_timers;
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(0u, next_timers.size());
-
-  // Now, to prove the timer store can still find the timer, update it to
-  // a TestFixture::tombstone.
-  TestFixture::tombstone->id = TestFixture::timers[1]->id;
-  id = TestFixture::tombstone->id;
-  next_pop_time = TestFixture::tombstone->next_pop_time();
-  cluster_view_id = TestFixture::tombstone->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::tombstonepair, id, next_pop_time, cluster_view_id);
-
-  // No timers are ready to pop yet
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(0u, next_timers.size());
-
-  // Move on till the timer should pop
-  cwtest_advance_time_ms(100000);
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(1u, next_timers.size());
-  next_timers.clear();
-
-  // Move on again to ensure there are no more timers in the store.
-  cwtest_advance_time_ms(100000);
-  TestFixture::ts->fetch_next_timers(next_timers);
-  EXPECT_EQ(0u, next_timers.size());
-
-  // timer[1] was deleted when it was updated in the timer store.
-  delete TestFixture::timers[0];
-  delete TestFixture::timers[2];
-  delete TestFixture::tombstone;
-}
-
 TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 {
   // Add timers that all pop at the same time, but in such a way that one ends
@@ -871,183 +746,117 @@ TYPED_TEST(TestTimerStore, DeleteOverdueTimer)
   delete TestFixture::timers[2];
   delete TestFixture::tombstone;
 }
-/*
-// Test that marking some of the replicas as being informed
-// doesn't change the timer if it's got an up-to-date
-// cluster view ID
-TYPED_TEST(TestTimerStore, UpdateReplicaTrackerValueForNewTimer)
+
+TYPED_TEST(TestTimerStore, AddClusterViewId)
 {
-  cwtest_advance_time_ms(500);
-  std::unordered_set<TimerPair> next_timers;
-  TestFixture::timers[0]->_replica_tracker = 15;
   TimerID id = TestFixture::timers[0]->id;
   uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
   std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
   TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  TestFixture::ts->update_replica_tracker_for_timer(1u, 3);
 
-  TestFixture::ts->fetch_next_timers(next_timers);
-  ASSERT_EQ(1u, next_timers.size());
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
-  ASSERT_EQ(15u, TestFixture::timers[0]->_replica_tracker);
-
-  delete TestFixture::timers[0];
-  delete TestFixture::timers[1];
-  delete TestFixture::timers[2];
-  delete TestFixture::tombstone;
+  std::map<std::string, std::vector<TimerPair>>::iterator map_it = TestFixture::ts->_timer_view_id_table.find("cluster-view-id");
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_view_id_table.end());
+  EXPECT_EQ(1u, map_it->second.front().active_timer->id);
+  EXPECT_EQ(1u, map_it->second.size());
 }
 
-// Test that marking some of the replicas as being informed
-// changes the replica tracker if the cluster view ID is
-// different
-TYPED_TEST(TestTimerStore, UpdateReplicaTrackerValueForOldTimer)
+TYPED_TEST(TestTimerStore, GetByViewId)
 {
-  cwtest_advance_time_ms(500);
-  std::unordered_set<TimerPair> next_timers;
-  TestFixture::timers[0]->_replica_tracker = 15;
-  TestFixture::timers[0]->cluster_view_id = "different-id";
   TimerID id = TestFixture::timers[0]->id;
   uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
   std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
   TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  TestFixture::ts->update_replica_tracker_for_timer(1u, 3);
 
-  TestFixture::ts->fetch_next_timers(next_timers);
-  ASSERT_EQ(1u, next_timers.size());
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
-  ASSERT_EQ(7u, TestFixture::timers[0]->_replica_tracker);
+  EXPECT_FALSE(TestFixture::ts->_timer_view_id_table.empty());
 
-  delete TestFixture::timers[0];
-  delete TestFixture::timers[1];
-  delete TestFixture::timers[2];
-  delete TestFixture::tombstone;
-}
+  std::vector<TimerPair> view_timers;
+  bool succ = TestFixture::ts->get_by_view_id("updated-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_EQ(1u, view_timers.size());
+  EXPECT_EQ(1u, view_timers.front().active_timer->id);
 
-// Test that getting timers for a node returns the set of timers
-// (up to the maximum requested)
-TYPED_TEST(TestTimerStore, SelectTimers)
-{
-  std::unordered_set<TimerPair> next_timers;
-  TimerID id = TestFixture::timers[0]->id;
-  uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  TimerID id = TestFixture::timers[1]->id;
-  uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
-  TimerID id = TestFixture::timers[2]->id;
-  uint32_t next_pop_time = TestFixture::timers[2]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[2]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[2], id, next_pop_time, cluster_view_id);
-  std::string get_response;
+  // Check this timer hasn't been removed by this operation
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_EQ(1u, view_timers.size());
+  EXPECT_EQ(1u, view_timers.front().active_timer->id);
 
-  std::string updated_cluster_view_id = "updated-cluster-view-id";
-  std::vector<std::string> cluster_addresses;
-  cluster_addresses.push_back("10.0.0.1:9999");
-  __globals->lock();
-  __globals->set_cluster_addresses(cluster_addresses);
-  __globals->set_cluster_view_id(updated_cluster_view_id);
-  __globals->unlock();
-
-  TestFixture::ts->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-
-  // Check the GET has the right format. This is two timers out of the three available (as the
-  // max number of timers is set to 2). We're using a simple regex here as we use JSON
-  // parsing in the code.
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[]}}},\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\":.*,\"sequence-number\":0,\"interval\":10,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[]}}}]}";
-  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
-
-  std::string cluster_view_id = "cluster-view-id";
-  cluster_addresses.push_back("10.0.0.2:9999");
-  cluster_addresses.push_back("10.0.0.3:9999");
-  __globals->lock();
-  __globals->set_cluster_view_id(cluster_view_id);
-  __globals->set_cluster_addresses(cluster_addresses);
-  __globals->unlock();
-
-  delete TestFixture::tombstone;
-}
-
-// Test that if there are no timers for the requesting node,
-// that trying to get the timers returns an empty list
-TYPED_TEST(TestTimerStore, SelectTimersTakeInformationalTimers)
-{
-  std::unordered_set<TimerPair> next_timers;
-
-  // Add a timer to the store, then update it with a new cluster view ID.
-  TestFixture::timers[0]->cluster_view_id = "old-cluster-view-id";
-  TimerID id = TestFixture::timers[0]->id;
-  uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  TestFixture::timers[1]->id = 1;
-  TimerID id = TestFixture::timers[1]->id;
-  uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
+  // Add another timer with the new cluster id
+  TestFixture::timers[1]->cluster_view_id = "updated-cluster-view-id";
+  id = TestFixture::timers[1]->id;
+  next_pop_time = TestFixture::timers[1]->next_pop_time();
+  cluster_view_id = TestFixture::timers[1]->cluster_view_id;
   TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
 
-  std::string get_response;
-  TestFixture::ts->get_timers_for_node("10.0.0.3:9999", 1, "cluster-view-id", get_response);
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_EQ(1u, view_timers.size());
+  EXPECT_EQ(1u, view_timers.front().active_timer->id);
 
-  // Check that the response is based on the informational timer, rather than the timer
-  // in the timer wheel (the uri should be callback1 rather than callback2)
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"sequence-number\":0,\"interval\":0,\"repeat-for\":0},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"cluster-view-id\",\"replicas\":\\\[\"10.0.0.3:9999\"]},\"statistics\":\\\{\"tags\":\\\[]}}}]}";
-  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  // Get both timers
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-again-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_EQ(2u, view_timers.size());
+  EXPECT_EQ(1u, view_timers.front().active_timer->id);
+  EXPECT_EQ(2u, view_timers.back().active_timer->id);
 
-  delete TestFixture::timers[2];
-  delete TestFixture::tombstone;
+  // Only return 1 if that is our maximum
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-again-cluster-view-id", 1, view_timers);
+  EXPECT_FALSE(succ);
+  EXPECT_EQ(1u, view_timers.size());
 }
 
-// Test that if there are no timers for the requesting node,
-// that trying to get the timers returns an empty list
-TYPED_TEST(TestTimerStore, SelectTimersNoMatchesReqNode)
+TYPED_TEST(TestTimerStore, UpdateViewId)
 {
-  std::unordered_set<TimerPair> next_timers;
   TimerID id = TestFixture::timers[0]->id;
   uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
   std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
   TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  TimerID id = TestFixture::timers[1]->id;
-  uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
-  TimerID id = TestFixture::timers[2]->id;
-  uint32_t next_pop_time = TestFixture::timers[2]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[2]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[2], id, next_pop_time, cluster_view_id);
-  std::string get_response;
-  TestFixture::ts->get_timers_for_node("10.0.0.4:9999", 1, "cluster-view-id", get_response);
 
-  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+  EXPECT_FALSE(TestFixture::ts->_timer_view_id_table.empty());
 
-  delete TestFixture::tombstone;
+  std::vector<TimerPair> view_timers;
+  bool succ = TestFixture::ts->get_by_view_id("updated-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_EQ(1u, view_timers.size());
+  EXPECT_EQ(1u, view_timers.front().active_timer->id);
+
+  // Fetch the relevant timer (mimicking the Timer Handler)
+  TimerPair pair;
+  TestFixture::ts->fetch(1u, pair);
+
+  EXPECT_TRUE(pair.active_timer);
+
+  // Ensure it has been removed from view id index
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_TRUE(view_timers.empty());
+
+  // Update view id and return to store
+  pair.active_timer->cluster_view_id = "updated-cluster-view-id";
+  cluster_view_id = pair.active_timer->cluster_view_id;
+  TestFixture::ts->insert(pair, id, next_pop_time, cluster_view_id);
+
+  // This should now not appear when we search in the same epoch
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_TRUE(view_timers.empty());
+
+  // If the epoch changes again we should be able to find it
+  view_timers.clear();
+  succ = TestFixture::ts->get_by_view_id("updated-again-cluster-view-id", 5, view_timers);
+  EXPECT_TRUE(succ);
+  EXPECT_EQ(1u, view_timers.size());
+  EXPECT_EQ(1u, view_timers.front().active_timer->id);
 }
 
-// Test that if there are no timers with an out of date cluster
-// ID then trying to get the timers returns an empty list
-TYPED_TEST(TestTimerStore, SelectTimersNoMatchesClusterID)
-{
-  std::unordered_set<TimerPair> next_timers;
-  TimerID id = TestFixture::timers[0]->id;
-  uint32_t next_pop_time = TestFixture::timers[0]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[0]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[0], id, next_pop_time, cluster_view_id);
-  TimerID id = TestFixture::timers[1]->id;
-  uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
-  TimerID id = TestFixture::timers[2]->id;
-  uint32_t next_pop_time = TestFixture::timers[2]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[2]->cluster_view_id;
-  TestFixture::ts->insert(TestFixture::timerpairs[2], id, next_pop_time, cluster_view_id);
-  std::string get_response;
-  TestFixture::ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
 
-  ASSERT_EQ(get_response, "{\"Timers\":[]}");
-
-  delete TestFixture::tombstone;
-}
 
 // Test that updating a timer with a new cluster ID causes the original
 // timer to be saved off.
@@ -1065,55 +874,56 @@ TYPED_TEST(TestTimerStore, UpdateClusterViewID)
 
   // Find this timer in the store, and check there's no saved timers
   // associated with it
-  std::map<TimerID, TimerPair>::iterator map_it =
-                                                    TestFixture::ts->_timer_lookup_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
-  EXPECT_EQ(1u, map_it->second.size());
-  EXPECT_EQ(1u, map_it->second.front()->id);
+  std::map<TimerID, TimerPair>::iterator map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
+  EXPECT_EQ(NULL, map_it->second.information_timer);
+  EXPECT_EQ(1u, map_it->second.active_timer->id);
 
   // Add a new timer with the same ID, and an updated Cluster View ID
   TestFixture::timers[1]->id = 1;
   TestFixture::timers[1]->cluster_view_id = "updated-cluster-view-id";
-  TimerID id = TestFixture::timers[1]->id;
-  uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
+  id = TestFixture::timers[1]->id;
+  next_pop_time = TestFixture::timers[1]->next_pop_time();
+  cluster_view_id = TestFixture::timers[1]->cluster_view_id;
+  TestFixture::timerpairs[1].information_timer = TestFixture::timerpairs[0].active_timer;
   TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
 
   // Find this timer in the store, and check there's a saved timer. The saved
   // timer has the old cluster view ID, and the new timer has the new one.
-  map_it = TestFixture::ts->_timer_lookup_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
-  EXPECT_EQ(2u, map_it->second.size());
-  EXPECT_EQ(1u, map_it->second.front()->id);
-  EXPECT_EQ("updated-cluster-view-id", map_it->second.front()->cluster_view_id);
-  EXPECT_EQ(1u, map_it->second.back()->id);
-  EXPECT_EQ("cluster-view-id", map_it->second.back()->cluster_view_id);
+  map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
+  EXPECT_TRUE(map_it->second.information_timer);
+  EXPECT_EQ(1u, map_it->second.active_timer->id);
+  EXPECT_EQ("updated-cluster-view-id", map_it->second.active_timer->cluster_view_id);
+  EXPECT_EQ(1u, map_it->second.information_timer->id);
+  EXPECT_EQ("cluster-view-id", map_it->second.information_timer->cluster_view_id);
 
   // Add a new timer with the same ID, an updated Cluster View ID,
-  // and make it a TestFixture::tombstone
+  // and make it a tombstone
   TestFixture::timers[2]->id = 1;
   TestFixture::timers[2]->cluster_view_id = "updated-again-cluster-view-id";
   TestFixture::timers[2]->become_tombstone();
-  TimerID id = TestFixture::timers[2]->id;
-  uint32_t next_pop_time = TestFixture::timers[2]->next_pop_time();
-  std::string cluster_view_id = TestFixture::timers[2]->cluster_view_id;
+  id = TestFixture::timers[2]->id;
+  next_pop_time = TestFixture::timers[2]->next_pop_time();
+  cluster_view_id = TestFixture::timers[2]->cluster_view_id;
+  TestFixture::timerpairs[2].information_timer = TestFixture::timerpairs[1].active_timer;
   TestFixture::ts->insert(TestFixture::timerpairs[2], id, next_pop_time, cluster_view_id);
 
   // Find this timer in the store, and check there's a saved timer. The saved
   // timer has the old cluster view ID, and the new timer has the new one.
-  map_it = TestFixture::ts->_timer_lookup_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
-  EXPECT_EQ(2u, map_it->second.size());
-  EXPECT_EQ(1u, map_it->second.front()->id);
-  EXPECT_EQ("updated-again-cluster-view-id", map_it->second.front()->cluster_view_id);
-  EXPECT_TRUE(map_it->second.front()->is_tombstone());
-  EXPECT_EQ(1u, map_it->second.back()->id);
-  EXPECT_EQ("updated-cluster-view-id", map_it->second.back()->cluster_view_id);
-  EXPECT_FALSE(map_it->second.back()->is_tombstone());
+  map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
+  EXPECT_TRUE(map_it->second.information_timer);
+  EXPECT_EQ(1u, map_it->second.active_timer->id);
+  EXPECT_EQ("updated-again-cluster-view-id", map_it->second.active_timer->cluster_view_id);
+  EXPECT_TRUE(map_it->second.active_timer->is_tombstone());
+  EXPECT_EQ(1u, map_it->second.information_timer->id);
+  EXPECT_EQ("updated-cluster-view-id", map_it->second.information_timer->cluster_view_id);
+  EXPECT_FALSE(map_it->second.information_timer->is_tombstone());
 
   delete TestFixture::tombstone;
 }
-
+/*
 // Test that the store uses the saved timers (rather than the timers in the
 // timer wheel) when updating the replica tracker or handling get requests.
 //
@@ -1142,6 +952,7 @@ TYPED_TEST(TestTimerStore, ModifySavedTimers)
   TimerID id = TestFixture::timers[1]->id;
   uint32_t next_pop_time = TestFixture::timers[1]->next_pop_time();
   std::string cluster_view_id = TestFixture::timers[1]->cluster_view_id;
+  TestFixture::timerpairs[1].information_timer = TextFixture::timerpairs[0].active_timer;
   TestFixture::ts->insert(TestFixture::timerpairs[1], id, next_pop_time, cluster_view_id);
 
   // Update the replica tracker for Timer ID 1. This should update the
@@ -1149,8 +960,8 @@ TYPED_TEST(TestTimerStore, ModifySavedTimers)
   // the new first timer.
   TestFixture::ts->update_replica_tracker_for_timer(1u, 2);
   std::map<TimerID, TimerPair>::iterator map_it =
-                                                    TestFixture::ts->_timer_lookup_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
+                                                    TestFixture::ts->_timer_lookup_id_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
   EXPECT_EQ(2u, map_it->second.size());
   EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
   EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
@@ -1163,8 +974,8 @@ TYPED_TEST(TestTimerStore, ModifySavedTimers)
   uint32_t next_pop_time = TestFixture::timers[2]->next_pop_time();
   std::string cluster_view_id = TestFixture::timers[2]->cluster_view_id;
   TestFixture::ts->insert(TestFixture::timerpairs[2], id, next_pop_time, cluster_view_id);
-  map_it = TestFixture::ts->_timer_lookup_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
+  map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
   EXPECT_EQ(2u, map_it->second.size());
   EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
   EXPECT_EQ(1u, map_it->second.front()->replicas.size());
@@ -1175,13 +986,14 @@ TYPED_TEST(TestTimerStore, ModifySavedTimers)
   // as having been informed for Timer ID 1. This should
   // delete the saved timer.
   TestFixture::ts->update_replica_tracker_for_timer(1u, 0);
-  map_it = TestFixture::ts->_timer_lookup_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
+  map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
   EXPECT_EQ(1u, map_it->second.size());
   std::string get_response;
   TestFixture::ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
 
   delete TestFixture::tombstone;
-}*/
+}
+*/
 
