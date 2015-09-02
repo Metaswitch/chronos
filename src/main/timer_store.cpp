@@ -100,7 +100,7 @@ TimerStore::~TimerStore()
 void TimerStore::insert(TimerPair tp,
                         TimerID id,
                         uint32_t next_pop_time,
-                        std::string cluster_view_id)
+                        std::vector<std::string> cluster_view_id_vector)
 {
   Bucket* bucket;
 
@@ -143,9 +143,12 @@ void TimerStore::insert(TimerPair tp,
   }
 
   // Add to the view specific mapping for easy retrieval on resync
-  std::vector<TimerPair> existing_view_timers = _timer_view_id_table[cluster_view_id];
-  existing_view_timers.push_back(tp);
-  _timer_view_id_table[cluster_view_id] = existing_view_timers;
+  for (std::vector<std::string>::iterator it = cluster_view_id_vector.begin();
+                                          it != cluster_view_id_vector.end();
+                                             ++it)
+  {
+    _timer_view_id_table[*it].insert(id);
+  }
 
   // Finally, add the timer to the lookup table.
   _timer_lookup_id_table[id] = tp;
@@ -172,17 +175,12 @@ bool TimerStore::fetch(TimerID id, TimerPair& timer)
     _timer_lookup_id_table.erase(id);
 
     // Remove from cluster structure
-    std::string cluster_view_id = timer.active_timer->cluster_view_id;
+    _timer_view_id_table[timer.active_timer->cluster_view_id].erase(timer.active_timer->id);
 
-    std::vector<TimerPair> existing_view_timers = _timer_view_id_table[cluster_view_id];
-    existing_view_timers.erase(std::remove_if(existing_view_timers.begin(),
-                                              existing_view_timers.end(),
-                                              [=](TimerPair tp){return tp.active_timer->id==id;}),
-                               existing_view_timers.end());
-    _timer_view_id_table[cluster_view_id] = existing_view_timers;
-
-
-
+    // Remove from cluster structure
+    if (timer.information_timer) {
+      _timer_view_id_table[timer.active_timer->cluster_view_id].erase(timer.active_timer->id);
+    }
     TRC_DEBUG("Successfully found an existing timer");
     return true;
   }
@@ -219,7 +217,7 @@ bool TimerStore::get_by_view_id(std::string new_cluster_view_id,
 {
   int timer_count = 0;
   bool done = false;
-  for (std::map<std::string, std::vector<TimerPair>>::iterator it = _timer_view_id_table.begin();
+  for (std::map<std::string, std::unordered_set<TimerID>>::iterator it = _timer_view_id_table.begin();
                                                               it != _timer_view_id_table.end();
                                                               ++it)
   {
@@ -230,7 +228,7 @@ bool TimerStore::get_by_view_id(std::string new_cluster_view_id,
       // interested in them. Only take max_responses at a time (across multiple epochs)
       int size = max_responses - timer_count;
 
-      if ((int)(it->second.size()) < size)
+      if ((int)(it->second.size()) <= size)
       {
         // There aren't that many view timers here, so we'll be able to return
         // them all
@@ -238,15 +236,20 @@ bool TimerStore::get_by_view_id(std::string new_cluster_view_id,
         size = it->second.size();
       }
 
-      for (int ii = 0; ii < size; ii++)
+      for (std::unordered_set<TimerID>::iterator id_it = it->second.begin();
+                                                 id_it != it->second.end();
+                                                 ++id_it)
       {
+        if (timer_count == max_responses)
+        {
+          return done;
+        }
+
         // Clone the vector, as this function should not remove the timers
-        std::vector<TimerPair> wrong_view_timers = it->second;
-        view_timers.push_back(wrong_view_timers.back());
-        wrong_view_timers.pop_back();
+        TimerPair existing_timer = _timer_lookup_id_table[*id_it];
+        view_timers.push_back(existing_timer);
         timer_count++;
       }
-
     }
   }
 
@@ -323,6 +326,18 @@ void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
                                    ++it)
   {
     _timer_lookup_id_table.erase((*it).active_timer->id);
+    // Remove from cluster structure
+    TimerID id = (*it).active_timer->id;
+
+    std::string a_cluster_view_id = (*it).active_timer->cluster_view_id;
+    _timer_view_id_table[a_cluster_view_id].erase(id);
+
+    if ((*it).information_timer)
+    {
+      std::string i_cluster_view_id = (*it).information_timer->cluster_view_id;
+      _timer_view_id_table[i_cluster_view_id].erase(id);
+    }
+
     set.insert(*it);
   }
   bucket->clear();

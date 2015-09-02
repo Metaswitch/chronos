@@ -111,7 +111,7 @@ public:
   virtual ~TimerStore();
 
   // Insert a timer (with an ID that doesn't exist already)
-  virtual void insert(TimerPair, TimerID, uint32_t, std::string);
+  virtual void insert(TimerPair, TimerID, uint32_t, std::vector<std::string>);
 
   // Fetch a timer by ID, populate the TimerPair, and return whether the
   // value was found or not
@@ -184,7 +184,7 @@ private:
   std::map<TimerID, TimerPair> _timer_lookup_id_table;
 
   // A table of all know timers indexed by cluster view id.
-  std::map<std::string, std::vector<TimerPair>> _timer_view_id_table;
+  std::map<std::string, std::unordered_set<TimerID>> _timer_view_id_table;
 
   // Health checker, which is notified when a timer is successfully added.
   HealthChecker* _health_checker;

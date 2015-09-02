@@ -183,7 +183,8 @@ void TimerHandler::add_timer_to_store(Timer* timer)
   TimerID id = new_tp.active_timer->id;
   uint32_t next_pop_time = new_tp.active_timer->next_pop_time();
   std::string cluster_view_id = new_tp.active_timer->cluster_view_id;
-  _store->insert(new_tp, id, next_pop_time, cluster_view_id);
+  std::vector<std::string> cluster_view_id_vector (1, cluster_view_id);
+  _store->insert(new_tp, id, next_pop_time, cluster_view_id_vector);
 }
 
 void TimerHandler::return_timer_to_store(Timer* timer, bool successful)
@@ -191,7 +192,7 @@ void TimerHandler::return_timer_to_store(Timer* timer, bool successful)
   if (!successful)
   {
 /*    // In this case, we should update our local statistics, and set the alarm
- *    ADDDDDDDDDDDDDDD STATISTICS
+ *
     for (std::vector<std::string>:: iterator it = timer->tags.begin();
                                              it != timer->tags.end();
                                              ++it)
@@ -291,7 +292,8 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
       else
       {
         uint32_t next_pop_time = store_timers.active_timer->next_pop_time();
-        _store->insert(store_timers, id, next_pop_time, cluster_view_id);
+        std::vector<std::string> cluster_view_id_vector(1, cluster_view_id);
+        _store->insert(store_timers, id, next_pop_time, cluster_view_id_vector);
       }
     }
   }
@@ -324,7 +326,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                         ++it)
   {
     Timer* timer_copy;
-    if (it->information_timer == NULL)
+    if (!it->information_timer)
     {
       timer_copy = new Timer(*(it->active_timer));
     }
