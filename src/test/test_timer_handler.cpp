@@ -269,8 +269,6 @@ TEST_F(TestTimerHandler, EmptyStore)
 TEST_F(TestTimerHandler, AddTimer)
 {
   Timer* timer = default_timer(1);
-  //TimerPair pair;
-  //pair.active_timer = timer;
 
   // Once we add the timer, we'll poll the store for a new timer, expect an extra
   // call to fetch_next_timers().
@@ -289,6 +287,74 @@ TEST_F(TestTimerHandler, AddTimer)
 
   delete timer;
 }
+
+TEST_F(TestTimerHandler, AddExistingTimer)
+{
+  Timer* timer1 = default_timer(1);
+  Timer* timer2 = default_timer(1);
+  TimerPair return_pair;
+  return_pair.active_timer = timer1;
+
+  // Once we add the timer, we'll poll the store for a new timer, expect an extra
+  // call to fetch_next_timers().
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+  _cond()->block_till_waiting();
+
+  EXPECT_CALL(*_store, fetch(_, _)).Times(1);
+  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+
+  _th->add_timer_to_store(timer1);
+
+  EXPECT_CALL(*_store, fetch(_, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
+  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+
+  _th->add_timer_to_store(timer2);
+
+  _cond()->block_till_waiting();
+
+  // timer1 is deleted by handler
+  delete timer2;
+}
+
+TEST_F(TestTimerHandler, AddOlderTimer)
+{
+  Timer* timer1 = default_timer(1);
+  Timer* timer2 = default_timer(1);
+  timer2->start_time_mono_ms = timer1->start_time_mono_ms - 100;
+  TimerPair return_pair;
+  return_pair.active_timer = timer1;
+
+  // Once we add the timer, we'll poll the store for a new timer, expect an extra
+  // call to fetch_next_timers().
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
+  _cond()->block_till_waiting();
+
+  EXPECT_CALL(*_store, fetch(_, _)).Times(1);
+  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+
+  _th->add_timer_to_store(timer1);
+
+  EXPECT_CALL(*_store, fetch(_, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
+  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+
+  _th->add_timer_to_store(timer2);
+
+  _cond()->block_till_waiting();
+
+  delete timer1;
+  // timer2 is deleted by handler
+}
+
 
 TEST_F(TestTimerHandler, LeakTest)
 {
