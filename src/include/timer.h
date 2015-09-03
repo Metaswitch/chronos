@@ -57,14 +57,14 @@ public:
 class Timer
 {
 public:
-  Timer(TimerID, uint32_t interval, uint32_t repeat_for);
+  Timer(TimerID, uint32_t interval_ms, uint32_t repeat_for);
   ~Timer();
 
   // For testing purposes.
   friend class TestTimer;
 
   // Returns the next time to pop in ms after epoch
-  uint64_t next_pop_time();
+  uint32_t next_pop_time();
 
   // Construct the URL for this timer given a hostname
   std::string url(std::string host = "");
@@ -115,8 +115,8 @@ public:
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
   TimerID id;
-  uint64_t start_time_mono_ms;
-  uint32_t interval;
+  uint32_t start_time_mono_ms;
+  uint32_t interval_ms;
   uint32_t repeat_for;
   uint32_t sequence_number;
   std::string cluster_view_id;
