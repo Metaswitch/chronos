@@ -79,7 +79,7 @@ private:
   bool timer_is_on_node(std::string, std::string, Timer*, std::vector<std::string>&);
   void set_tombstone_values(Timer* timer, Timer* existing);
   bool overflow_less_than(uint32_t a, uint32_t b);
-  void update_statistics(uint32_t);
+  void update_statistics(std::vector<std::string> new_tags, std::vector<std::string> existing_tags);
 
   TimerStore* _store;
   Callback* _callback;

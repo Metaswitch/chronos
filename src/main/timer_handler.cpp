@@ -171,12 +171,19 @@ void TimerHandler::add_timer_to_store(Timer* timer)
           new_tp.information_timer = existing_copy;
         }
       }
+      // Update statistics to reflect update in timers
+      update_statistics(timer->tags, existing->tags);
 
       // The timer information has already been removed from the timer store,
       // so we delete the reference to the old pair, and insert the new pair
       delete existing_tp.active_timer;
       delete existing_tp.information_timer;
     }
+  }
+  else
+  {
+    // This timer is new, so we can update statistics with empty existing
+    update_statistics(timer->tags, std::vector<std::string>());
   }
 
   TRC_DEBUG("Adding the new timer");
@@ -191,26 +198,8 @@ void TimerHandler::return_timer_to_store(Timer* timer, bool successful)
 {
   if (!successful)
   {
-/*    // In this case, we should update our local statistics, and set the alarm
- *
-    for (std::vector<std::string>:: iterator it = timer->tags.begin();
-                                             it != timer->tags.end();
-                                             ++it)
-    {
-      std::map<std::string,int>::iterator map_it = _tag_count.find(*it);
-      if (map_it != _tag_count.end())
-      {
-        map_it->second++;
-      }
-      else
-      {
-        // The code enters here if we've returned a timer to the store,
-        // but never incremented (and hence instantiated) the map with this
-        // value. This should never happen - it should have been inserted
-        // using 'upsert_new_timer'
-        TRC_WARNING("Timer %lu returned to store incorrectly, use add_timer_to_store?", timer->id);
-      }
-    }*/
+    // In this case, we should update our local statistics, and set the alarm
+    update_statistics(std::vector<std::string>(), timer->tags);
 
     if (_timer_pop_alarm && timer->is_last_replica())
     {
@@ -224,8 +213,9 @@ void TimerHandler::return_timer_to_store(Timer* timer, bool successful)
   // We succeeded but may need to tombstone the timer
   if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
   {
-    // This timer won't pop again, so tombstone it
+    // This timer won't pop again, so tombstone it and update statistics
     timer->become_tombstone();
+    update_statistics(std::vector<std::string>(), timer->tags);
   }
 
   // Replicate and add the timer back to store
@@ -505,16 +495,6 @@ void TimerHandler::run() {
 /* PRIVATE FUNCTIONS                                                         */
 /*****************************************************************************/
 
-// Pass a timer into the store to be added, regardless of where it has come from
-/*Timer* TimerHandler::add_timer(Timer* timer)
-{
-  TRC_DEBUG("Adding timer:  %lu", timer->id);
-  pthread_mutex_lock(&_mutex);
-  Timer* replaced = _store->add_timer(timer);
-  pthread_mutex_unlock(&_mutex);
-  return replaced;
-}*/
-
 // Pop a set of timers, this function takes ownership of the timers and
 // thus empties the passed in set.
 void TimerHandler::pop(std::unordered_set<TimerPair>& timers)
@@ -567,14 +547,35 @@ bool TimerHandler::overflow_less_than(uint32_t a, uint32_t b)
 }
 
 // Report an update to the number of timers to statistics
-void TimerHandler::update_statistics(uint32_t sample)
+void TimerHandler::update_statistics(std::vector<std::string> new_tags,
+                                     std::vector<std::string> old_tags)
 {
-  if (_total_timers_table != NULL)
+  std::vector<std::string> to_add;
+  std::vector<std::string> to_remove;
+
+  std::unordered_set<std::string> set_old_tags(old_tags.begin(), old_tags.end());
+  std::unordered_set<std::string> set_new_tags(new_tags.begin(), new_tags.end());
+
+  std::set_difference(set_old_tags.begin(), set_old_tags.end(),
+                      set_new_tags.begin(), set_new_tags.end(),
+                      std::back_inserter(to_remove));
+
+  std::set_difference(set_new_tags.begin(), set_new_tags.end(),
+                      set_old_tags.begin(), set_old_tags.end(),
+                      std::back_inserter(to_add));
+
+
+  for (std::vector<std::string>::iterator it = to_add.begin();
+                                                 it != to_add.end();
+                                                 ++it)
   {
-    _total_timers_table->accumulate(_timer_count);
+    _tag_count[*it]++;
   }
-  if (_current_timers_scalar != NULL)
+
+  for (std::vector<std::string>::iterator it = to_remove.begin();
+                                                 it != to_remove.end();
+                                                 ++it)
   {
-    _current_timers_scalar->value = _timer_count;
+    _tag_count[*it]--;
   }
 }

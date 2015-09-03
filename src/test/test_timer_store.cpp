@@ -904,3 +904,59 @@ TYPED_TEST(TestTimerStore, SelectTimersTakeInformationalTimers)
   TimerPair pair = TestFixture::ts->_timer_lookup_id_table[*(map_it->second.begin())];
   EXPECT_EQ(1u, pair.active_timer->id);
 }
+
+/*TYPED_TEST(TestTimerStore, ModifySavedTimers)
+{
+  // Add a timer to the store with an old cluster ID and three replicas
+  TestFixture::timers[0]->cluster_view_id = "old-cluster-view-id";
+  TestFixture::timers[0]->_replica_tracker = 7;
+  TestFixture::timers[0]->replicas.push_back("10.0.0.2:9999");
+  TestFixture::timers[0]->replicas.push_back("10.0.0.3:9999");
+  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+
+  // Add a timer to the store with the same ID as the previous timer,
+  // but an updated cluster-view ID. This will take the original timer
+  // out of the timer wheel and save it just in the map
+  TestFixture::timers[1]->id = 1;
+  TestFixture::timers[1]->_replica_tracker = 7;
+  TestFixture::timers[1]->replicas.push_back("10.0.0.2:9999");
+  TestFixture::timers[1]->replicas.push_back("10.0.0.3:9999");
+  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+
+  // Update the replica tracker for Timer ID 1. This should update the
+  // saved timer to mark that the third replica has been informed, not
+  // the new first timer.
+  TestFixture::ts->update_replica_tracker_for_timer(1u, 2);
+  std::map<TimerID, std::vector<Timer*>>::iterator map_it =
+                                                    TestFixture::ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
+  EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
+
+  // Now update the timer. This should change the first timer but not the
+  // second timer in the timer map
+  TestFixture::timers[2]->id = 1;
+  TestFixture::timers[2]->_replica_tracker = 7;
+  TestFixture::ts->add_timer(TestFixture::timers[2]);
+  map_it = TestFixture::ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
+  EXPECT_EQ(2u, map_it->second.size());
+  EXPECT_EQ(7u, map_it->second.front()->_replica_tracker);
+  EXPECT_EQ(1u, map_it->second.front()->replicas.size());
+  EXPECT_EQ(3u, map_it->second.back()->_replica_tracker);
+  EXPECT_EQ(3u, map_it->second.back()->replicas.size());
+
+  // Finally, update the replica tracker to mark all replicas
+  // as having been informed for Timer ID 1. This should
+  // delete the saved timer.
+  TestFixture::ts->update_replica_tracker_for_timer(1u, 0);
+  map_it = TestFixture::ts->_timer_lookup_table.find(1);
+  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_table.end());
+  EXPECT_EQ(1u, map_it->second.size());
+  std::string get_response;
+  TestFixture::ts->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
+  ASSERT_EQ(get_response, "{\"Timers\":[]}");
+
+  delete TestFixture::tombstone;
+}*/
