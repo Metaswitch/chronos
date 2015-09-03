@@ -138,7 +138,8 @@ do_wait_sync() {
   while true
   do
     # Retrieve the statistics.
-    nodes=`snmpget -Oqv -M. -v2c -c clearwater sprout-1.ajw3.cw-ngv.com .1.2.826.0.1.1578918.9.10.1`
+    # Temporarily uses -c clearwater community string
+    nodes=`snmpget -Oqv -M. -v2c -c clearwater localhost .1.2.826.0.1.1578918.9.10.1`
 
     # If the nodes left to query is 0 or unset, we're finished
     if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]
