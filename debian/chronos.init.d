@@ -131,7 +131,6 @@ do_scale_operation()
 do_wait_sync() {
   # Wait for 2s to give Chronos a chance to have updated its statistics.
   sleep 2
-  snmp_exists=3
 
   # Query Chronos via the 0MQ socket, parse out the number of Chronos nodes
   # still needing to be queried, and check if it's 0.
@@ -146,16 +145,6 @@ do_wait_sync() {
     if [ "$nodes" = "0" ]
     then
       break
-    fi
-
-    # If we have 3 failures at getting the nodes, give up
-    if [ "$nodes" = "No Such Instance currently exists at this OID" ]
-    then
-      ((snmp_exists--))
-      if [ "$snmp_exists" == "0" ]
-        echo -n "Could not get number of remaining nodes over SNMP"
-        break
-      fi
     fi
 
     # Indicate that we're still waiting, then sleep for 5 secs and repeat
