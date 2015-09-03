@@ -148,11 +148,11 @@ do_wait_sync() {
       break
     fi
 
-    # If
+    # If we have 3 failures at getting the nodes, give up
     if [ "$nodes" = "No Such Instance currently exists at this OID" ]
     then
       ((snmp_exists--))
-      if [ "$snmp_exists" == 0 ]
+      if [ "$snmp_exists" == "0" ]
         echo -n "Could not get number of remaining nodes over SNMP"
         break
       fi
