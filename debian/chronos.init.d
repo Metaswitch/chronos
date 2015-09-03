@@ -142,15 +142,8 @@ do_wait_sync() {
     nodes=`snmpget -Oqv -M. -v2c -c clearwater localhost .1.2.826.0.1.1578918.9.10.1`
 
     # If the nodes left to query is 0 or unset, we're finished
-    if [ "$nodes" = "0" ] || [ "$nodes" = "No value returned" ]
+    if [ "$nodes" = "0" ]
     then
-      break
-    fi
-
-    # If the statistic is unknown then the SNMP handler isn't installed. Give up
-    if [ "$nodes" = 'Invalid OID: ".1.2.826.0.1.1578918.9.10.1"' ]
-    then
-      echo "SNMP statistics are not supported on this box. Please install the required packages and retry"
       break
     fi
 
