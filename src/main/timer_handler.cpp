@@ -53,16 +53,14 @@ TimerHandler::TimerHandler(TimerStore* store,
                            Callback* callback,
                            Replicator* replicator,
                            Alarm* timer_pop_alarm,
-                           SNMP::ContinuousAccumulatorTable* total_timers_table,
+                           SNMP::InfiniteTimerCountTable* tagged_timers_table,
                            SNMP::U32Scalar* current_timers_scalar) :
                            _store(store),
                            _callback(callback),
                            _replicator(replicator),
                            _timer_pop_alarm(timer_pop_alarm),
-                           _total_timers_table(total_timers_table),
+                           _tagged_timers_table(tagged_timers_table),
                            _current_timers_scalar(current_timers_scalar),
-                           _timer_count(0),
-                           _tag_count({}),
                            _terminate(false),
                            _nearest_new_timer(-1)
 {
@@ -569,13 +567,13 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
                                                  it != to_add.end();
                                                  ++it)
   {
-    _tag_count[*it]++;
+    _tagged_timers_table->increment(*it);
   }
 
   for (std::vector<std::string>::iterator it = to_remove.begin();
                                                  it != to_remove.end();
                                                  ++it)
   {
-    _tag_count[*it]--;
+    _tagged_timers_table->decrement(*it);
   }
 }

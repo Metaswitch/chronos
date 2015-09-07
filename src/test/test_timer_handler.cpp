@@ -82,7 +82,7 @@ protected:
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
 //  SNMP::ContinuousAccumulatorTable* _fake_table = new SNMP::FakeContinuousAccumulatorTable();
-  SNMP::ContinuousAccumulatorTable* _fake_table = NULL;
+  SNMP::InfiniteTimerCountTable* _fake_table = NULL;
   SNMP::U32Scalar* _fake_scalar = NULL;
 
   MockTimerStore* _store;

@@ -49,13 +49,13 @@
 #include "callback.h"
 #include "replicator.h"
 #include "alarm.h"
-#include "snmp_continuous_accumulator_table.h"
+#include "snmp_infinite_timer_count_table.h"
 #include "snmp_scalar.h"
 
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*, SNMP::ContinuousAccumulatorTable*, SNMP::U32Scalar*);
+  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*, SNMP::InfiniteTimerCountTable*, SNMP::U32Scalar*);
   virtual ~TimerHandler();
   virtual void add_timer_to_store(Timer*);
   virtual void return_timer_to_store(Timer*, bool);
@@ -85,7 +85,7 @@ private:
   Callback* _callback;
   Replicator* _replicator;
   Alarm* _timer_pop_alarm;
-  SNMP::ContinuousAccumulatorTable* _total_timers_table;
+  SNMP::InfiniteTimerCountTable* _tagged_timers_table;
   SNMP::U32Scalar* _current_timers_scalar;
 
   pthread_t _handler_thread;
