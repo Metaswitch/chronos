@@ -169,7 +169,7 @@ int main(int argc, char** argv)
   snmp_setup("chronos");
 
   total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
-                                              ".1.2.826.0.1.1578918.9.10.5");
+                                              ".1.2.826.0.1.1578918.9.10.4");
   current_timers_scalar = new SNMP::U32Scalar("chronos_current_timers_scalar",
                                               ".1.2.826.0.1.1578918.9.10.5");
 

@@ -329,6 +329,9 @@ TEST_F(TestTimerHandler, AddOlderTimer)
   TimerPair return_pair;
   return_pair.active_timer = timer1;
 
+  TimerPair pair1;
+  pair1.active_timer = timer1;
+
   // Once we add the timer, we'll poll the store for a new timer, expect an extra
   // call to fetch_next_timers().
   EXPECT_CALL(*_store, fetch_next_timers(_)).
@@ -338,14 +341,14 @@ TEST_F(TestTimerHandler, AddOlderTimer)
   _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
   _cond()->block_till_waiting();
 
-  EXPECT_CALL(*_store, fetch(_, _)).Times(1);
-  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+  EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).Times(1);
 
   _th->add_timer_to_store(timer1);
 
-  EXPECT_CALL(*_store, fetch(_, _)).
+  EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, _, _, _)).Times(1);
+  EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).Times(1);
 
   _th->add_timer_to_store(timer2);
 
@@ -457,14 +460,15 @@ TEST_F(TestTimerHandler, UpdateReplicaTrackerValueForNewTimer)
 
   _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_table, _fake_scalar);
 
-  EXPECT_CALL(*_store, fetch(_, _)).
+  EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(pair),Return(false)));
-  EXPECT_CALL(*_store, insert(_,_,_,_));
+  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _));
 
   _th->add_timer_to_store(timer);
 
-  EXPECT_CALL(*_store, fetch(_, _)).
+  EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(pair),Return(true)));
+  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _));
 
   _th->update_replica_tracker_for_timer(1u, 1);
 
