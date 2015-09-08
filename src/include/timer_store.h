@@ -45,33 +45,84 @@
 #include <map>
 #include <string>
 
+struct TimerPair {
+  TimerPair() : active_timer(NULL),
+                information_timer(NULL)
+                {}
+  Timer* active_timer;
+  Timer* information_timer;
+
+  bool operator==(const TimerPair &other) const
+  {
+    if (active_timer == NULL && information_timer == NULL &&
+        other.active_timer == NULL && other.information_timer == NULL)
+    {
+      return true;
+    }
+    if (active_timer != NULL && information_timer != NULL &&
+        other.active_timer != NULL && other.information_timer != NULL)
+    {
+      return (active_timer->id == other.active_timer->id &&
+              information_timer->id == other.information_timer->id);
+    }
+    if (active_timer != NULL && other.active_timer != NULL &&
+        information_timer == NULL && other.information_timer == NULL)
+    {
+      return (active_timer->id == other.active_timer->id);
+    }
+    if (information_timer != NULL && other.information_timer != NULL &&
+        active_timer == NULL && other.active_timer == NULL)
+    {
+      return (information_timer->id == other.information_timer->id);
+    }
+    return false;
+  }
+
+  bool operator<(const TimerPair &other) const
+  {
+    return (active_timer->id < other.active_timer->id);
+  }
+};
+
+namespace std
+{
+  template <>
+  struct hash<TimerPair>
+  {
+    size_t operator()(const TimerPair& tp) const
+    {
+      if (tp.active_timer != NULL)
+      {
+        return (hash<uint64_t>()(tp.active_timer->id));
+      }
+      else
+      {
+        return 0;
+      }
+    }
+  };
+}
+
 class TimerStore
 {
 public:
+
   TimerStore(HealthChecker* hc);
   virtual ~TimerStore();
 
-  // Add a timer to the store.
-  virtual void add_timer(Timer*);
+  // Insert a timer (with an ID that doesn't exist already)
+  virtual void insert(TimerPair, TimerID, uint32_t, std::vector<std::string>);
 
-  // Remove a timer by ID from the store.
-  virtual void delete_timer(TimerID);
+  // Fetch a timer by ID, populate the TimerPair, and return whether the
+  // value was found or not
+  virtual bool fetch(TimerID, TimerPair&);
 
-  // Get the next bucket of timers to pop.
-  virtual void get_next_timers(std::unordered_set<Timer*>&);
+  // Fetch the next buckets of timers to pop and remove from store
+  virtual void fetch_next_timers(std::unordered_set<TimerPair>&);
 
-  // Mark which replicas have been informed for an individual timer.
-  // If all replicas are informed, then the timer will be tombstoned
-  // NOTE -> This is currently only valid for scale down.
-  virtual void update_replica_tracker_for_timer(TimerID id,
-                                                int replica_index);
-
-  // Get timer information from the store for timers where
-  // request_node should be a replica
-  virtual HTTPCode get_timers_for_node(std::string request_node,
-                                       int max_responses,
-                                       std::string cluster_view_id,
-                                       std::string& get_response);
+  // Fetch timers with a given view ID, and populate the vector with 1000
+  // relevant timers
+  virtual bool get_by_view_id(std::string cluster_view_id, int max_responses, std::vector<TimerPair>&);
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
@@ -81,9 +132,9 @@ private:
   // - A set of overdue timers.
   //
   // New timers are placed into on of these structures:
-  // - The short wheel if due to pop in the next second.
-  // - The long wheel if due to pop in the next hour (but not the next second).
-  // - The heap if due to pop >=1hr in the future.
+  // - The short wheel if due to pop in ~the next second.
+  // - The long wheel if due to pop in ~the next hour (but not ~the next second).
+  // - The heap if due to pop ~>=1hr in the future.
   // - The overdue set if they should have already popped.
   //
   // Timers in the overdue set are popped whenever `get_next_timers` is called.
@@ -127,10 +178,13 @@ private:
   // the heap may need to be searched, although the timer is guaranteed to be in
   // only one of them (and the heap is searched last for efficiency).
 
-  // A table of all known timers. Only the first timer in the timer list
-  // is in the timer wheel - any other timers are stored for use when
+  // A table of all known timers indexed by ID. Only the active timer in the
+  // TimerPair is in the timer wheel - any other timers are stored for use when
   // resynchronising between Chronos's.
-  std::map<TimerID, std::vector<Timer*>> _timer_lookup_table;
+  std::map<TimerID, TimerPair> _timer_lookup_id_table;
+
+  // A table of all know timers indexed by cluster view id.
+  std::map<std::string, std::unordered_set<TimerID>> _timer_view_id_table;
 
   // Health checker, which is notified when a timer is successfully added.
   HealthChecker* _health_checker;
@@ -147,7 +201,7 @@ private:
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
 
   // Type of a single timer bucket.
-  typedef std::unordered_set<Timer*> Bucket;
+  typedef std::unordered_set<TimerPair> Bucket;
 
   // Bucket for timers that are added after they were supposed to pop.
   Bucket _overdue_timers;
@@ -159,7 +213,7 @@ private:
   Bucket _long_wheel[LONG_WHEEL_NUM_BUCKETS];
 
   // Heap of longer-lived timers (> 1hr)
-  std::vector<Timer*> _extra_heap;
+  std::vector<TimerPair> _extra_heap;
 
   // Timestamp of the next tick to process. This is stored in ms, and is always
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.
@@ -170,8 +224,8 @@ private:
 
   // Utility functions to locate a Timer's correct home in the store's timer
   // wheels.
-  Bucket* short_wheel_bucket(Timer* timer);
-  Bucket* long_wheel_bucket(Timer* timer);
+  Bucket* short_wheel_bucket(TimerPair timer);
+  Bucket* long_wheel_bucket(TimerPair timer);
 
   // Utility functions to locate a bucket in the timer wheels based on a
   // timestamp.
@@ -199,30 +253,20 @@ private:
   // Ensure a timer is no longer stored in the timer wheels.  This is an
   // expensive operation and should only be called when unsure of the timer
   // store's consistency.
-  void purge_timer_from_wheels(Timer* timer);
+  void purge_timer_from_wheels(TimerPair timer);
 
   // Pop a single timer bucket into the set.
   void pop_bucket(TimerStore::Bucket* bucket,
-                  std::unordered_set<Timer*>& set);
-
-  // Update a timer object with the current cluster configuration. Store off
-  // the old set of replicas, and return whether the requesting node is
-  // one of the new replicas
-  bool timer_is_on_node(std::string request_node,
-                        std::string cluster_view_id,
-                        Timer* timer,
-                        std::vector<std::string>& old_replicas);
+                  std::unordered_set<TimerPair>& set);
 
   // Delete a timer from the timer wheel
-  void delete_timer_from_timer_wheel(Timer* timer);
-
-  // Save the tombstone values from an existing timer
-  void set_tombstone_values(Timer* t, Timer* existing);
+  void remove_timer_from_timer_wheel(TimerPair timer);
 
   // Compare two numbers that might have overflown
   bool overflow_less_than(uint32_t a, uint32_t b);
 
 };
+
 
 #endif
 

@@ -47,15 +47,18 @@
 
 #include "timer_store.h"
 #include "callback.h"
+#include "replicator.h"
+#include "alarm.h"
 #include "snmp_continuous_accumulator_table.h"
 #include "snmp_scalar.h"
 
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Callback*, SNMP::ContinuousAccumulatorTable*, SNMP::U32Scalar*);
+  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*, SNMP::ContinuousAccumulatorTable*, SNMP::U32Scalar*);
   virtual ~TimerHandler();
-  virtual void add_timer(Timer*);
+  virtual void add_timer_to_store(Timer*);
+  virtual void return_timer_to_store(Timer*, bool);
   virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
@@ -71,18 +74,23 @@ public:
 #endif
 
 private:
-  void pop(std::unordered_set<Timer*>&);
+  void pop(std::unordered_set<TimerPair>&);
   void pop(Timer*);
-  void signal_new_timer(unsigned int);
+  bool timer_is_on_node(std::string, std::string, Timer*, std::vector<std::string>&);
+  void set_tombstone_values(Timer* timer, Timer* existing);
+  bool overflow_less_than(uint32_t a, uint32_t b);
   void update_statistics(uint32_t);
 
   TimerStore* _store;
   Callback* _callback;
+  Replicator* _replicator;
+  Alarm* _timer_pop_alarm;
   SNMP::ContinuousAccumulatorTable* _total_timers_table;
   SNMP::U32Scalar* _current_timers_scalar;
 
   pthread_t _handler_thread;
   uint32_t _timer_count;
+  std::map<std::string, int> _tag_count = {};
   volatile bool _terminate;
   volatile unsigned int _nearest_new_timer;
   pthread_mutex_t _mutex;

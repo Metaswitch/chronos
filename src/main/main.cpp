@@ -254,8 +254,10 @@ int main(int argc, char** argv)
   TimerStore *store = new TimerStore(hc);
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
-  HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
+  HTTPCallback* callback = new HTTPCallback();
   TimerHandler* handler = new TimerHandler(store, callback,
+                                           handler_rep,
+                                           timer_pop_alarm,
                                            total_timers_table,
                                            current_timers_scalar);
   callback->start(handler);
