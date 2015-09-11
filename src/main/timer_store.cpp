@@ -170,7 +170,7 @@ bool TimerStore::fetch(TimerID id, TimerPair& timer)
     // back by populating the timer parameter.
     timer = it->second;
 
-    TRC_DEBUG("About to remove timer from wheel");
+    TRC_DEBUG("Removing timer from wheel and cluster view ids");
     remove_timer_from_timer_wheel(timer);
     _timer_lookup_id_table.erase(id);
 
@@ -179,7 +179,7 @@ bool TimerStore::fetch(TimerID id, TimerPair& timer)
 
     // Remove from cluster structure
     if (timer.information_timer) {
-      _timer_view_id_table[timer.active_timer->cluster_view_id].erase(timer.active_timer->id);
+      _timer_view_id_table[timer.information_timer->cluster_view_id].erase(timer.active_timer->id);
     }
     TRC_DEBUG("Successfully found an existing timer");
     return true;
@@ -211,49 +211,55 @@ void TimerStore::fetch_next_timers(std::unordered_set<TimerPair>& set)
   }
 }
 
-bool TimerStore::get_by_view_id(std::string new_cluster_view_id,
-                                int max_responses,
-                                std::vector<TimerPair>& view_timers)
+bool TimerStore::get_by_not_view_id(std::string new_cluster_view_id,
+                                    int max_responses,
+                                    std::unordered_set<TimerPair>& view_timers)
 {
-  int timer_count = 0;
   bool done = false;
+  std::unordered_set<TimerID> view_ids;
+
   for (std::map<std::string, std::unordered_set<TimerID>>::iterator it = _timer_view_id_table.begin();
                                                               it != _timer_view_id_table.end();
                                                               ++it)
   {
     if (it->first != new_cluster_view_id)
     {
+      // We've found another set of interesting cluster view ids
       done = false;
-      // These values are from a previous epoch, and the Handler may be
-      // interested in them. Only take max_responses at a time (across multiple epochs)
-      int size = max_responses - timer_count;
-
-      if ((int)(it->second.size()) <= size)
+      if ((max_responses - view_ids.size() > it->second.size()))
       {
-        // There aren't that many view timers here, so we'll be able to return
-        // them all
         done = true;
-        size = it->second.size();
       }
+
 
       for (std::unordered_set<TimerID>::iterator id_it = it->second.begin();
                                                  id_it != it->second.end();
                                                  ++id_it)
       {
-        if (timer_count == max_responses)
+        if ((int)(view_ids.size()) == max_responses)
         {
-          return done;
+          break;
         }
 
-        // Clone the vector, as this function should not remove the timers
-        TimerPair existing_timer = _timer_lookup_id_table[*id_it];
-        view_timers.push_back(existing_timer);
-        timer_count++;
+        view_ids.insert(*id_it);
       }
+    }
+    if ((int)(view_ids.size()) == max_responses)
+    {
+      break;
     }
   }
 
-  // We either have 1000 timers that may be of interest, or we've reached the
+  for (std::unordered_set<TimerID>::iterator it = view_ids.begin();
+                                             it != view_ids.end();
+                                             ++it)
+  {
+    // Clone the vector, as this function should not remove the timers
+    TimerPair existing_timer = _timer_lookup_id_table[*it];
+    view_timers.insert(existing_timer);
+  }
+
+  // We either have 'max_responses' timers that may be of interest, or we've reached the
   // end of the timer count. Return true if we are done, and all wrong view
   // timers have been reported.
   return done;

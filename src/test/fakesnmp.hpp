@@ -1,8 +1,13 @@
 /**
- * @file mock_timer_store.h
+ * @file fakesnmp.hpp Fake SNMP infrastructure for UT.
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2015  Metaswitch Networks Ltd
+ *
+ * Parts of this module were derived from GPL licensed PJSIP sample code
+ * with the following copyrights.
+ *   Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
+ *   Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,22 +39,31 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_TIMER_STORE_H__
-#define MOCK_TIMER_STORE_H__
+#ifndef FAKE_SNMP_H
+#define FAKE_SNMP_H
 
-#include "timer_store.h"
-#include "httpconnection.h"
-#include "gmock/gmock.h"
+#include "snmp_row.h"
+#include "snmp_infinite_timer_count_table.h"
+#include "snmp_counter_table.h"
+#include "snmp_scalar.h"
 
-class MockTimerStore : public TimerStore
+namespace SNMP
+{
+
+class FakeInfiniteTimerCountTable: public InfiniteTimerCountTable
 {
 public:
-  MockTimerStore(): TimerStore(NULL) {};
-  ~MockTimerStore() {};
-  MOCK_METHOD4(insert, void(TimerPair, TimerID, uint32_t, std::vector<std::string>));
-  MOCK_METHOD2(fetch, bool(TimerID, TimerPair&));
-  MOCK_METHOD1(fetch_next_timers, void(std::unordered_set<TimerPair>&));
-  MOCK_METHOD3(get_by_not_view_id, bool(std::string, int, std::unordered_set<TimerPair>&));
+  FakeInfiniteTimerCountTable() {};
+  void increment(std::string) {};
+  void decrement(std::string) {};
 };
+
+class FakeCounterTable: public CounterTable
+{
+public:
+  FakeCounterTable() {};
+  void increment() {};
+};
+}
 
 #endif

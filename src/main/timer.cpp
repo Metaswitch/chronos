@@ -682,7 +682,7 @@ Timer* Timer::from_json_obj(TimerID id,
     if (doc.HasMember("statistics"))
     {
       // Parse out the 'statistics' block
-      rapidjson::Value& statistics = doc["reliability"];
+      rapidjson::Value& statistics = doc["statistics"];
       JSON_ASSERT_OBJECT(statistics);
 
       if (statistics.HasMember("tags"))

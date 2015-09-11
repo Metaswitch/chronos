@@ -55,7 +55,7 @@
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*, SNMP::InfiniteTimerCountTable*, SNMP::U32Scalar*);
+  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*, SNMP::InfiniteTimerCountTable*);
   virtual ~TimerHandler();
   virtual void add_timer_to_store(Timer*);
   virtual void return_timer_to_store(Timer*, bool);

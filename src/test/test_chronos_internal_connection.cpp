@@ -43,11 +43,15 @@
 #include "mock_replicator.h"
 #include "mock_timer_handler.h"
 #include "globals.h"
+#include "fakesnmp.hpp"
 
 using namespace std;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
+
+static SNMP::U32Scalar _fake_scalar("","");
+static SNMP::CounterTable* _fake_counter_table;
 
 MATCHER(IsTombstone, "is a tombstone")
 {
@@ -67,13 +71,17 @@ protected:
   {
     Base::SetUp();
 
+    _fake_counter_table = SNMP::CounterTable::create("","");
     _resolver = new FakeHttpResolver("10.42.42.42");
     _replicator = new MockReplicator();
     _th = new MockTimerHandler();
     _chronos = new ChronosInternalConnection(_resolver,
                                              _th,
                                              _replicator,
-                                             NULL);
+                                             NULL,
+                                             &_fake_scalar,
+                                             _fake_counter_table,
+                                             _fake_counter_table);
     __globals->get_cluster_addresses(_cluster_addresses);
     __globals->get_cluster_local_ip(_local_ip);
 
@@ -86,6 +94,7 @@ protected:
     delete _th;
     delete _replicator;
     delete _resolver;
+    delete _fake_counter_table;
 
     Base::TearDown();
   }

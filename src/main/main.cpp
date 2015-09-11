@@ -163,15 +163,12 @@ int main(int argc, char** argv)
   SNMP::CounterTable* timers_processed_table = NULL;
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
   SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
-  SNMP::U32Scalar* current_timers_scalar = NULL;
 
   // Sets up SNMP statistics
   snmp_setup("chronos");
 
   total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
-                                              ".1.2.826.0.1.1578918.9.10.4");
-  current_timers_scalar = new SNMP::U32Scalar("chronos_current_timers_scalar",
-                                              ".1.2.826.0.1.1578918.9.10.5");
+                                              ".1.2.826.0.1.1578918.999");
 
   remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
                                                 ".1.2.826.0.1.1578918.9.10.1");
@@ -258,8 +255,7 @@ int main(int argc, char** argv)
   TimerHandler* handler = new TimerHandler(store, callback,
                                            handler_rep,
                                            timer_pop_alarm,
-                                           total_timers_table,
-                                           current_timers_scalar);
+                                           total_timers_table);
   callback->start(handler);
 
   // Create a Chronos internal connection class for scaling operations.
@@ -355,7 +351,6 @@ int main(int argc, char** argv)
   delete timers_processed_table;
   delete invalid_timers_processed_table;
   delete total_timers_table;
-  delete current_timers_scalar;
 
   hc->terminate();
   pthread_join(health_check_thread, NULL);

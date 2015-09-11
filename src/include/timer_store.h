@@ -120,9 +120,9 @@ public:
   // Fetch the next buckets of timers to pop and remove from store
   virtual void fetch_next_timers(std::unordered_set<TimerPair>&);
 
-  // Fetch timers with a given view ID, and populate the vector with 1000
-  // relevant timers
-  virtual bool get_by_view_id(std::string cluster_view_id, int max_responses, std::vector<TimerPair>&);
+  // Fetch timers with a view ID different to the one given,
+  // and populate the vector with 1000 relevant timers
+  virtual bool get_by_not_view_id(std::string cluster_view_id, int max_responses, std::unordered_set<TimerPair>&);
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
