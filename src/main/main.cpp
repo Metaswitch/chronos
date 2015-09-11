@@ -297,11 +297,6 @@ int main(int argc, char** argv)
   __globals->get_bind_port(bind_port);
   __globals->get_threads(http_threads);
 
-  if (!strcmp(bind_address.c_str(), "0.0.0.0"))
-  {
-    TRC_ERROR("0.0.0.0 has been deprecated for the bind_address setting. Use the local IP address instead");
-  }
-
   HttpStackUtils::PingHandler ping_handler;
   ControllerTask::Config controller_config(controller_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
