@@ -58,7 +58,7 @@ Globals::Globals(std::string config_file,
 
   // Describe the configuration file format.
   _desc.add_options()
-    ("http.bind-address", po::value<std::string>()->default_value("localhost"), "Address to bind the HTTP server to")
+    ("http.bind-address", po::value<std::string>()->default_value("0.0.0.0"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
     ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster")
