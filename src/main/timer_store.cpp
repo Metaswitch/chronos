@@ -36,6 +36,7 @@
 
 #include "globals.h"
 #include "timer_store.h"
+#include "utils.h"
 #include "log.h"
 #include <algorithm>
 #include <string.h>
@@ -57,7 +58,7 @@
                       "%s"
 #define TIMER_LOG_PARAMS(T) (T).active_timer->id,                                           \
                             (T).active_timer->start_time_mono_ms,                           \
-                            (T).active_timer->interval_ms,                                     \
+                            (T).active_timer->interval_ms,                                  \
                             (T).active_timer->repeat_for,                                   \
                             (T).active_timer->sequence_number,                              \
                             (T).active_timer->callback_url.c_str(),                         \
@@ -104,7 +105,7 @@ void TimerStore::insert(TimerPair tp,
 {
   Bucket* bucket;
 
-  if (overflow_less_than(next_pop_time, _tick_timestamp))
+  if (Utils::overflow_less_than(next_pop_time, _tick_timestamp))
   {
     // The timer should have already popped so put it in the overdue timers,
     // and warn the user.
@@ -119,14 +120,14 @@ void TimerStore::insert(TimerPair tp,
                 TIMER_LOG_PARAMS(tp));
     _overdue_timers.insert(tp);
   }
-  else if (overflow_less_than(to_short_wheel_resolution(next_pop_time),
+  else if (Utils::overflow_less_than(to_short_wheel_resolution(next_pop_time),
            to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
   {
 
     bucket = short_wheel_bucket(next_pop_time);
     bucket->insert(tp);
   }
-  else if (overflow_less_than(to_long_wheel_resolution(next_pop_time),
+  else if (Utils::overflow_less_than(to_long_wheel_resolution(next_pop_time),
            to_long_wheel_resolution(_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
   {
     bucket = long_wheel_bucket(next_pop_time);
@@ -145,7 +146,7 @@ void TimerStore::insert(TimerPair tp,
   // Add to the view specific mapping for easy retrieval on resync
   for (std::vector<std::string>::iterator it = cluster_view_id_vector.begin();
                                           it != cluster_view_id_vector.end();
-                                             ++it)
+                                          ++it)
   {
     _timer_view_id_table[*it].insert(id);
   }
@@ -178,7 +179,8 @@ bool TimerStore::fetch(TimerID id, TimerPair& timer)
     _timer_view_id_table[timer.active_timer->cluster_view_id].erase(timer.active_timer->id);
 
     // Remove from cluster structure
-    if (timer.information_timer) {
+    if (timer.information_timer)
+    {
       _timer_view_id_table[timer.information_timer->cluster_view_id].erase(timer.active_timer->id);
     }
     TRC_DEBUG("Successfully found an existing timer");
@@ -377,7 +379,7 @@ void TimerStore::refill_long_wheel()
     TimerPair timer = _extra_heap.back();
 
     while ((timer.active_timer != NULL) &&
-           (overflow_less_than(timer.active_timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))
+           (Utils::overflow_less_than(timer.active_timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))
     {
       // Remove timer from heap
       _extra_heap.pop_back();
@@ -492,8 +494,3 @@ void TimerStore::purge_timer_from_wheels(TimerPair t)
   }
 }
 // LCOV_EXCL_STOP
-
-bool TimerStore::overflow_less_than(uint32_t a, uint32_t b)
-{
-  return ((a - b) > ((uint32_t)(1) << 31));
-}

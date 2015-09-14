@@ -45,6 +45,9 @@
 #include <map>
 #include <string>
 
+// This is the structure that is stored in the TimerStore. The active timer
+// is used to determine when to pop and flow into buckets, and the information
+// timer is kept when the cluster is updated
 struct TimerPair {
   TimerPair() : active_timer(NULL),
                 information_timer(NULL)
@@ -84,6 +87,9 @@ struct TimerPair {
   }
 };
 
+
+// This defines a hashing mechanism, based on the uniqueness of the timer ids,
+// that will be used when a TimerPair is added to a set
 namespace std
 {
   template <>
@@ -111,18 +117,22 @@ public:
   virtual ~TimerStore();
 
   // Insert a timer (with an ID that doesn't exist already)
-  virtual void insert(TimerPair, TimerID, uint32_t, std::vector<std::string>);
+  virtual void insert(TimerPair tp, TimerID id,
+                      uint32_t next_pop_time,
+                      std::vector<std::string> cluster_view_id_vector);
 
   // Fetch a timer by ID, populate the TimerPair, and return whether the
   // value was found or not
-  virtual bool fetch(TimerID, TimerPair&);
+  virtual bool fetch(TimerID id, TimerPair& tp);
 
   // Fetch the next buckets of timers to pop and remove from store
-  virtual void fetch_next_timers(std::unordered_set<TimerPair>&);
+  virtual void fetch_next_timers(std::unordered_set<TimerPair>& set);
 
   // Fetch timers with a view ID different to the one given,
   // and populate the vector with 1000 relevant timers
-  virtual bool get_by_not_view_id(std::string cluster_view_id, int max_responses, std::unordered_set<TimerPair>&);
+  virtual bool get_by_not_view_id(std::string cluster_view_id,
+                                  int max_responses,
+                                  std::unordered_set<TimerPair>&);
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
@@ -132,9 +142,9 @@ private:
   // - A set of overdue timers.
   //
   // New timers are placed into on of these structures:
-  // - The short wheel if due to pop in ~the next second.
-  // - The long wheel if due to pop in ~the next hour (but not ~the next second).
-  // - The heap if due to pop ~>=1hr in the future.
+  // - The short wheel if due to pop in 1024ms.
+  // - The long wheel if due to pop in 4194304ms (but not the next 1024ms).
+  // - The heap if due to pop >= 4194304 (~>1hr) in the future.
   // - The overdue set if they should have already popped.
   //
   // Timers in the overdue set are popped whenever `get_next_timers` is called.

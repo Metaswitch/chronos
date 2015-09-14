@@ -78,7 +78,7 @@ processes = []
 for file_name in os.listdir(LOG_FILE_DIR):
     file_path = os.path.join(LOG_FILE_DIR, file_name)
     if os.path.isfile(file_path) and file_path != (LOG_FILE_DIR + '.gitignore'):
-	os.unlink(file_path)
+        os.unlink(file_path)
     elif os.path.isdir(file_path):
         shutil.rmtree(file_path)
 for node in chronos_nodes:
@@ -96,28 +96,34 @@ FNULL = open(os.devnull, 'w')
 # The Flask app. This is used to make timer requests and receive timer pops
 app = Flask(__name__)
 
+
 @app.route('/pop', methods=['POST'])
 def pop():
     global receiveCount
     receiveCount += 1
     return 'success'
 
+
 def run_app():
     app.run(host=flask_server.ip, port=flask_server.port)
+
 
 # Helper functions for the Chronos tests
 def start_nodes(lower, upper):
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
-        processes.append(Popen([CHRONOS_BINARY, '--config-file', CONFIG_FILE_PATTERN % i, '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i],
-                               stdout=FNULL, stderr=FNULL))
+        processes.append(Popen([CHRONOS_BINARY, '--config-file',
+            CONFIG_FILE_PATTERN % i, '--cluster-config-file',
+            CLUSTER_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL))
 
     sleep(2)
+
 
 def kill_nodes(lower, upper):
     # kill nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
         p.kill()
+
 
 def node_reload_config(lower, upper):
     # SIGHUP nodes with indexes [lower, upper)
@@ -125,11 +131,13 @@ def node_reload_config(lower, upper):
         os.kill(p.pid, signal.SIGHUP)
     sleep(2)
 
+
 def node_trigger_scaling(lower, upper):
     # SIGHUSR1 nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
         os.kill(p.pid, signal.SIGUSR1)
     sleep(2)
+
 
 def create_timers(target, num):
     # Create and send timer requests. These are all sent to the first Chronos
@@ -152,6 +160,7 @@ def create_timers(target, num):
                           )
         assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
+
 def write_conf(filename, this_node):
     # Create a configuration file for a chronos process
     log_path = LOG_FILE_PATTERN % this_node.port
@@ -166,6 +175,7 @@ def write_conf(filename, this_node):
         level = 5
         """).format(**locals()))
 
+
 def write_cluster_conf(filename, this_node, nodes, leaving):
     # Create a configuration file for a chronos process
     with open(filename, 'w') as f:
@@ -177,6 +187,7 @@ def write_cluster_conf(filename, this_node, nodes, leaving):
             f.write('node = {node.ip}:{node.port}\n'.format(**locals()))
         for node in leaving:
             f.write('leaving = {node.ip}:{node.port}\n'.format(**locals()))
+
 
 # Test the resynchronization operations for Chronos.
 class ChronosLiveTests(unittest.TestCase):
@@ -240,18 +251,15 @@ class ChronosLiveTests(unittest.TestCase):
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 100)
 
-
         # Scale up
         self.write_config_for_nodes(0, 4)
         start_nodes(2, 4)
         node_reload_config(0, 2)
         node_trigger_scaling(0, 4)
 
-
         # Check that all the timers have popped
         sleep(10)
         self.assert_enough_timers_received(100)
-
 
     def test_scale_up_and_kill(self):
         # Test that scaling up definitely moves timers. This test creates 2

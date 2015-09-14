@@ -107,7 +107,7 @@ TEST_F(TestHandler, ValidJSONDeleteTimer)
 
   controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
   EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer_to_store(_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 
@@ -121,7 +121,7 @@ TEST_F(TestHandler, ValidJSONCreateTimer)
 
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
   EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer_to_store(_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 

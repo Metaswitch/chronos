@@ -122,9 +122,8 @@ void HTTPCallback::worker_thread_entry_point()
     CURLcode curl_rc = curl_easy_perform(curl);
     if (curl_rc == CURLE_OK)
     {
-      _handler->return_timer_to_store(timer, true);
-      timer = NULL; // We relinquish control of the timer when we give
-                    // it back to the store.
+      _handler->return_timer(timer, true);
+      timer = NULL; // We relinquish control of the timer when we give it back to the store.
     }
     else
     {
@@ -139,7 +138,8 @@ void HTTPCallback::worker_thread_entry_point()
                   timer->callback_url.c_str(),
                   curl_easy_strerror(curl_rc));
 
-      _handler->return_timer_to_store(timer, false);
+      _handler->return_timer(timer, false);
+      timer = NULL; // We relinquish control of the timer when we give it back to the store.
     }
 
     // Tidy up request-speciifc objects

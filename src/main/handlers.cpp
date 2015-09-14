@@ -149,7 +149,7 @@ void ControllerTask::add_or_update_timer(int timer_id, int replica_hash)
     timer->become_tombstone();
   }
 
-  _cfg->_handler->add_timer_to_store(timer);
+  _cfg->_handler->add_timer(timer);
 
   // The store takes ownership of the timer.
   timer = NULL;

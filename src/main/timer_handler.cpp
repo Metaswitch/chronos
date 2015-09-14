@@ -38,6 +38,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "utils.h"
 #include "globals.h"
 #include "timer_handler.h"
 #include "log.h"
@@ -53,11 +54,13 @@ TimerHandler::TimerHandler(TimerStore* store,
                            Callback* callback,
                            Replicator* replicator,
                            Alarm* timer_pop_alarm,
+                           SNMP::ContinuousAccumulatorTable* all_timers_table,
                            SNMP::InfiniteTimerCountTable* tagged_timers_table) :
                            _store(store),
                            _callback(callback),
                            _replicator(replicator),
                            _timer_pop_alarm(timer_pop_alarm),
+                           _all_timers_table(NULL),
                            _tagged_timers_table(tagged_timers_table),
                            _terminate(false),
                            _nearest_new_timer(-1)
@@ -98,7 +101,7 @@ TimerHandler::~TimerHandler()
   delete _callback;
 }
 
-void TimerHandler::add_timer_to_store(Timer* timer)
+void TimerHandler::add_timer(Timer* timer)
 {
   TimerPair new_tp;
   new_tp.active_timer = timer;
@@ -113,7 +116,7 @@ void TimerHandler::add_timer_to_store(Timer* timer)
     TRC_DEBUG("Found an existing timer with the same ID");
 
     // Compare timers for precedence, start-time then sequence number.
-    if (overflow_less_than(timer->start_time_mono_ms, existing_tp.active_timer->start_time_mono_ms) ||
+    if (Utils::overflow_less_than(timer->start_time_mono_ms, existing_tp.active_timer->start_time_mono_ms) ||
         ((timer->start_time_mono_ms == existing_tp.active_timer->start_time_mono_ms) &&
         (timer->sequence_number < existing_tp.active_timer->sequence_number)))
     {
@@ -131,7 +134,7 @@ void TimerHandler::add_timer_to_store(Timer* timer)
       // We want to add the timer, so decide whether this is an update, or
       // if we need to save off the old timer (as an information timer)
 
-      set_tombstone_values(timer, existing_tp.active_timer);
+      save_tombstone_information(timer, existing_tp.active_timer);
 
       if (existing_tp.active_timer->cluster_view_id != timer->cluster_view_id)
       {
@@ -169,18 +172,23 @@ void TimerHandler::add_timer_to_store(Timer* timer)
       }
     }
   }
+
   // Update statistics
+  std::vector<std::string> tags_to_add = std::vector<std::string>();
+  std::vector<std::string> tags_to_remove = std::vector<std::string>();
+
+  if (!new_tp.active_timer->is_tombstone())
+  {
+    // Dead timer tags shouldn't count
+    tags_to_add = new_tp.active_timer->tags;
+  }
   if (existing_tp.active_timer)
   {
-    update_statistics(new_tp.active_timer->tags,
-                      existing_tp.active_timer->tags);
+    tags_to_remove = existing_tp.active_timer->tags;
   }
-  else
-  {
-    // This is a brand new timer
-    update_statistics(new_tp.active_timer->tags,
-                      std::vector<std::string>());
-  }
+
+  // We need to replace the existing timers
+  update_statistics(tags_to_add, tags_to_remove);
 
   delete existing_tp.active_timer;
   delete existing_tp.information_timer;
@@ -199,11 +207,13 @@ void TimerHandler::add_timer_to_store(Timer* timer)
   _store->insert(new_tp, id, next_pop_time, cluster_view_id_vector);
 }
 
-void TimerHandler::return_timer_to_store(Timer* timer, bool successful)
+void TimerHandler::return_timer(Timer* timer, bool successful)
 {
   if (!successful)
   {
-    // In this case, we should update our local statistics, and set the alarm
+    // The HTTP Callback failed, so we should set the alarm
+    // We also wipe all the tags this timer had from our count, as the timer
+    // will be destroyed
     update_statistics(std::vector<std::string>(), timer->tags);
 
     if (_timer_pop_alarm && timer->is_last_replica())
@@ -225,7 +235,7 @@ void TimerHandler::return_timer_to_store(Timer* timer, bool successful)
 
   // Replicate and add the timer back to store
   _replicator->replicate(timer);
-  add_timer_to_store(timer);
+  add_timer(timer);
 
 }
 
@@ -295,9 +305,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
 {
   pthread_mutex_lock(&_mutex);
   std::unordered_set<TimerPair> timers;
-  bool finished = _store->get_by_not_view_id(cluster_view_id, max_responses, timers);
 
-  TRC_DEBUG("Get timers for %s", request_node.c_str());
 
   // Create the JSON doc for the Timer information
   rapidjson::StringBuffer sb;
@@ -307,62 +315,66 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   writer.String(JSON_TIMERS);
   writer.StartArray();
 
-  int retrieved_timers = 0;
-  for (std::unordered_set<TimerPair>::iterator it = timers.begin();
-                                        it != timers.end();
-                                        ++it)
-  {
-    Timer* timer_copy;
-    if (!it->information_timer)
-    {
-      timer_copy = new Timer(*(it->active_timer));
-    }
-    else
-    {
-      timer_copy = new Timer(*(it->information_timer));
-    }
 
-    if (!timer_copy->is_tombstone())
+    bool finished = _store->get_by_not_view_id(cluster_view_id, max_responses, timers);
+
+    TRC_DEBUG("Get timers for %s", request_node.c_str());
+
+
+    for (std::unordered_set<TimerPair>::iterator it = timers.begin();
+                                          it != timers.end();
+                                          ++it)
     {
-      std::vector<std::string> old_replicas;
-      if (timer_is_on_node(request_node,
-                           cluster_view_id,
-                           timer_copy,
-                           old_replicas))
+      Timer* timer_copy;
+      if (!it->information_timer)
       {
-        writer.StartObject();
-        {
-          // The timer will have a replica on the requesting node. Add this
-          // entry to the JSON document
-
-          // Add in Old Timer ID
-          writer.String(JSON_TIMER_ID);
-          writer.Int(timer_copy->id);
-
-          // Add the old replicas
-          writer.String(JSON_OLD_REPLICAS);
-          writer.StartArray();
-          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
-                                                        i != old_replicas.end();
-                                                        ++i)
-          {
-            writer.String((*i).c_str());
-          }
-          writer.EndArray();
-
-          // Finally, add the timer itself
-          writer.String(JSON_TIMER);
-          timer_copy->to_json_obj(&writer);
-        }
-        writer.EndObject();
-
-        retrieved_timers++;
+        timer_copy = new Timer(*(it->active_timer));
       }
+      else
+      {
+        timer_copy = new Timer(*(it->information_timer));
+      }
+
+      if (!timer_copy->is_tombstone())
+      {
+        std::vector<std::string> old_replicas;
+        if (timer_is_on_node(request_node,
+                             cluster_view_id,
+                             timer_copy,
+                             old_replicas))
+        {
+          writer.StartObject();
+          {
+            // The timer will have a replica on the requesting node. Add this
+            // entry to the JSON document
+
+            // Add in Old Timer ID
+            writer.String(JSON_TIMER_ID);
+            writer.Int(timer_copy->id);
+
+            // Add the old replicas
+            writer.String(JSON_OLD_REPLICAS);
+            writer.StartArray();
+            for (std::vector<std::string>::const_iterator i = old_replicas.begin();
+                                                          i != old_replicas.end();
+                                                          ++i)
+            {
+              writer.String((*i).c_str());
+            }
+            writer.EndArray();
+
+            // Finally, add the timer itself
+            writer.String(JSON_TIMER);
+            timer_copy->to_json_obj(&writer);
+          }
+          writer.EndObject();
+        }
+      }
+
+      // Tidy up the copy
+      delete timer_copy;
     }
 
-    // Tidy up the copy
-    delete timer_copy;
-  }
   TRC_DEBUG("Reached the max number of timers to collect");
 
   writer.EndArray();
@@ -370,12 +382,10 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
 
   get_response = sb.GetString();
 
-  TRC_DEBUG("Retrieved %d timers", retrieved_timers);
 
   pthread_mutex_unlock(&_mutex);
 
-  return ((max_responses != 0) &&
-          (!finished)) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
+  return finished ? HTTP_OK : HTTP_PARTIAL_CONTENT;
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
@@ -426,7 +436,6 @@ void TimerHandler::run() {
   pthread_mutex_lock(&_mutex);
 
   _store->fetch_next_timers(next_timers);
-
   while (!_terminate)
   {
 
@@ -520,7 +529,7 @@ void TimerHandler::pop(Timer* timer)
   _callback->perform(timer); timer = NULL;
 }
 
-void TimerHandler::set_tombstone_values(Timer* t, Timer* existing)
+void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 {
   if (t->is_tombstone())
   {
@@ -531,15 +540,25 @@ void TimerHandler::set_tombstone_values(Timer* t, Timer* existing)
   }
 }
 
-bool TimerHandler::overflow_less_than(uint32_t a, uint32_t b)
-{
-  return ((a - b) > ((uint32_t)(1) << 31));
-}
-
 // Report an update to the number of timers to statistics
+// This should be called when we remove a timer (by adding an empty set of new
+// tags) and when we add a new timer (using an empty set of existing tags) and
+// can be used for updating purposes (providing both new and old tags)
 void TimerHandler::update_statistics(std::vector<std::string> new_tags,
                                      std::vector<std::string> old_tags)
 {
+  if (_all_timers_table)
+  {
+    if (new_tags.empty())
+    {
+//      _all_timers_table.decrement();
+    }
+    if (old_tags.empty())
+    {
+//      _all_timers_table.increment();
+    }
+  }
+
   if (_tagged_timers_table)
   {
     std::set<std::string> to_add;
@@ -556,18 +575,21 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
                         old_tags_set.begin(), old_tags_set.end(),
                         std::inserter(to_add, to_add.end()));
 
-
+    TRC_DEBUG("Statistics to add:");
     for (std::set<std::string>::iterator it = to_add.begin();
          it != to_add.end();
          ++it)
     {
+      TRC_DEBUG("Incrementing for %s:", (*it).c_str());
       _tagged_timers_table->increment(*it);
     }
 
+    TRC_DEBUG("Statistics to delete:");
     for (std::set<std::string>::iterator it = to_remove.begin();
          it != to_remove.end();
          ++it)
     {
+      TRC_DEBUG("Decrementing for %s:", (*it).c_str());
       _tagged_timers_table->decrement(*it);
     }
   }
