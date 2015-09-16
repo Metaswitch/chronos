@@ -315,65 +315,75 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   writer.String(JSON_TIMERS);
   writer.StartArray();
 
+  TRC_DEBUG("Get timers for %s", request_node.c_str());
 
-    bool finished = _store->get_by_not_view_id(cluster_view_id, max_responses, timers);
+  int retrieved_timers = 0;
 
-    TRC_DEBUG("Get timers for %s", request_node.c_str());
-
-
-    for (std::unordered_set<TimerPair>::iterator it = timers.begin();
-                                          it != timers.end();
-                                          ++it)
+  for (TimerStore::TSIterator it = _store->begin(cluster_view_id);
+       it != _store->end();
+       ++it)
+  {
+    Timer* timer_copy;
+    TimerPair pair = *it;
+    if (!pair.information_timer)
     {
-      Timer* timer_copy;
-      if (!it->information_timer)
-      {
-        timer_copy = new Timer(*(it->active_timer));
-      }
-      else
-      {
-        timer_copy = new Timer(*(it->information_timer));
-      }
-
-      if (!timer_copy->is_tombstone())
-      {
-        std::vector<std::string> old_replicas;
-        if (timer_is_on_node(request_node,
-                             cluster_view_id,
-                             timer_copy,
-                             old_replicas))
-        {
-          writer.StartObject();
-          {
-            // The timer will have a replica on the requesting node. Add this
-            // entry to the JSON document
-
-            // Add in Old Timer ID
-            writer.String(JSON_TIMER_ID);
-            writer.Int(timer_copy->id);
-
-            // Add the old replicas
-            writer.String(JSON_OLD_REPLICAS);
-            writer.StartArray();
-            for (std::vector<std::string>::const_iterator i = old_replicas.begin();
-                                                          i != old_replicas.end();
-                                                          ++i)
-            {
-              writer.String((*i).c_str());
-            }
-            writer.EndArray();
-
-            // Finally, add the timer itself
-            writer.String(JSON_TIMER);
-            timer_copy->to_json_obj(&writer);
-          }
-          writer.EndObject();
-        }
-      }
-
-      // Tidy up the copy
-      delete timer_copy;
+      timer_copy = new Timer(*(pair.active_timer));
     }
+    else
+    {
+      timer_copy = new Timer(*(pair.information_timer));
+    }
+
+    if (!timer_copy->is_tombstone())
+    {
+      std::vector<std::string> old_replicas;
+      if (timer_is_on_node(request_node,
+                           cluster_view_id,
+                           timer_copy,
+                           old_replicas))
+      {
+        writer.StartObject();
+        {
+          // The timer will have a replica on the requesting node. Add this
+          // entry to the JSON document
+
+          // Add in Old Timer ID
+          writer.String(JSON_TIMER_ID);
+          writer.Int(timer_copy->id);
+
+          // Add the old replicas
+          writer.String(JSON_OLD_REPLICAS);
+          writer.StartArray();
+          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
+               i != old_replicas.end();
+               ++i)
+          {
+            writer.String((*i).c_str());
+          }
+          writer.EndArray();
+
+          // Finally, add the timer itself
+          writer.String(JSON_TIMER);
+          timer_copy->to_json_obj(&writer);
+
+          // Remove the timer from the store
+          //TimerPair removed;
+          //_store->fetch(it->active_timer->id, removed);
+        }
+        writer.EndObject();
+      }
+    }
+
+    // Tidy up the copy
+    delete timer_copy;
+    // Break out of the for loop once we hit the maximum number of
+    // timers to collect
+    if (retrieved_timers == max_responses)
+    {
+      TRC_DEBUG("Reached the max number of timers to collect");
+      break;
+    }
+  }
 
   TRC_DEBUG("Reached the max number of timers to collect");
 
@@ -385,7 +395,8 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
 
   pthread_mutex_unlock(&_mutex);
 
-  return finished ? HTTP_OK : HTTP_PARTIAL_CONTENT;
+  TRC_DEBUG("Retrieved %d timers", retrieved_timers);
+  return (retrieved_timers == max_responses) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
@@ -438,7 +449,6 @@ void TimerHandler::run() {
   _store->fetch_next_timers(next_timers);
   while (!_terminate)
   {
-
     if (!next_timers.empty())
     {
       TRC_DEBUG("Have a timer to pop");

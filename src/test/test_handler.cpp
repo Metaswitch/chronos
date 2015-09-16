@@ -118,12 +118,16 @@ TEST_F(TestHandler, ValidJSONDeleteTimer)
 TEST_F(TestHandler, ValidJSONCreateTimer)
 {
   Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
 
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
+
+  // TODO: Check that the timer is plausible - unfortunately, it's very hard to define "plausible" programmatically.
+  // EXPECT_EQ("/timers/...", std::string(evhtp_header_find(req.req()->headers_out, "Location")));
 
   delete added_timer; added_timer = NULL;
 }

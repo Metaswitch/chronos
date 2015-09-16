@@ -1,5 +1,5 @@
 [http]
-bind-address = localhost
+bind-address = 0.0.0.0
 bind-port = 7253
 threads = 50
 

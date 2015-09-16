@@ -128,11 +128,32 @@ public:
   // Fetch the next buckets of timers to pop and remove from store
   virtual void fetch_next_timers(std::unordered_set<TimerPair>& set);
 
-  // Fetch timers with a view ID different to the one given,
-  // and populate the vector with 1000 relevant timers
-  virtual bool get_by_not_view_id(std::string cluster_view_id,
-                                  int max_responses,
-                                  std::unordered_set<TimerPair>&);
+  // A table of all known timers indexed by ID. The TimerPair is in the
+  // timer wheel - any other timers are stored for use when
+  // resynchronising between Chronos's.
+  std::map<TimerID, TimerPair> _timer_lookup_id_table;
+
+  class TSIterator
+  {
+  public:
+    TSIterator(TimerStore* ts, std::string cluster_view_id);
+    TSIterator(TimerStore* ts);
+
+    TSIterator& operator++();
+    TimerPair& operator*();
+    bool operator==(const TSIterator& other) const;
+    bool operator!=(const TSIterator& other) const;
+
+  private:
+    std::map<std::string, std::unordered_set<TimerID>>::iterator outer_iterator;
+    std::unordered_set<TimerID>::iterator inner_iterator;
+    TimerStore* _ts;
+    std::string _cluster_view_id;
+    void inner_next();
+  };
+
+  TSIterator begin(std::string cluster_view_id);
+  TSIterator end();
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
@@ -187,11 +208,6 @@ private:
   // This does mean that when removing a timer, the overdue set, both wheels and
   // the heap may need to be searched, although the timer is guaranteed to be in
   // only one of them (and the heap is searched last for efficiency).
-
-  // A table of all known timers indexed by ID. Only the active timer in the
-  // TimerPair is in the timer wheel - any other timers are stored for use when
-  // resynchronising between Chronos's.
-  std::map<TimerID, TimerPair> _timer_lookup_id_table;
 
   // A table of all know timers indexed by cluster view id.
   std::map<std::string, std::unordered_set<TimerID>> _timer_view_id_table;
@@ -272,9 +288,8 @@ private:
   // Delete a timer from the timer wheel
   void remove_timer_from_timer_wheel(TimerPair timer);
 
-  // Compare two numbers that might have overflown
-  bool overflow_less_than(uint32_t a, uint32_t b);
-
+  // Delete a timer from the cluster view ID index
+  void remove_timer_from_cluster_view_id(TimerPair timer);
 };
 
 

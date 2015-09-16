@@ -103,6 +103,11 @@ void TimerStore::insert(TimerPair tp,
                         uint32_t next_pop_time,
                         std::vector<std::string> cluster_view_id_vector)
 {
+  if (_timer_lookup_id_table.find(id) != _timer_lookup_id_table.end())
+  {
+    throw std::logic_error("There is already a timer with this ID in the store!");
+  }
+
   Bucket* bucket;
 
   if (Utils::overflow_less_than(next_pop_time, _tick_timestamp))
@@ -173,16 +178,10 @@ bool TimerStore::fetch(TimerID id, TimerPair& timer)
 
     TRC_DEBUG("Removing timer from wheel and cluster view ids");
     remove_timer_from_timer_wheel(timer);
+    remove_timer_from_cluster_view_id(timer);
     _timer_lookup_id_table.erase(id);
 
-    // Remove from cluster structure
-    _timer_view_id_table[timer.active_timer->cluster_view_id].erase(timer.active_timer->id);
 
-    // Remove from cluster structure
-    if (timer.information_timer)
-    {
-      _timer_view_id_table[timer.information_timer->cluster_view_id].erase(timer.active_timer->id);
-    }
     TRC_DEBUG("Successfully found an existing timer");
     return true;
   }
@@ -211,60 +210,6 @@ void TimerStore::fetch_next_timers(std::unordered_set<TimerPair>& set)
     _tick_timestamp += SHORT_WHEEL_RESOLUTION_MS;
     maybe_refill_wheels();
   }
-}
-
-bool TimerStore::get_by_not_view_id(std::string new_cluster_view_id,
-                                    int max_responses,
-                                    std::unordered_set<TimerPair>& view_timers)
-{
-  bool done = false;
-  std::unordered_set<TimerID> view_ids;
-
-  for (std::map<std::string, std::unordered_set<TimerID>>::iterator it = _timer_view_id_table.begin();
-                                                              it != _timer_view_id_table.end();
-                                                              ++it)
-  {
-    if (it->first != new_cluster_view_id)
-    {
-      // We've found another set of interesting cluster view ids
-      done = false;
-      if ((max_responses - view_ids.size() > it->second.size()))
-      {
-        done = true;
-      }
-
-
-      for (std::unordered_set<TimerID>::iterator id_it = it->second.begin();
-                                                 id_it != it->second.end();
-                                                 ++id_it)
-      {
-        if ((int)(view_ids.size()) == max_responses)
-        {
-          break;
-        }
-
-        view_ids.insert(*id_it);
-      }
-    }
-    if ((int)(view_ids.size()) == max_responses)
-    {
-      break;
-    }
-  }
-
-  for (std::unordered_set<TimerID>::iterator it = view_ids.begin();
-                                             it != view_ids.end();
-                                             ++it)
-  {
-    // Clone the vector, as this function should not remove the timers
-    TimerPair existing_timer = _timer_lookup_id_table[*it];
-    view_timers.insert(existing_timer);
-  }
-
-  // We either have 'max_responses' timers that may be of interest, or we've reached the
-  // end of the timer count. Return true if we are done, and all wrong view
-  // timers have been reported.
-  return done;
 }
 
 /*****************************************************************************/
@@ -335,17 +280,7 @@ void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
   {
     _timer_lookup_id_table.erase((*it).active_timer->id);
     // Remove from cluster structure
-    TimerID id = (*it).active_timer->id;
-
-    std::string a_cluster_view_id = (*it).active_timer->cluster_view_id;
-    _timer_view_id_table[a_cluster_view_id].erase(id);
-
-    if ((*it).information_timer)
-    {
-      std::string i_cluster_view_id = (*it).information_timer->cluster_view_id;
-      _timer_view_id_table[i_cluster_view_id].erase(id);
-    }
-
+    remove_timer_from_cluster_view_id(*it);
     set.insert(*it);
   }
   bucket->clear();
@@ -468,6 +403,26 @@ void TimerStore::remove_timer_from_timer_wheel(TimerPair timer)
   }
 }
 
+void TimerStore::remove_timer_from_cluster_view_id(TimerPair timer)
+{
+  // Remove from cluster structure
+  _timer_view_id_table[timer.active_timer->cluster_view_id].erase(timer.active_timer->id);
+  if (_timer_view_id_table[timer.active_timer->cluster_view_id].empty())
+  {
+    _timer_view_id_table.erase(timer.active_timer->cluster_view_id);
+  }
+
+  // Remove from cluster structure
+  if (timer.information_timer)
+  {
+    _timer_view_id_table[timer.information_timer->cluster_view_id].erase(timer.active_timer->id);
+    if (_timer_view_id_table[timer.information_timer->cluster_view_id].empty())
+    {
+      _timer_view_id_table.erase(timer.information_timer->cluster_view_id);
+    }
+  }
+}
+
 // Remove the timer from all the timer buckets.  This is a fallback that is only
 // used when we're deleting a timer that should be in the store, but that we
 // couldn't find in the buckets and the heap.  It's an expensive operation but
@@ -494,3 +449,69 @@ void TimerStore::purge_timer_from_wheels(TimerPair t)
   }
 }
 // LCOV_EXCL_STOP
+
+TimerStore::TSIterator TimerStore::begin(std::string new_cluster_view_id)
+{
+  return TimerStore::TSIterator(this, new_cluster_view_id);
+}
+
+TimerStore::TSIterator TimerStore::end()
+{
+  return TimerStore::TSIterator(this);
+}
+
+TimerStore::TSIterator::TSIterator(TimerStore* ts, std::string cluster_view_id) :
+  _ts(ts),
+  _cluster_view_id(cluster_view_id)
+{
+  outer_iterator = _ts->_timer_view_id_table.begin();
+  inner_next();
+}
+
+TimerStore::TSIterator::TSIterator(TimerStore* ts) :
+  _ts(ts)
+{
+  outer_iterator = _ts->_timer_view_id_table.end();
+}
+
+TimerStore::TSIterator& TimerStore::TSIterator::operator++() {
+  inner_iterator++;
+  if (inner_iterator == outer_iterator->second.end())
+  {
+    outer_iterator++;
+    inner_next();
+  }
+  return *this;
+}
+
+// While the same TimerID may exist under two different cluster view ID
+// indices, they will never exist under the same cluster index, so we are safe
+// to look for a TimerID a second time, as if it has been deleted, the
+// second cluster index will have removed it's reference to that TimerID
+TimerPair& TimerStore::TSIterator::operator*() {
+  std::map<TimerID, TimerPair>::iterator it = _ts->_timer_lookup_id_table.find(*inner_iterator);
+  return it->second;
+}
+
+bool TimerStore::TSIterator::operator==(const TimerStore::TSIterator& other) const {
+  return (this->outer_iterator == other.outer_iterator &&
+    (other.outer_iterator == _ts->_timer_view_id_table.end() ||
+     this->inner_iterator == other.inner_iterator));
+}
+
+bool TimerStore::TSIterator::operator!=(const TimerStore::TSIterator& other) const {
+  return !(*this == other);
+}
+
+void TimerStore::TSIterator::inner_next() {
+  while (outer_iterator != _ts->_timer_view_id_table.end() &&
+         outer_iterator->first == _cluster_view_id)
+  {
+    outer_iterator++;
+  }
+  if (outer_iterator != _ts->_timer_view_id_table.end())
+  {
+    inner_iterator = outer_iterator->second.begin();
+  }
+}
+

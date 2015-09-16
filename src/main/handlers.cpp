@@ -97,7 +97,7 @@ void ControllerTask::run()
   delete this;
 }
 
-void ControllerTask::add_or_update_timer(int timer_id, int replica_hash)
+void ControllerTask::add_or_update_timer(TimerID timer_id, int replica_hash)
 {
   Timer* timer = NULL;
   bool replicated_timer;

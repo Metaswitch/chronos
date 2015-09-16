@@ -341,7 +341,7 @@ TEST_F(TestTimerHandler, AddExistingTimer)
 }
 
 // Test that if there is already an information timer for this timer
-// we should give a warning that we are replacing this timer
+// we overwrite it with a new information timer
 TEST_F(TestTimerHandler, AddExistingTimerPair)
 {
   Timer* timer1 = default_timer(1);
@@ -386,8 +386,7 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
   _th->add_timer(timer2);
 
   EXPECT_EQ(insert_pair.active_timer, timer2);
-//  EXPECT_EQ(insert_pair.information_timer, timer1);
-//
+  EXPECT_EQ(insert_pair.information_timer, timer1);
 
   EXPECT_CALL(*_store, fetch(new_timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair2),Return(true)));
@@ -917,9 +916,6 @@ TEST_F(TestTimerHandler, SelectTimers)
   __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 
-  EXPECT_CALL(*_store, get_by_not_view_id(updated_cluster_view_id, 2, _)).
-                       WillOnce(DoAll(SetArgReferee<2>(timers),Return(false)));
-
   _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
 
   // Check the GET has the right format. This is two timers out of the three available (as the
@@ -988,9 +984,6 @@ TEST_F(TestTimerHandler, SelectTimersNoMatchesReqNode)
   std::unordered_set<TimerPair> next_timers;
   std::string get_response;
 
-  EXPECT_CALL(*_store, get_by_not_view_id("cluster-view-id", 1, _)).
-                       WillOnce(Return(false));
-
   _th->get_timers_for_node("10.0.0.4:9999", 1, "cluster-view-id", get_response);
 
   ASSERT_EQ(get_response, "{\"Timers\":[]}");
@@ -1041,9 +1034,6 @@ TEST_F(TestTimerHandler, SelectTimersNoMatchesClusterID)
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _));
 
   _th->add_timer(timer3);
-
-  EXPECT_CALL(*_store, get_by_not_view_id("cluster-view-id", 1, _)).
-                       WillOnce(Return(false));
 
   std::string get_response;
   _th->get_timers_for_node("10.0.0.1:9999", 1, "cluster-view-id", get_response);
