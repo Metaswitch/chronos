@@ -49,10 +49,10 @@ from collections import namedtuple
 from textwrap import dedent
 import unittest
 
-# Test the resynchronization operations for Chronos. 
+# Test the resynchronization operations for Chronos.
 # These tests use multiple Chronos processes that run on the same machine.
 # The tests set up a Chronos cluster and add timers to it. They then
-# perform scaling operations, and check that the correct number of 
+# perform scaling operations, and check that the correct number of
 # timers still pop
 CHRONOS_BINARY = 'build/bin/chronos'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.livetest.conf%i'
@@ -72,8 +72,8 @@ chronos_nodes = [
 receiveCount = 0
 processes = []
 
-# Create log folders for each Chronos process. These are useful for 
-# debugging any problems. Running the tests deletes the logs from the 
+# Create log folders for each Chronos process. These are useful for
+# debugging any problems. Running the tests deletes the logs from the
 # previous run
 for file_name in os.listdir(LOG_FILE_DIR):
     file_path = os.path.join(LOG_FILE_DIR, file_name)
@@ -111,8 +111,8 @@ def start_nodes(lower, upper):
     for i in range(lower, upper):
         processes.append(Popen([CHRONOS_BINARY, '--config-file', CONFIG_FILE_PATTERN % i, '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i],
                                stdout=FNULL, stderr=FNULL))
-    
-    sleep(2) 
+
+    sleep(2)
 
 def kill_nodes(lower, upper):
     # kill nodes with indexes [lower, upper)
@@ -154,7 +154,7 @@ def create_timers(target, num):
         assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
 def write_conf(filename, this_node):
-    # Create a configuration file for a chronos process 
+    # Create a configuration file for a chronos process
     log_path = LOG_FILE_PATTERN % this_node.port
     with open(filename, 'w') as f:
         f.write(dedent("""\
@@ -203,21 +203,25 @@ class ChronosLiveTests(unittest.TestCase):
         # Kill all the Chronos processes
         kill_nodes(0, len(processes))
 
-    def assert_enough_timers_received(self, expected_number):
-        # Check that enough timers pop as expected. 
-        # This should typically be as many as were added in the first place. 
+    def assert_enough_timers_received(self, minimum_number, maximum_number):
+        # Check that enough timers pop as expected.
+        # This should typically be as many as were added in the first place.
         # Ideally, we'd be checking where the timers popped from, but that's
         # not possible with these tests (as everything looks like it comes
         # from 127.0.0.1)
-        self.assertGreaterEqual(receiveCount, 
-                                expected_number,
-                               ('Incorrect number of popped timers: received %i, expected at least %i' %
-                               (receiveCount, expected_number)))
+        self.assertGreaterEqual(receiveCount,
+                                minimum_number,
+                                ('Incorrect number of popped timers: received %i, expected at least %i' %
+                                  (receiveCount, minimum_number)))
+        self.assertGreaterEqual(maximum_number,
+                                receiveCount,
+                                ('Incorrect number of popped timers: received %i, expected at most %i' %
+                                  (receiveCount, maximum_number)))
 
     def write_config_for_nodes(self, lower, upper):
         # Write configuration files for the nodes
         for num in range(lower, upper):
-            write_conf(CONFIG_FILE_PATTERN % num, 
+            write_conf(CONFIG_FILE_PATTERN % num,
                        chronos_nodes[num])
             write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
                                chronos_nodes[num],
@@ -232,10 +236,10 @@ class ChronosLiveTests(unittest.TestCase):
                                chronos_nodes[leaving_lower: leaving_upper])
 
     def test_scale_up(self):
-        # Test that scaling up works. This test creates 2 Chronos nodes, 
+        # Test that scaling up works. This test creates 2 Chronos nodes,
         # adds 100 timers, scales up to 4 Chronos nodes, then checks that
         # 100 timers pop.
- 
+
         # Start initial nodes and add timers
         self.write_config_for_nodes(0, 2)
         start_nodes(0, 2)
@@ -249,15 +253,12 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_enough_timers_received(100, 100)
 
     def test_scale_up_and_kill(self):
-        # Test that scaling up definitely moves timers. This test creates 2 
-        # Chronos nodes and adds 100 timers. It then scales up to 4 Chronos 
-        # nodes, then kills the first two nodes. It then checks at least 50
-        # timers still pop (we'd expect around 75 would pop but this isn't
-        # guaranteed. We check 50 so that the test is very unlikely to fail
-        # but it also can't pass unless the timers have moved). 
+        # Test that scaling up definitely moves timers. This test creates 2
+        # Chronos nodes and adds 100 timers. It then scales up to 4 Chronos
+        # nodes, then kills the first node. It then checks all 100 timers pop
 
         # Start initial nodes and add timers
         self.write_config_for_nodes(0, 2)
@@ -270,12 +271,12 @@ class ChronosLiveTests(unittest.TestCase):
         node_reload_config(0, 2)
         node_trigger_scaling(0, 4)
 
-        # Now kill the first nodes
-        kill_nodes(0, 2)
+        # Now kill the first node
+        kill_nodes(0, 1)
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(50)
+        self.assert_enough_timers_received(100, 100)
 
     def test_scale_down(self):
         # Test that scaling down works. This test creates 4 Chronos nodes,
@@ -295,12 +296,12 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_enough_timers_received(100, 100)
 
     def test_upscale_downscale(self):
         # Test a scale up and scale down. This test creates 2 Chronos nodes,
         # and adds 100 timers. It then scales up to 4 Chronos nodes, then
-        # removes the initial 2 nodes by doing a scale down. It then checks that
+        # removes an initial node by doing a scale down. It then checks that
         # 100 timers pop.
 
         # Start initial nodes and add timers
@@ -313,16 +314,17 @@ class ChronosLiveTests(unittest.TestCase):
         start_nodes(2, 4)
         node_reload_config(0, 2)
         node_trigger_scaling(0, 4)
+        sleep(10)
 
         # Scale down the initial nodes
         self.write_scale_down_config_for_all_nodes(0, 2)
         node_reload_config(0, 4)
         node_trigger_scaling(0, 4)
-        kill_nodes(0, 2)
+        kill_nodes(0, 1)
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_enough_timers_received(100, 100)
 
 if __name__ == '__main__':
     unittest.main()
