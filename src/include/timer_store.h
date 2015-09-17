@@ -219,6 +219,8 @@ private:
   // Save the tombstone values from an existing timer
   void set_tombstone_values(Timer* t, Timer* existing);
 
+  bool near_time(uint32_t a, uint32_t b);
+
   // Compare two numbers that might have overflown
   bool overflow_less_than(uint32_t a, uint32_t b);
 
