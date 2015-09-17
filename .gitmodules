@@ -22,3 +22,6 @@
 [submodule "modules/gcovr"]
 	path = modules/gcovr
 	url = https://github.com/gcovr/gcovr
+[submodule "modules/sas-client"]
+	path = modules/sas-client
+	url = git@github.com:Metaswitch/sas-client.git

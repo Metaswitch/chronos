@@ -107,11 +107,11 @@ void TimerHandler::add_timer(Timer* timer)
   new_tp.active_timer = timer;
 
   TimerPair existing_tp;
-  bool successful = _store->fetch(timer->id, existing_tp);
+  bool timer_found = _store->fetch(timer->id, existing_tp);
 
   TRC_DEBUG("Performed fetch operation");
 
-  if (successful)
+  if (timer_found)
   {
     TRC_DEBUG("Found an existing timer with the same ID");
 
@@ -207,9 +207,9 @@ void TimerHandler::add_timer(Timer* timer)
   _store->insert(new_tp, id, next_pop_time, cluster_view_id_vector);
 }
 
-void TimerHandler::return_timer(Timer* timer, bool successful)
+void TimerHandler::return_timer(Timer* timer, bool callback_successful)
 {
-  if (!successful)
+  if (!callback_successful)
   {
     // The HTTP Callback failed, so we should set the alarm
     // We also wipe all the tags this timer had from our count, as the timer
@@ -244,9 +244,9 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
 {
   pthread_mutex_lock(&_mutex);
   TimerPair store_timers;
-  bool successful = _store->fetch(id, store_timers);
+  bool timer_found = _store->fetch(id, store_timers);
 
-  if (successful)
+  if (timer_found)
   {
     Timer* timer;
     bool timer_in_wheel = true;
@@ -276,7 +276,6 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
           // All the new replicas have been told about the timer. We don't
           // need to store the information about the timer anymore.
           delete timer; timer = NULL;
-          store_timers.information_timer = NULL;
           pthread_mutex_unlock(&_mutex);
           return;
         }
@@ -325,13 +324,17 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   {
     Timer* timer_copy;
     TimerPair pair = *it;
-    if (!pair.information_timer)
+    if (!pair.active_timer->is_matching_cluster_view_id(cluster_view_id))
     {
       timer_copy = new Timer(*(pair.active_timer));
     }
+    else if (pair.information_timer)
+    {
+        timer_copy = new Timer(*(pair.information_timer));
+    }
     else
     {
-      timer_copy = new Timer(*(pair.information_timer));
+      continue;
     }
 
     if (!timer_copy->is_tombstone())
@@ -365,10 +368,6 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
           // Finally, add the timer itself
           writer.String(JSON_TIMER);
           timer_copy->to_json_obj(&writer);
-
-          // Remove the timer from the store
-          //TimerPair removed;
-          //_store->fetch(it->active_timer->id, removed);
         }
         writer.EndObject();
       }
