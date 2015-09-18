@@ -379,6 +379,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             if (store_timer)
             {
               _handler->add_timer(timer);
+              timer = NULL;
             }
             else
             {

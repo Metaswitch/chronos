@@ -77,11 +77,32 @@ public:
 #endif
 
 private:
+  // Constant that specifies timers that are closer than this are considered the
+  // same. It should be bigger than the expected network lag
+  static const int NETWORK_DELAY = 200;
+
   void pop(std::unordered_set<TimerPair>&);
   void pop(Timer*);
-  bool timer_is_on_node(std::string, std::string, Timer*, std::vector<std::string>&);
+
+  // Update a timer object with the current cluster configuration. Store off
+  // the old set of replicas, and return whether the requesting node is
+  // one of the new replicas
+  bool timer_is_on_node(std::string request_node,
+                        std::string cluster_view_id,
+                        Timer* timer,
+                        std::vector<std::string>& old_replicas);
+
+  // Ensure the update to the timer "sticks" by making it last at least as long
+  // as the previous timer
   void save_tombstone_information(Timer* timer, Timer* existing);
+
+  // Report a statistics changed - called with empty vectors if a timer has only
+  // just been introduced, or is being permanently deleted/tombstoned
   void update_statistics(std::vector<std::string> new_tags, std::vector<std::string> old_tags);
+
+  // Check to see if these two timestamps are within NETWORK_DELAY of each other
+  bool near_time(uint32_t a, uint32_t b);
+
 
   TimerStore* _store;
   Callback* _callback;

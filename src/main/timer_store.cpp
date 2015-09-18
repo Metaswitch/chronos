@@ -423,7 +423,6 @@ void TimerStore::remove_timer_from_cluster_view_id(TimerPair timer)
   }
 }
 
-<<<<<<< HEAD
 // Remove the timer from all the timer buckets.  This is a fallback that is only
 // used when we're deleting a timer that should be in the store, but that we
 // couldn't find in the buckets and the heap.  It's an expensive operation but
@@ -432,75 +431,6 @@ void TimerStore::remove_timer_from_cluster_view_id(TimerPair timer)
 void TimerStore::purge_timer_from_wheels(TimerPair t)
 {
   TRC_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
-||||||| merged common ancestors
-    if (!timer_copy->is_tombstone())
-    {
-      std::vector<std::string> old_replicas;
-      if (timer_is_on_node(request_node,
-                           cluster_view_id,
-                           timer_copy,
-                           old_replicas))
-      {
-        writer.StartObject();
-        {
-          // The timer will have a replica on the requesting node. Add this entry
-          // to the JSON document
-
-          // Add in Old Timer ID
-          writer.String(JSON_TIMER_ID);
-          writer.Int(timer_copy->id);
-
-          // Add the old replicas
-          writer.String(JSON_OLD_REPLICAS);
-          writer.StartArray();
-          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
-                                                        i != old_replicas.end();
-                                                      ++i)
-          {
-            writer.String((*i).c_str());
-          }
-          writer.EndArray();
-
-          // Finally, add the timer itself
-          writer.String(JSON_TIMER);
-          timer_copy->to_json_obj(&writer);
-        }
-        writer.EndObject();
-=======
-    if (!timer_copy->is_tombstone())
-    {
-      std::vector<std::string> old_replicas;
-      if (timer_is_on_node(request_node,
-                           cluster_view_id,
-                           timer_copy,
-                           old_replicas))
-      {
-        writer.StartObject();
-        {
-          // The timer will have a replica on the requesting node. Add this entry
-          // to the JSON document
-
-          // Add in Old Timer ID
-          writer.String(JSON_TIMER_ID);
-          writer.Int64(timer_copy->id);
-
-          // Add the old replicas
-          writer.String(JSON_OLD_REPLICAS);
-          writer.StartArray();
-          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
-                                                        i != old_replicas.end();
-                                                      ++i)
-          {
-            writer.String((*i).c_str());
-          }
-          writer.EndArray();
-
-          // Finally, add the timer itself
-          writer.String(JSON_TIMER);
-          timer_copy->to_json_obj(&writer);
-        }
-        writer.EndObject();
->>>>>>> bbb6e3a7796c7a6abb4c41a54b98e29bb62f1ea6
 
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
@@ -544,7 +474,8 @@ TimerStore::TSIterator::TSIterator(TimerStore* ts) :
   outer_iterator = _ts->_timer_view_id_table.end();
 }
 
-TimerStore::TSIterator& TimerStore::TSIterator::operator++() {
+TimerStore::TSIterator& TimerStore::TSIterator::operator++()
+{
   inner_iterator++;
   if (inner_iterator == outer_iterator->second.end())
   {
@@ -557,36 +488,35 @@ TimerStore::TSIterator& TimerStore::TSIterator::operator++() {
 // While the same TimerID may exist under two different cluster view ID
 // indices, they will never exist under the same cluster index, so we are safe
 // to look for a TimerID a second time, as if it has been deleted, the
-// second cluster index will have removed it's reference to that TimerID
-TimerPair& TimerStore::TSIterator::operator*() {
+// second cluster index will have removed its reference to that TimerID
+TimerPair& TimerStore::TSIterator::operator*()
+{
   std::map<TimerID, TimerPair>::iterator it = _ts->_timer_lookup_id_table.find(*inner_iterator);
   return it->second;
 }
 
-bool TimerStore::TSIterator::operator==(const TimerStore::TSIterator& other) const {
+bool TimerStore::TSIterator::operator==(const TimerStore::TSIterator& other) const
+{
   return (this->outer_iterator == other.outer_iterator &&
     (other.outer_iterator == _ts->_timer_view_id_table.end() ||
      this->inner_iterator == other.inner_iterator));
 }
 
-bool TimerStore::TSIterator::operator!=(const TimerStore::TSIterator& other) const {
+bool TimerStore::TSIterator::operator!=(const TimerStore::TSIterator& other) const
+{
   return !(*this == other);
 }
 
-void TimerStore::TSIterator::inner_next() {
+void TimerStore::TSIterator::inner_next()
+{
   while (outer_iterator != _ts->_timer_view_id_table.end() &&
          outer_iterator->first == _cluster_view_id)
   {
     outer_iterator++;
   }
+
   if (outer_iterator != _ts->_timer_view_id_table.end())
   {
     inner_iterator = outer_iterator->second.begin();
   }
-}
-
-bool TimerStore::near_time(uint32_t a, uint32_t b)
-{
-  return (overflow_less_than(a - b, NETWORK_DELAY) ||
-         overflow_less_than(b - a, NETWORK_DELAY));
 }
