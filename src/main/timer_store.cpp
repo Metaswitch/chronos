@@ -122,60 +122,77 @@ void TimerStore::add_timer(Timer* t)
     Timer* existing = map_it->second.front();
 
     // Compare timers for precedence, start-time then sequence-number.
-    if (overflow_less_than(t->start_time_mono_ms, existing->start_time_mono_ms) ||
-        ((t->start_time_mono_ms == existing->start_time_mono_ms) &&
-         (t->sequence_number < existing->sequence_number)))
+    if (t->sequence_number == 0 &&
+        existing->sequence_number == 0)
     {
-      TRC_DEBUG("The timer in the store is more recent, discard the new timer");
-      delete t;
-      return;
+      // Both these requests are from the client
+      if (overflow_less_than(t->start_time_mono_ms, existing->start_time_mono_ms))
+      {
+        TRC_DEBUG("The timer in the store is more recent and both timers \
+                  are directly from the client");
+        delete t;
+        return;
+      }
     }
     else
     {
-      // We want to add the timer, so decide whether this is an update, or
-      // if we need to save off the old timer.
-      if (existing->cluster_view_id != t->cluster_view_id)
+      // One of the sequence number is non-zero - at least one request is not
+      // from the client
+      if (near_time(t->start_time_mono_ms, existing->start_time_mono_ms) &&
+          t->sequence_number < existing->sequence_number)
       {
-        // The cluster IDs on the new and existing timers are different.
-        // This means that the cluster configuration has changed between
-        // and when the timer was last updated.
-        TRC_DEBUG("Cluster view IDs are different on the new and existing timers");
+        // These are probably the same timer, and the timer we are trying to add
+        // has a lower sequence number (so is less "informed")
+        TRC_DEBUG("The new timer has a similar time to the existing timer, and \
+                  the timer in the store has a higher sequence number");
+        delete t;
+        return;
+      }
+    }
 
-        if (map_it->second.size() > 1)
-        {
-          // There's already a saved timer, but the new timer doesn't match the
-          // existing timer. This is an error condition, and suggests that
-          // a scaling operation has been started before an old scaling operation
-          // finished, or there was a node failure during a scaling operation.
-          // Either way, the saved timer information is out of date, and is
-          // deleted (by not saving a copy of it when we delete the entire Timer
-          // ID in the next step)
-          TRC_WARNING("Deleting out of date timer from timer map");
-        }
+    // We want to add the timer, so decide whether this is an update, or
+    // if we need to save off the old timer.
+    if (existing->cluster_view_id != t->cluster_view_id)
+    {
+      // The cluster IDs on the new and existing timers are different.
+      // This means that the cluster configuration has changed between
+      // and when the timer was last updated.
+      TRC_DEBUG("Cluster view IDs are different on the new and existing timers");
 
-        set_tombstone_values(t, existing);
+      if (map_it->second.size() > 1)
+      {
+        // There's already a saved timer, but the new timer doesn't match the
+        // existing timer. This is an error condition, and suggests that
+        // a scaling operation has been started before an old scaling operation
+        // finished, or there was a node failure during a scaling operation.
+        // Either way, the saved timer information is out of date, and is
+        // deleted (by not saving a copy of it when we delete the entire Timer
+        // ID in the next step)
+        TRC_WARNING("Deleting out of date timer from timer map");
+      }
 
-        // Save the old timer information in the list of timers.
-        Timer* existing_copy = new Timer(*existing);
-        timers.push_back(t);
+      set_tombstone_values(t, existing);
+
+      // Save the old timer information in the list of timers.
+      Timer* existing_copy = new Timer(*existing);
+      timers.push_back(t);
+      timers.push_back(existing_copy);
+    }
+    else
+    {
+      set_tombstone_values(t, existing);
+      timers.push_back(t);
+
+      if (map_it->second.size() > 1)
+      {
+        Timer* existing_copy = new Timer(*map_it->second.back());
         timers.push_back(existing_copy);
       }
-      else
-      {
-        set_tombstone_values(t, existing);
-        timers.push_back(t);
-
-        if (map_it->second.size() > 1)
-        {
-          Timer* existing_copy = new Timer(*map_it->second.back());
-          timers.push_back(existing_copy);
-        }
-      }
-
-      // Delete the old timer from the timer map and the timer wheel - it will
-      // be added again later on
-      delete_timer(t->id);
     }
+
+    // Delete the old timer from the timer map and the timer wheel - it will
+    // be added again later on
+    delete_timer(t->id);
   }
   else
   {
@@ -618,7 +635,7 @@ HTTPCode TimerStore::get_timers_for_node(std::string request_node,
 
           // Add in Old Timer ID
           writer.String(JSON_TIMER_ID);
-          writer.Int(timer_copy->id);
+          writer.Int64(timer_copy->id);
 
           // Add the old replicas
           writer.String(JSON_OLD_REPLICAS);
@@ -709,6 +726,12 @@ void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
     t->interval_ms = existing->interval_ms;
     t->repeat_for = existing->interval_ms;
   }
+}
+
+bool TimerStore::near_time(uint32_t a, uint32_t b)
+{
+  return (overflow_less_than(a - b, NETWORK_DELAY) ||
+         overflow_less_than(b - a, NETWORK_DELAY));
 }
 
 bool TimerStore::overflow_less_than(uint32_t a, uint32_t b)

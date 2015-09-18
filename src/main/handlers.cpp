@@ -83,7 +83,7 @@ void ControllerTask::run()
     }
     else
     {
-      TimerID timer_id = std::stoul(matches[1].str(), NULL, 16);
+      TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
       uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
       add_or_update_timer(timer_id, replica_hash);
     }
@@ -158,7 +158,7 @@ void ControllerTask::add_or_update_timer(TimerID timer_id, int replica_hash)
 void ControllerTask::handle_delete()
 {
   // Check the request has a valid JSON body
-  std::string body = _req.get_rx_body(); 
+  std::string body = _req.get_rx_body();
   rapidjson::Document doc;
   doc.Parse<0>(body.c_str());
 
@@ -172,18 +172,18 @@ void ControllerTask::handle_delete()
   // Now loop through the body, pulling out the IDs/replica numbers
   // The JSON body should have the format:
   //  {"IDs": [{"ID": 123, "ReplicaIndex": 0},
-  //           {"ID": 456, "ReplicaIndex": 2}, 
+  //           {"ID": 456, "ReplicaIndex": 2},
   //          ...]
-  // The replica_index is zero-indexed (so the primary replica has an 
-  // index of 0). 
+  // The replica_index is zero-indexed (so the primary replica has an
+  // index of 0).
   try
   {
     JSON_ASSERT_CONTAINS(doc, JSON_IDS);
     JSON_ASSERT_ARRAY(doc[JSON_IDS]);
     const rapidjson::Value& ids_arr = doc[JSON_IDS];
-   
-    // The request is valid, so respond with a 202. Now loop through the 
-    // the body and update the replica trackers. 
+
+    // The request is valid, so respond with a 202. Now loop through the
+    // the body and update the replica trackers.
     send_http_reply(HTTP_ACCEPTED);
 
     for (rapidjson::Value::ConstValueIterator ids_it = ids_arr.Begin();
@@ -191,17 +191,17 @@ void ControllerTask::handle_delete()
          ++ids_it)
     {
       try
-      { 
-        TimerID id;
+      {
+        TimerID timer_id;
         int replica_index;
-        JSON_GET_INT_MEMBER(*ids_it, JSON_ID, id);
+        JSON_GET_INT_64_MEMBER(*ids_it, JSON_ID, timer_id);
         JSON_GET_INT_MEMBER(*ids_it, JSON_REPLICA_INDEX, replica_index);
 
         // Update the timer's replica_tracker to show that the replicas
-        // at level 'replica_index' and higher have been informed 
-        // about the timer. This will tombstone the timer if all 
-        // replicas have been informed. 
-        _cfg->_handler->update_replica_tracker_for_timer(id, 
+        // at level 'replica_index' and higher have been informed
+        // about the timer. This will tombstone the timer if all
+        // replicas have been informed.
+        _cfg->_handler->update_replica_tracker_for_timer(timer_id,
                                                          replica_index);
       }
       catch (JsonFormatError err)
@@ -213,24 +213,24 @@ void ControllerTask::handle_delete()
   }
   catch (JsonFormatError err)
   {
-    TRC_INFO("JSON body didn't contain the IDs array"); 
+    TRC_INFO("JSON body didn't contain the IDs array");
     send_http_reply(HTTP_BAD_REQUEST);
   }
 }
 
 void ControllerTask::handle_get()
 {
-  // Check the request is valid. It must have the node-for-replicas, 
-  // sync-mode and cluster-view-id parameters set, the sync-mode parameter 
-  // must be SCALE (this will be extended later), the request-node 
-  // must correspond to a node in the Chronos cluster (it can be a 
+  // Check the request is valid. It must have the node-for-replicas,
+  // sync-mode and cluster-view-id parameters set, the sync-mode parameter
+  // must be SCALE (this will be extended later), the request-node
+  // must correspond to a node in the Chronos cluster (it can be a
   // leaving node), and the cluster-view-id request must correspond to
   // the receiving nodes view of the cluster configuration
   std::string node_for_replicas = _req.param(PARAM_NODE_FOR_REPLICAS);
-  std::string sync_mode = _req.param(PARAM_SYNC_MODE);  
+  std::string sync_mode = _req.param(PARAM_SYNC_MODE);
   std::string cluster_view_id = _req.param(PARAM_CLUSTER_VIEW_ID);
 
-  if ((node_for_replicas == "") || 
+  if ((node_for_replicas == "") ||
       (sync_mode == "") ||
       (cluster_view_id == ""))
   {
@@ -244,39 +244,39 @@ void ControllerTask::handle_get()
 
   if (cluster_view_id != global_cluster_view_id)
   {
-    TRC_INFO("GET request is for an out of date cluster (%s and %s)", 
+    TRC_INFO("GET request is for an out of date cluster (%s and %s)",
              cluster_view_id.c_str(),
              global_cluster_view_id.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
-  
+
   if (!node_is_in_cluster(node_for_replicas))
   {
-    TRC_DEBUG("The request node isn't a Chronos node: %s", 
+    TRC_DEBUG("The request node isn't a Chronos node: %s",
               node_for_replicas.c_str());
     send_http_reply(HTTP_BAD_REQUEST);
     return;
   }
 
-  if (sync_mode == PARAM_SYNC_MODE_VALUE_SCALE) 
+  if (sync_mode == PARAM_SYNC_MODE_VALUE_SCALE)
   {
     std::string max_timers_from_req = _req.header(HEADER_RANGE);
     int max_timers_to_get = atoi(max_timers_from_req.c_str());
     TRC_DEBUG("Range value is %d", max_timers_to_get);
 
     std::string get_response;
-    HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas, 
+    HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas,
                                                       max_timers_to_get,
                                                       cluster_view_id,
                                                       get_response);
     _req.add_content(get_response);
-    
+
     if (rc == HTTP_PARTIAL_CONTENT)
     {
       _req.add_header(HEADER_CONTENT_RANGE, max_timers_from_req);
     }
-    
+
     send_http_reply(rc);
   }
   else
@@ -300,7 +300,7 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
   {
     if (*it == node_for_replicas)
     {
-      TRC_DEBUG("Found requesting node in current nodes: %s", 
+      TRC_DEBUG("Found requesting node in current nodes: %s",
                 node_for_replicas.c_str());
       node_in_cluster = true;
       break;
@@ -318,7 +318,7 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
     {
       if (*it == node_for_replicas)
       {
-        TRC_DEBUG("Found requesting node in leaving nodes: %s", 
+        TRC_DEBUG("Found requesting node in leaving nodes: %s",
                   node_for_replicas.c_str());
         node_in_cluster = true;
         break;
