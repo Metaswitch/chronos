@@ -730,8 +730,8 @@ void TimerStore::set_tombstone_values(Timer* t, Timer* existing)
 
 bool TimerStore::near_time(uint32_t a, uint32_t b)
 {
-  return (overflow_less_than(a - b, 400) ||
-         overflow_less_than(b - a, 400));
+  return (overflow_less_than(a - b, NETWORK_DELAY) ||
+         overflow_less_than(b - a, NETWORK_DELAY));
 }
 
 bool TimerStore::overflow_less_than(uint32_t a, uint32_t b)
