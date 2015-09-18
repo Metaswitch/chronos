@@ -203,7 +203,7 @@ class ChronosLiveTests(unittest.TestCase):
         # Kill all the Chronos processes
         kill_nodes(0, len(processes))
 
-    def assert_enough_timers_received(self, expected):
+    def assert_correct_timers_received(self, expected):
         # Check that enough timers pop as expected.
         # This should typically be as many as were added in the first place.
         # Ideally, we'd be checking where the timers popped from, but that's
@@ -249,7 +249,7 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_correct_timers_received(100)
 
     def test_scale_down(self):
         # Test that scaling down works. This test creates 4 Chronos nodes,
@@ -269,7 +269,7 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_correct_timers_received(100)
 
     def test_scale_up_scale_down(self):
         # Test a scale up and scale down. This test creates 2 Chronos nodes,
@@ -296,7 +296,7 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_correct_timers_received(100)
 
     def test_scale_up_and_kill(self):
         # Test that scaling up definitely moves timers. This test creates 2
@@ -319,7 +319,7 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_correct_timers_received(100)
 
 if __name__ == '__main__':
     unittest.main()
