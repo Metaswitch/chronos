@@ -423,6 +423,7 @@ void TimerStore::remove_timer_from_cluster_view_id(TimerPair timer)
   }
 }
 
+<<<<<<< HEAD
 // Remove the timer from all the timer buckets.  This is a fallback that is only
 // used when we're deleting a timer that should be in the store, but that we
 // couldn't find in the buckets and the heap.  It's an expensive operation but
@@ -431,6 +432,75 @@ void TimerStore::remove_timer_from_cluster_view_id(TimerPair timer)
 void TimerStore::purge_timer_from_wheels(TimerPair t)
 {
   TRC_WARNING("Purging timer from store.\n", TIMER_LOG_FMT, TIMER_LOG_PARAMS(t));
+||||||| merged common ancestors
+    if (!timer_copy->is_tombstone())
+    {
+      std::vector<std::string> old_replicas;
+      if (timer_is_on_node(request_node,
+                           cluster_view_id,
+                           timer_copy,
+                           old_replicas))
+      {
+        writer.StartObject();
+        {
+          // The timer will have a replica on the requesting node. Add this entry
+          // to the JSON document
+
+          // Add in Old Timer ID
+          writer.String(JSON_TIMER_ID);
+          writer.Int(timer_copy->id);
+
+          // Add the old replicas
+          writer.String(JSON_OLD_REPLICAS);
+          writer.StartArray();
+          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
+                                                        i != old_replicas.end();
+                                                      ++i)
+          {
+            writer.String((*i).c_str());
+          }
+          writer.EndArray();
+
+          // Finally, add the timer itself
+          writer.String(JSON_TIMER);
+          timer_copy->to_json_obj(&writer);
+        }
+        writer.EndObject();
+=======
+    if (!timer_copy->is_tombstone())
+    {
+      std::vector<std::string> old_replicas;
+      if (timer_is_on_node(request_node,
+                           cluster_view_id,
+                           timer_copy,
+                           old_replicas))
+      {
+        writer.StartObject();
+        {
+          // The timer will have a replica on the requesting node. Add this entry
+          // to the JSON document
+
+          // Add in Old Timer ID
+          writer.String(JSON_TIMER_ID);
+          writer.Int64(timer_copy->id);
+
+          // Add the old replicas
+          writer.String(JSON_OLD_REPLICAS);
+          writer.StartArray();
+          for (std::vector<std::string>::const_iterator i = old_replicas.begin();
+                                                        i != old_replicas.end();
+                                                      ++i)
+          {
+            writer.String((*i).c_str());
+          }
+          writer.EndArray();
+
+          // Finally, add the timer itself
+          writer.String(JSON_TIMER);
+          timer_copy->to_json_obj(&writer);
+        }
+        writer.EndObject();
+>>>>>>> bbb6e3a7796c7a6abb4c41a54b98e29bb62f1ea6
 
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
@@ -515,3 +585,8 @@ void TimerStore::TSIterator::inner_next() {
   }
 }
 
+bool TimerStore::near_time(uint32_t a, uint32_t b)
+{
+  return (overflow_less_than(a - b, NETWORK_DELAY) ||
+         overflow_less_than(b - a, NETWORK_DELAY));
+}

@@ -118,7 +118,6 @@ def start_nodes(lower, upper):
 
     sleep(2)
 
-
 def kill_nodes(lower, upper):
     # kill nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
@@ -219,11 +218,10 @@ class ChronosLiveTests(unittest.TestCase):
         # Ideally, we'd be checking where the timers popped from, but that's
         # not possible with these tests (as everything looks like it comes
         # from 127.0.0.1)
-        self.assertGreaterEqual(receiveCount,
+        self.assertEqual(receiveCount,
                                 expected_number,
                                ('Incorrect number of popped timers: received %i, expected at least %i' %
                                (receiveCount, expected_number)))
-        print receiveCount
 
     def write_config_for_nodes(self, lower, upper):
         # Write configuration files for the nodes
@@ -262,33 +260,7 @@ class ChronosLiveTests(unittest.TestCase):
         sleep(10)
         self.assert_enough_timers_received(100)
 
-    def atest_scale_up_and_kill(self):
-        # Test that scaling up definitely moves timers. This test creates 2
-        # Chronos nodes and adds 100 timers. It then scales up to 4 Chronos
-        # nodes, then kills the first two nodes. It then checks at least 50
-        # timers still pop (we'd expect around 75 would pop but this isn't
-        # guaranteed. We check 50 so that the test is very unlikely to fail
-        # but it also can't pass unless the timers have moved).
-
-        # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 2)
-        start_nodes(0, 2)
-        create_timers(chronos_nodes[0], 100)
-
-        # Scale up
-        self.write_config_for_nodes(0, 4)
-        start_nodes(2, 4)
-        node_reload_config(0, 2)
-        node_trigger_scaling(0, 4)
-
-        # Now kill the first nodes
-        kill_nodes(0, 2)
-
-        # Check that all the timers have popped
-        sleep(10)
-        self.assert_enough_timers_received(50)
-
-    def atest_scale_down(self):
+    def test_scale_down(self):
         # Test that scaling down works. This test creates 4 Chronos nodes,
         # adds 100 timers, scales down to 2 Chronos nodes, then checks that
         # 100 timers pop.
@@ -306,12 +278,12 @@ class ChronosLiveTests(unittest.TestCase):
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_correct_timers_received(100)
 
-    def atest_upscale_downscale(self):
+    def test_scale_up_scale_down(self):
         # Test a scale up and scale down. This test creates 2 Chronos nodes,
         # and adds 100 timers. It then scales up to 4 Chronos nodes, then
-        # removes the initial 2 nodes by doing a scale down. It then checks that
+        # scales back down to 2 Chronos nodes. It then checks that
         # 100 timers pop.
 
         # Start initial nodes and add timers
@@ -324,16 +296,39 @@ class ChronosLiveTests(unittest.TestCase):
         start_nodes(2, 4)
         node_reload_config(0, 2)
         node_trigger_scaling(0, 4)
+        sleep(10)
 
         # Scale down the initial nodes
         self.write_scale_down_config_for_all_nodes(0, 2)
         node_reload_config(0, 4)
         node_trigger_scaling(0, 4)
-        kill_nodes(0, 2)
 
         # Check that all the timers have popped
         sleep(10)
-        self.assert_enough_timers_received(100)
+        self.assert_correct_timers_received(100)
+
+    def test_scale_up_and_kill(self):
+        # Test that scaling up definitely moves timers. This test creates 2
+        # Chronos nodes and adds 100 timers. It then scales up to 4 Chronos
+        # nodes, then kills the first node. It then checks all 100 timers pop
+
+        # Start initial nodes and add timers
+        self.write_config_for_nodes(0, 2)
+        start_nodes(0, 2)
+        create_timers(chronos_nodes[0], 100)
+
+        # Scale up
+        self.write_config_for_nodes(0, 4)
+        start_nodes(2, 4)
+        node_reload_config(0, 2)
+        node_trigger_scaling(0, 4)
+
+        # Now kill the first node
+        kill_nodes(0, 1)
+
+        # Check that all the timers have popped
+        sleep(10)
+        self.assert_correct_timers_received(100)
 
 if __name__ == '__main__':
     unittest.main()

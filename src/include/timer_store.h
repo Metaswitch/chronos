@@ -226,6 +226,10 @@ private:
   static const int LONG_WHEEL_PERIOD_MS =
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
 
+  // Constant that specifies timers that are closer than this are considered the
+  // same. It should be bigger than the expected network lag
+  static const int NETWORK_DELAY = 200;
+
   // Type of a single timer bucket.
   typedef std::unordered_set<TimerPair> Bucket;
 
@@ -287,6 +291,9 @@ private:
 
   // Delete a timer from the timer wheel
   void remove_timer_from_timer_wheel(TimerPair timer);
+
+  // Check to see if these two timestamps are within NETWORK_DELAY of each other
+  bool near_time(uint32_t a, uint32_t b);
 
   // Delete a timer from the cluster view ID index
   void remove_timer_from_cluster_view_id(TimerPair timer);

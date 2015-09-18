@@ -83,7 +83,7 @@ void ControllerTask::run()
     }
     else
     {
-      TimerID timer_id = std::stoul(matches[1].str(), NULL, 16);
+      TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
       uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
       add_or_update_timer(timer_id, replica_hash);
     }
@@ -192,16 +192,16 @@ void ControllerTask::handle_delete()
     {
       try
       {
-        TimerID id;
+        TimerID timer_id;
         int replica_index;
-        JSON_GET_INT_MEMBER(*ids_it, JSON_ID, id);
+        JSON_GET_INT_64_MEMBER(*ids_it, JSON_ID, timer_id);
         JSON_GET_INT_MEMBER(*ids_it, JSON_REPLICA_INDEX, replica_index);
 
         // Update the timer's replica_tracker to show that the replicas
         // at level 'replica_index' and higher have been informed
         // about the timer. This will tombstone the timer if all
         // replicas have been informed.
-        _cfg->_handler->update_replica_tracker_for_timer(id,
+        _cfg->_handler->update_replica_tracker_for_timer(timer_id,
                                                          replica_index);
       }
       catch (JsonFormatError err)

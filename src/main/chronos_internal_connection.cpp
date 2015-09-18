@@ -242,7 +242,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
 
             // Get the timer ID
             TimerID timer_id;
-            JSON_GET_INT_MEMBER(id_arr, JSON_TIMER_ID, timer_id);
+            JSON_GET_INT_64_MEMBER(id_arr, JSON_TIMER_ID, timer_id);
 
             // Get the old replicas
             std::vector<std::string> old_replicas;
@@ -508,7 +508,7 @@ std::string ChronosInternalConnection::create_delete_body(std::map<TimerID, int>
     writer.StartObject();
     {
       writer.String(JSON_ID);
-      writer.Int(it->first);
+      writer.Int64(it->first);
       writer.String(JSON_REPLICA_INDEX);
       writer.Int(it->second);
     }
