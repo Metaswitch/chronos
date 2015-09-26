@@ -59,7 +59,9 @@ static const PDLog1<const char*> CL_CHRONOS_CRASHED
   PDLOG_ERR,
   "Fatal - Chronos has exited or crashed with signal %s.",
   "Chronos has encountered a fatal software error or has been terminated.",
-  "The application will exit and restart until the problem is fixed.",
+  "The application will exit and restart until the problem is fixed. If "
+    "Chronos processes are running correctly on other servers in the cluster, "
+    "they will provide service, although statistics may be incorrect.",
   "Ensure that Chronos has been installed correctly and that it "
   "has valid configuration."
 );
@@ -90,7 +92,9 @@ static const PDLog CL_CHRONOS_ENDED
   PDLOG_ERR,
   "Fatal - Termination signal received - terminating.",
   "Chronos has been terminated by monit or has exited.",
-  "Chronos timer service is not longer available.",
+  "Chronos timer service is not longer available. If Chronos processes are "
+    "running correctly on other servers in the cluster, they will provide "
+    "service, although statistics may be incorrect.",
   "(1). This occurs normally when Chronos is stopped. "
   "(2). If Chronos failed to respond then monit can restart Chronos."
 );
@@ -101,7 +105,9 @@ static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
   PDLOG_ERR,
   "Fatal - Failed to get system time - timer service cannot run: %s.",
   "The Chronos time service cannot get the system time.",
-  "The application will exit and restart until the problem is fixed.",
+  "The application will exit and restart until the problem is fixed. If "
+    "Chronos processes are running correctly on other servers in the cluster, "
+    "they will provide service, although statistics may be incorrect.",
   "(1). Make sure that NTP is running and the system time and date is set. "
   "(2). Check the NTP status and configuration."
 );
@@ -112,7 +118,9 @@ static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_FAIL
   PDLOG_ERR,
   "Fatal - Failed to initialize HttpStack stack in function %s with error %d.",
   "The HTTP interfaces could not be initialized.",
-  "The application will exit and restart until the problem is fixed.",
+  "The application will exit and restart until the problem is fixed. If "
+    "Chronos processes are running correctly on other servers in the cluster, "
+    "they will provide service, although statistics may be incorrect.",
   "(1). Check the /etc/clearwater/config for correctness. "
   "(2). Check the network status and configuration. "
 );
@@ -136,7 +144,8 @@ const static PDLog CL_CHRONOS_START_SCALE
   "Chronos has started a resync operation",
   "Chronos has detected an on-going cluster resize and is proactively "
     "resynchronising timers between cluster members.",
-  "Timers are being resynced across the Chronos cluster.",
+  "Timers are being resynced across the Chronos cluster. Statistics may "
+    "be temporarily incorrect.",
   "Wait until the current resync operation has completed before continuing "
     "with the cluster resize."
 );

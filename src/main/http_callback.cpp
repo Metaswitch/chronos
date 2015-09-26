@@ -39,12 +39,9 @@
 
 #include <cstring>
 
-HTTPCallback::HTTPCallback(Replicator* replicator,
-                           Alarm* timer_pop_alarm) :
+HTTPCallback::HTTPCallback() :
   _q(),
-  _running(false),
-  _replicator(replicator),
-  _timer_pop_alarm(timer_pop_alarm)
+  _running(false)
 {
 }
 
@@ -125,20 +122,8 @@ void HTTPCallback::worker_thread_entry_point()
     CURLcode curl_rc = curl_easy_perform(curl);
     if (curl_rc == CURLE_OK)
     {
-      // Check if the next pop occurs before the repeat-for interval and,
-      // if not, convert to a tombstone to indicate the timer is dead.
-      if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
-      {
-        timer->become_tombstone();
-      }
-      _replicator->replicate(timer);
-      _handler->add_timer(timer);
-      timer = NULL; // We relinquish control of the timer when we give
-                    // it to the store.
-      if (_timer_pop_alarm)
-      {
-        _timer_pop_alarm->clear();
-      }
+      _handler->return_timer(timer, true);
+      timer = NULL; // We relinquish control of the timer when we give it back to the store.
     }
     else
     {
@@ -153,12 +138,8 @@ void HTTPCallback::worker_thread_entry_point()
                   timer->callback_url.c_str(),
                   curl_easy_strerror(curl_rc));
 
-      if (_timer_pop_alarm && timer->is_last_replica())
-      {
-        _timer_pop_alarm->set();
-      }
-
-      delete timer;
+      _handler->return_timer(timer, false);
+      timer = NULL; // We relinquish control of the timer when we give it back to the store.
     }
 
     // Tidy up request-speciifc objects

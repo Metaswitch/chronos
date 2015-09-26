@@ -81,7 +81,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                    false);
 
   // Zero the statistic to start with
-  if (_remaining_nodes_scalar != NULL)
+  if (_remaining_nodes_scalar)
   {
     _remaining_nodes_scalar->value = 0;
   }
@@ -379,6 +379,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             if (store_timer)
             {
               _handler->add_timer(timer);
+              timer = NULL;
             }
             else
             {

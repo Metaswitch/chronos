@@ -77,6 +77,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
+  tags(std::vector<std::string>()),
   callback_url(""),
   callback_body(""),
   _replication_factor(0),
@@ -175,6 +176,11 @@ std::string Timer::url(std::string host)
 //             <comma separated "string"s>
 //         ]
 //     }
+//     "statistics": {
+//         "tags": [
+//             <comma separated "string"s>
+//         ]
+//     }
 // }
 std::string Timer::to_json()
 {
@@ -241,7 +247,23 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
           writer->String((*it).c_str());
         }
       }
+      writer->EndArray();
+    }
+    writer->EndObject();
 
+    writer->String("statistics");
+    writer->StartObject();
+    {
+      writer->String("tags");
+      writer->StartArray();
+      {
+        for (std::vector<std::string>::iterator it = tags.begin();
+                                                it != tags.end();
+                                                ++it)
+        {
+          writer->String((*it).c_str());
+        }
+      }
       writer->EndArray();
     }
     writer->EndObject();
@@ -655,6 +677,28 @@ Timer* Timer::from_json_obj(TimerID id,
       // Replicas were specified in the request, must be a replication message
       // from another cluster node.
       replicated = true;
+    }
+
+    if (doc.HasMember("statistics"))
+    {
+      // Parse out the 'statistics' block
+      rapidjson::Value& statistics = doc["statistics"];
+      JSON_ASSERT_OBJECT(statistics);
+
+      if (statistics.HasMember("tags"))
+      {
+        rapidjson::Value& tags = statistics["tags"];
+        JSON_ASSERT_ARRAY(tags);
+
+        for (rapidjson::Value::ConstValueIterator it = tags.Begin();
+                                                  it != tags.End();
+                                                  ++it)
+        {
+          // All tags get store within the timer as a vector
+          JSON_ASSERT_STRING(*it);
+          timer->tags.push_back(std::string(it->GetString(), it->GetStringLength()));
+        }
+      }
     }
   }
   catch (JsonFormatError err)

@@ -132,7 +132,7 @@ TEST_F(TestHandler, ValidJSONCreateTimer)
   delete added_timer; added_timer = NULL;
 }
 
-// Tests that a delete request for timer references that doesn't have any 
+// Tests that a delete request for timer references that doesn't have any
 // entries returns a 202 and doesn't try to edit the store
 TEST_F(TestHandler, ValidTimerReferenceNoEntries)
 {
@@ -141,7 +141,7 @@ TEST_F(TestHandler, ValidTimerReferenceNoEntries)
   _task->run();
 }
 
-// Tests that a delete request for timer references that has a single 
+// Tests that a delete request for timer references that has a single
 // entry does one update to the store
 TEST_F(TestHandler, ValidTimerReferenceEntry)
 {
@@ -151,7 +151,7 @@ TEST_F(TestHandler, ValidTimerReferenceEntry)
   _task->run();
 }
 
-// Tests a delete request for timer references that has multiple entries, some of 
+// Tests a delete request for timer references that has multiple entries, some of
 // which are valid. Check that the request returns a 202 and only updates
 // the store for valid entries
 TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
@@ -164,7 +164,7 @@ TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 }
 
 // Tests that get requests for timer references with a
-// lead to the store being queried, using the range header if set. 
+// lead to the store being queried, using the range header if set.
 TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 {
   controller_request("/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id");
@@ -185,7 +185,7 @@ TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
 }
 
 // Tests that get requests for timer references for a leaving node
-// are correctly processed 
+// are correctly processed
 TEST_F(TestHandler, ValidTimerGetLeavingNode)
 {
   // Set leaving addresses in globals so that we look there as well.
@@ -207,7 +207,7 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
   __globals->unlock();
 }
 
-// Invalid request: Tests the case where we attempt to create a new timer, 
+// Invalid request: Tests the case where we attempt to create a new timer,
 // but we can't create the timer from the request
 TEST_F(TestHandler, InvalidNoTimerNoBody)
 {
@@ -217,7 +217,7 @@ TEST_F(TestHandler, InvalidNoTimerNoBody)
 }
 
 // Invalid request: Tests that requests to create a timer but the method is
-// wrong get rejected. 
+// wrong get rejected.
 TEST_F(TestHandler, InvalidMethodNoTimer)
 {
   controller_request("/timers/", htp_method_PUT, "", "");
@@ -243,7 +243,7 @@ TEST_F(TestHandler, InvalidTimer)
   _task->run();
 }
 
-// Invalid request: Tests that requests for timer references that aren't deletes 
+// Invalid request: Tests that requests for timer references that aren't deletes
 // get rejected.
 TEST_F(TestHandler, InvalidMethodTimerReferences)
 {
@@ -279,7 +279,7 @@ TEST_F(TestHandler, InvalidBodyNoTopLevelEntryTimerReferences)
   _task->run();
 }
 
-// Invalid request: Tests that get requests for timer references with a 
+// Invalid request: Tests that get requests for timer references with a
 // missing node-for-replicas parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetMissingRequestNode)
 {

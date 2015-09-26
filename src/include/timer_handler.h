@@ -47,15 +47,21 @@
 
 #include "timer_store.h"
 #include "callback.h"
+#include "replicator.h"
+#include "alarm.h"
 #include "snmp_continuous_accumulator_table.h"
+#include "snmp_infinite_timer_count_table.h"
 #include "snmp_scalar.h"
 
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Callback*, SNMP::ContinuousAccumulatorTable*, SNMP::U32Scalar*);
+  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*,
+               SNMP::ContinuousAccumulatorTable*,
+               SNMP::InfiniteTimerCountTable*);
   virtual ~TimerHandler();
   virtual void add_timer(Timer*);
+  virtual void return_timer(Timer*, bool);
   virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
@@ -71,18 +77,44 @@ public:
 #endif
 
 private:
-  void pop(std::unordered_set<Timer*>&);
+  // Constant that specifies timers that are closer than this are considered the
+  // same. It should be bigger than the expected network lag
+  static const int NETWORK_DELAY = 200;
+
+  void pop(std::unordered_set<TimerPair>&);
   void pop(Timer*);
-  void signal_new_timer(unsigned int);
-  void update_statistics(uint32_t);
+
+  // Update a timer object with the current cluster configuration. Store off
+  // the old set of replicas, and return whether the requesting node is
+  // one of the new replicas
+  bool timer_is_on_node(std::string request_node,
+                        std::string cluster_view_id,
+                        Timer* timer,
+                        std::vector<std::string>& old_replicas);
+
+  // Ensure the update to the timer "sticks" by making it last at least as long
+  // as the previous timer
+  void save_tombstone_information(Timer* timer, Timer* existing);
+
+  // Report a statistics changed - called with empty vectors if a timer has only
+  // just been introduced, or is being permanently deleted/tombstoned
+  void update_statistics(std::vector<std::string> new_tags, std::vector<std::string> old_tags);
+
+  // Check to see if these two timestamps are within NETWORK_DELAY of each other
+  bool near_time(uint32_t a, uint32_t b);
+
 
   TimerStore* _store;
   Callback* _callback;
-  SNMP::ContinuousAccumulatorTable* _total_timers_table;
+  Replicator* _replicator;
+  Alarm* _timer_pop_alarm;
+  SNMP::ContinuousAccumulatorTable* _all_timers_table;
+  SNMP::InfiniteTimerCountTable* _tagged_timers_table;
   SNMP::U32Scalar* _current_timers_scalar;
 
   pthread_t _handler_thread;
   uint32_t _timer_count;
+  std::map<std::string, int> _tag_count = {};
   volatile bool _terminate;
   volatile unsigned int _nearest_new_timer;
   pthread_mutex_t _mutex;

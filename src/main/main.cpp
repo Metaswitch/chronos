@@ -52,6 +52,7 @@
 #include <getopt.h>
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
+#include "snmp_infinite_timer_count_table.h"
 #include "snmp_continuous_accumulator_table.h"
 #include "snmp_counter_table.h"
 #include "snmp_scalar.h"
@@ -162,16 +163,16 @@ int main(int argc, char** argv)
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
-  SNMP::ContinuousAccumulatorTable* total_timers_table = NULL;
-  SNMP::U32Scalar* current_timers_scalar = NULL;
+  SNMP::ContinuousAccumulatorTable* all_timers_table = NULL;
+  SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
 
   // Sets up SNMP statistics
   snmp_setup("chronos");
 
-  total_timers_table = SNMP::ContinuousAccumulatorTable::create("chronos_total_timers_table",
-                                                                ".1.2.826.0.1.1578918.9.10.4");
-  current_timers_scalar = new SNMP::U32Scalar("chronos_current_timers_scalar",
-                                              ".1.2.826.0.1.1578918.9.10.5");
+  all_timers_table = SNMP::ContinuousAccumulatorTable::create("chronos_all_timers_table",
+                                                              ".1.2.826.0.1.1578918.9.10.4");
+  total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
+                                              ".1.2.826.0.1.1578918.999");
 
   remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
                                                 ".1.2.826.0.1.1578918.9.10.1");
@@ -254,10 +255,12 @@ int main(int argc, char** argv)
   TimerStore *store = new TimerStore(hc);
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
-  HTTPCallback* callback = new HTTPCallback(handler_rep, timer_pop_alarm);
+  HTTPCallback* callback = new HTTPCallback();
   TimerHandler* handler = new TimerHandler(store, callback,
-                                           total_timers_table,
-                                           current_timers_scalar);
+                                           handler_rep,
+                                           timer_pop_alarm,
+                                           all_timers_table,
+                                           total_timers_table);
   callback->start(handler);
 
   // Create a Chronos internal connection class for scaling operations.
@@ -348,7 +351,6 @@ int main(int argc, char** argv)
   delete timers_processed_table;
   delete invalid_timers_processed_table;
   delete total_timers_table;
-  delete current_timers_scalar;
 
   hc->terminate();
   pthread_join(health_check_thread, NULL);
