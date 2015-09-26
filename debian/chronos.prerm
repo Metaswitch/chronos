@@ -69,6 +69,12 @@ case "$1" in
             # logs loses valuable information
             remove_logging
         fi
+
+        # Remove any clearwater-cluster-manager plugins
+        rm -f /usr/share/clearwater/clearwater-cluster-manager/plugins/$NAME*
+        if [ -x "/etc/init.d/clearwater-cluster-manager" ]; then
+          service clearwater-cluster-manager stop || /bin/true
+        fi
     ;;
     
     failed-upgrade)
