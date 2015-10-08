@@ -43,7 +43,7 @@
 #include "base.h"
 #include "test_interposer.hpp"
 #include "globals.h"
-#include "snmp_continuous_accumulator_table.h"
+//#include "snmp_continuous_increment_table.h"
 #include "fakesnmp.hpp"
 
 #include <gtest/gtest.h>
@@ -56,6 +56,7 @@ using namespace ::testing;
 
 static SNMP::U32Scalar _fake_scalar("","");
 static SNMP::InfiniteTimerCountTable* _fake_table;
+static SNMP::ContinuousIncrementTable* _fake_cont_table;
 
 class TestTimerHandler : public Base
 {
@@ -67,7 +68,7 @@ protected:
     _callback = new MockCallback();
     _replicator = new MockReplicator();
     _fake_table = SNMP::InfiniteTimerCountTable::create("","");
-    _fake_cont_table = NULL;
+    _fake_cont_table = SNMP::ContinuousIncrementTable::create("","");
   }
 
   void TearDown()
@@ -76,6 +77,7 @@ protected:
     delete _store;
     delete _replicator;
     delete _fake_table;
+    delete _fake_cont_table;
     // _callback is deleted by the timer handler.
 
     Base::TearDown();
@@ -88,7 +90,7 @@ protected:
   MockCallback* _callback;
   MockReplicator* _replicator;
   TimerHandler* _th;
-  SNMP::ContinuousAccumulatorTable* _fake_cont_table;
+  //SNMP::ContinuousIncrementTable* _fake_cont_table;
 };
 
 

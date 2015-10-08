@@ -54,4 +54,9 @@ CounterTable* CounterTable::create(std::string name, std::string oid)
 {
   return new FakeCounterTable();
 };
+
+ContinuousIncrementTable* ContinuousIncrementTable::create(std::string name, std::string oid)
+{
+  return new FakeContinuousIncrementTable();
+};
 }

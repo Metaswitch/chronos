@@ -53,7 +53,7 @@
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
 #include "snmp_infinite_timer_count_table.h"
-#include "snmp_continuous_accumulator_table.h"
+#include "snmp_continuous_increment_table.h"
 #include "snmp_counter_table.h"
 #include "snmp_scalar.h"
 #include "snmp_agent.h"
@@ -163,13 +163,13 @@ int main(int argc, char** argv)
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
-  SNMP::ContinuousAccumulatorTable* all_timers_table = NULL;
+  SNMP::ContinuousIncrementTable* all_timers_table = NULL;
   SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
 
   // Sets up SNMP statistics
   snmp_setup("chronos");
 
-  all_timers_table = SNMP::ContinuousAccumulatorTable::create("chronos_all_timers_table",
+  all_timers_table = SNMP::ContinuousIncrementTable::create("chronos_all_timers_table",
                                                               ".1.2.826.0.1.1578918.9.10.4");
   total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
                                               ".1.2.826.0.1.1578918.999");
