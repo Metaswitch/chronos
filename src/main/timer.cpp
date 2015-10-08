@@ -546,8 +546,8 @@ Timer* Timer::from_json_obj(TimerID id,
     JSON_ASSERT_OBJECT(timing);
 
     JSON_ASSERT_CONTAINS(timing, "interval");
-    rapidjson::Value& interval_ms = timing["interval"];
-    JSON_ASSERT_INT(interval_ms);
+    rapidjson::Value& interval_s = timing["interval"];
+    JSON_ASSERT_INT(interval_s);
 
     // Extract the repeat-for parameter, if it's absent, set it to the interval
     // instead.
@@ -558,10 +558,10 @@ Timer* Timer::from_json_obj(TimerID id,
     }
     else
     {
-      repeat_for_int = interval_ms.GetInt();
+      repeat_for_int = interval_s.GetInt();
     }
 
-    if ((interval_ms.GetInt() == 0) && (repeat_for_int != 0))
+    if ((interval_s.GetInt() == 0) && (repeat_for_int != 0))
     {
       // If the interval time is 0 and the repeat_for_int isn't then reject the timer.
       error = "Can't have a zero interval time with a non-zero (%s) repeat-for time",
@@ -569,7 +569,7 @@ Timer* Timer::from_json_obj(TimerID id,
       return NULL;
     }
 
-    timer = new Timer(id, (interval_ms.GetInt() * 1000), (repeat_for_int * 1000));
+    timer = new Timer(id, (interval_s.GetInt() * 1000), (repeat_for_int * 1000));
 
     if (timing.HasMember("start-time-delta"))
     {
