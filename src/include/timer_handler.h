@@ -60,7 +60,7 @@ public:
                SNMP::ContinuousIncrementTable*,
                SNMP::InfiniteTimerCountTable*);
   virtual ~TimerHandler();
-  virtual void add_timer(Timer*);
+  virtual void add_timer(Timer*, bool=true);
   virtual void return_timer(Timer*, bool);
   virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);
