@@ -44,7 +44,7 @@
 class MockTimerHandler : public TimerHandler
 {
 public:
-  MOCK_METHOD1(add_timer,void(Timer*));
+  MOCK_METHOD2(add_timer,void(Timer*,bool));
   MOCK_METHOD2(return_timer,void(Timer*,bool));
   MOCK_METHOD2(update_replica_tracker_for_timer, void(TimerID, int));
   MOCK_METHOD4(get_timers_for_node, HTTPCode(std::string request_node,
