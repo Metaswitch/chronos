@@ -85,7 +85,6 @@ void ControllerTask::run()
     {
       TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
       uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
-      TRC_DEBUG("adding/updating timer id=%llu rep_hash=%llu",timer_id,replica_hash);
       add_or_update_timer(timer_id, replica_hash);
     }
   }

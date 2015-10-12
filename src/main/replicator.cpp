@@ -116,7 +116,6 @@ void Replicator::replicate(Timer* timer)
     if (*it != localhost)
     {
       replicate_int(body, timer->url(*it));
-      TRC_DEBUG("calling replicate_int to url: %s", timer->url(*it).c_str());
     }
   }
 }
@@ -158,8 +157,7 @@ void Replicator::worker_thread_entry_point()
 
       // Send the request.
       CURLcode rc = curl_easy_perform(curl);
-      TRC_DEBUG("Worker thread sending curl PUT to %s", replication_request->url.c_str());
-      /*if (rc == CURLE_HTTP_RETURNED_ERROR)
+      if (rc == CURLE_HTTP_RETURNED_ERROR)
       {
         long http_rc;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
@@ -167,8 +165,9 @@ void Replicator::worker_thread_entry_point()
                     replication_request->url.c_str(),
                     http_rc,
                     curl_easy_strerror(rc));
-      }*/
-      long http_rc=0;
+      }
+      //uncomment for detailed curl error debug messages
+      /*long http_rc=0;
       if(rc==CURLE_OK)
       {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
@@ -178,7 +177,7 @@ void Replicator::worker_thread_entry_point()
       {
         TRC_DEBUG("%s failed at server. %s(%d). fatal", replication_request->url.c_str(),
             curl_easy_strerror(rc), rc);
-      }
+      }*/
     }
     CW_EXCEPT(_exception_handler)
     {
