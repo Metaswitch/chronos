@@ -244,7 +244,6 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     else
     {
       //Add new timer tags
-
       tags_to_add = new_tp.active_timer->tags;
 
       //If there was an old existing timer, its tags should be removed
@@ -267,7 +266,9 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     update_statistics(tags_to_add, tags_to_remove);
   }
   else
-  {TRC_DEBUG("skipped update_statistics as timer was returned from callback and will pop again");}
+  {
+    TRC_DEBUG("skipped update_statistics as timer was returned from callback and will pop again");
+  }
 
   delete existing_tp.active_timer;
   delete existing_tp.information_timer;
