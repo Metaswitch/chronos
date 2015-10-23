@@ -170,16 +170,16 @@ int main(int argc, char** argv)
   snmp_setup("chronos");
 
   all_timers_table = SNMP::ContinuousIncrementTable::create("chronos_all_timers_table",
-                                                              ".1.2.826.0.1.1578918.9.10.4");
+                                                             ".1.2.826.0.1.1578918.9.10.4");
   total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
-                                              ".1.2.826.0.1.1578918.999");
+                                                              ".1.2.826.0.1.1578918.999");
 
   remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
                                                 ".1.2.826.0.1.1578918.9.10.1");
   timers_processed_table = SNMP::CounterTable::create("chronos_processed_timers_table",
-                                                                    ".1.2.826.0.1.1578918.9.10.2");
+                                                       ".1.2.826.0.1.1578918.9.10.2");
   invalid_timers_processed_table = SNMP::CounterTable::create("chronos_invalid_timers_processed_table",
-                                                                    ".1.2.826.0.1.1578918.9.10.3");
+                                                               ".1.2.826.0.1.1578918.9.10.3");
 
   // Must be called after all SNMP tables have been registered
   init_snmp_handler_threads("chronos");

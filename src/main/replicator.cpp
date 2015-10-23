@@ -166,18 +166,11 @@ void Replicator::worker_thread_entry_point()
                     http_rc,
                     curl_easy_strerror(rc));
       }
-      //uncomment for detailed curl error debug messages
-      /*long http_rc=0;
-      if(rc==CURLE_OK)
-      {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
-        TRC_DEBUG("Received HTTP response: status=%d", http_rc);
-      }
-      else
+      if (rc != CURLE_OK)
       {
         TRC_DEBUG("%s failed at server. %s(%d). fatal", replication_request->url.c_str(),
-            curl_easy_strerror(rc), rc);
-      }*/
+                                                          curl_easy_strerror(rc), rc);
+      }
     }
     CW_EXCEPT(_exception_handler)
     {

@@ -201,7 +201,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
           TRC_WARNING("Deleting out of date timer from timer map");
         }
 
-//        new_tp.active_timer = timer;
+        //new_tp.active_timer = timer;
         new_tp.information_timer = existing_tp.active_timer; // TODO update the replica tracker
         existing_tp.active_timer = NULL;
       }
@@ -209,14 +209,13 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       {
         TRC_DEBUG("Updating the active timer with a new timer");
 
- //       new_tp.active_timer = timer;
+        //new_tp.active_timer = timer;
         if (existing_tp.information_timer)
         {
           new_tp.information_timer = existing_tp.information_timer;
           existing_tp.information_timer = NULL;
         }
-
-         //new_tp.information_timer = NULL;
+        //new_tp.information_timer = NULL;
       }
     }
   }
@@ -224,44 +223,41 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   // Update statistics
   std::vector<std::string> tags_to_add = std::vector<std::string>();
   std::vector<std::string> tags_to_remove = std::vector<std::string>();
+
   if(update_stats)
   {
     if(new_tp.active_timer->is_tombstone())
     {
-      //If the new timer is a tombstone, no new tags should be added
-      //If it overwrites an existing active timer, the old tags should
-      //be removed, and global count decremented
-
-      if(existing_tp.active_timer                  &&
-         !existing_tp.active_timer->is_tombstone())
+      // If the new timer is a tombstone, no new tags should be added
+      // If it overwrites an existing active timer, the old tags should
+      // be removed, and global count decremented
+      if((existing_tp.active_timer)   &&
+         (!existing_tp.active_timer->is_tombstone()))
       {
         tags_to_remove = existing_tp.active_timer->tags;
-        TRC_DEBUG("new timer is a tombstone overwriting an existing timer, decrementing all_timers_table");
+        TRC_DEBUG("new timer is a tombstone overwriting an existing timer");
         _all_timers_table->decrement(1);
       }
     }
-
     else
     {
-      //Add new timer tags
+      // Add new timer tags
       tags_to_add = new_tp.active_timer->tags;
 
-      //If there was an old existing timer, its tags should be removed
-      //Global count should only increment if there was not an old
-      //timer, as otherwise it is only an update.
-
-      if(existing_tp.active_timer                  &&
+      // If there was an old existing timer, its tags should be removed
+      // Global count should only increment if there was not an old
+      // timer, as otherwise it is only an update.
+      if(existing_tp.active_timer &&
          !existing_tp.active_timer->is_tombstone())
       {
         tags_to_remove = existing_tp.active_timer->tags;
       }
       else
       {
-        TRC_DEBUG("New timer being added, and no existing timer; incrementing all_timers_table");
+        TRC_DEBUG("New timer being added, and no existing timer");
         _all_timers_table->increment(1);
       }
     }
-
     // We need to replace the existing timers
     update_statistics(tags_to_add, tags_to_remove);
   }
@@ -300,8 +296,8 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     {
       _timer_pop_alarm->set();
     }
-    //decrement global timer count on deleting timer
-    TRC_DEBUG("Callback failed, decrementing all_timers_table");
+    // Decrement global timer count on deleting timer
+    TRC_DEBUG("Callback failed");
     _all_timers_table->decrement(1);
 
     delete timer;
@@ -315,19 +311,16 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     timer->become_tombstone();
     update_statistics(std::vector<std::string>(), timer->tags);
 
-    //decrement global timer count for tombstoned timer
-    TRC_DEBUG("Timer won't pop again and is being tombstoned, decrementing all_timers_table");
+    // Decrement global timer count for tombstoned timer
+    TRC_DEBUG("Timer won't pop again and is being tombstoned");
     _all_timers_table->decrement(1);
   }
 
-  //timer is not new, and has not previously decremented stats.
-  bool update_stats=false;
-
   // Replicate and add the timer back to store
   _replicator->replicate(timer);
-  //Timer will be re-added, but stats should not be updated, as
-  //no stats were altered on it popping
-  add_timer(timer, update_stats);
+  // Timer will be re-added, but stats should not be updated, as
+  // no stats were altered on it popping
+  add_timer(timer, false);
 }
 
 void TimerHandler::update_replica_tracker_for_timer(TimerID id,
@@ -382,7 +375,7 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
       }
     }
     uint32_t next_pop_time = store_timers.active_timer->next_pop_time();
-    // TODO we shouldn';t change what the sotred cluster view ID is here
+    // TODO we shouldn't change what the stored cluster view ID is here
     std::vector<std::string> cluster_view_id_vector(1, cluster_view_id);
     _store->insert(store_timers, id, next_pop_time, cluster_view_id_vector);
   }
@@ -430,16 +423,6 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
     {
       continue;
     }
-
-//    if (!pair.information_timer)
-//    {
-//      timer_copy = new Timer(*(pair.active_timer));
-//    }
-//    else
-//    {
-//      timer_copy = new Timer(*(pair.information_timer));
-//    }
-
 
     if (!timer_copy->is_tombstone())
     {
@@ -661,18 +644,6 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 void TimerHandler::update_statistics(std::vector<std::string> new_tags,
                                      std::vector<std::string> old_tags)
 {
-  if (_all_timers_table)
-  {
-    if (new_tags.empty())
-    {
-//      _all_timers_table.decrement();
-    }
-    if (old_tags.empty())
-    {
-//      _all_timers_table.increment();
-    }
-  }
-
   if (_tagged_timers_table)
   {
     std::set<std::string> to_add;
