@@ -127,7 +127,7 @@ As with the public API, the URL shall be `/timers/<timer-id>` and the body shall
       "timing": {
         "interval": <secs>,
         "repeat-for": <secs>
-        "start-time-delta": <secs>
+        "start-time-delta": <ms>
         "sequence-number": <int>
       },
       "callback": {
@@ -194,7 +194,7 @@ The JSON body in the response has the format:
 
     {"timers": [{"TimerID": id,
                  "OldReplicas": ["replica-1", ...],
-                 "Timer": {"timing": {"start-time": <secs since epoch>,
+                 "Timer": {"timing": {"start-time": <ms since epoch>,
                                       "sequence-number": <int>
                                       "interval": <secs>,
                                       "repeat-for": <secs>
