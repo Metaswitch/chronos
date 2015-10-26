@@ -123,8 +123,8 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       TRC_DEBUG("New timer cluster view id: %s", timer->cluster_view_id.c_str());
       TRC_DEBUG("Old timer cluster view id: %s", existing_tp.active_timer->cluster_view_id.c_str());
       TRC_DEBUG("Timers have sequence number: %d", timer->sequence_number);
-      if (timer->is_matching_cluster_view_id(cluster_view_id) &&
-          !existing_tp.active_timer->is_matching_cluster_view_id(cluster_view_id))
+      if ((timer->is_matching_cluster_view_id(cluster_view_id)) &&
+          !(existing_tp.active_timer->is_matching_cluster_view_id(cluster_view_id)))
       {
 
         // This ensures we add the timer to the store if the cluster view ID is
@@ -135,7 +135,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
                                existing_tp.active_timer->start_time_mono_ms))
       {
         TRC_DEBUG("The timer in the store is more recent"
-                  "and both timers have the same sequence number");
+                  " and both timers have the same sequence number");
 
         new_tp.active_timer = existing_tp.active_timer;
         existing_tp.active_timer = NULL;
@@ -224,15 +224,15 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   std::vector<std::string> tags_to_add = std::vector<std::string>();
   std::vector<std::string> tags_to_remove = std::vector<std::string>();
 
-  if(update_stats)
+  if (update_stats)
   {
-    if(new_tp.active_timer->is_tombstone())
+    if (new_tp.active_timer->is_tombstone())
     {
       // If the new timer is a tombstone, no new tags should be added
       // If it overwrites an existing active timer, the old tags should
       // be removed, and global count decremented
-      if((existing_tp.active_timer)   &&
-         (!existing_tp.active_timer->is_tombstone()))
+      if ((existing_tp.active_timer) &&
+          !(existing_tp.active_timer->is_tombstone()))
       {
         tags_to_remove = existing_tp.active_timer->tags;
         TRC_DEBUG("new timer is a tombstone overwriting an existing timer");
@@ -247,8 +247,8 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       // If there was an old existing timer, its tags should be removed
       // Global count should only increment if there was not an old
       // timer, as otherwise it is only an update.
-      if(existing_tp.active_timer &&
-         !existing_tp.active_timer->is_tombstone())
+      if ((existing_tp.active_timer) &&
+          !(existing_tp.active_timer->is_tombstone()))
       {
         tags_to_remove = existing_tp.active_timer->tags;
       }
@@ -263,7 +263,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   }
   else
   {
-    TRC_DEBUG("skipped update_statistics as timer was returned from callback and will pop again");
+    TRC_DEBUG("Timer was returned from callback and will pop again");
   }
 
   delete existing_tp.active_timer;
@@ -292,7 +292,7 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     // will be destroyed
     update_statistics(std::vector<std::string>(), timer->tags);
 
-    if (_timer_pop_alarm && timer->is_last_replica())
+    if ((_timer_pop_alarm) && (timer->is_last_replica()))
     {
       _timer_pop_alarm->set();
     }
