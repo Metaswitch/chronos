@@ -171,8 +171,6 @@ int main(int argc, char** argv)
 
   all_timers_table = SNMP::ContinuousAccumulatorTable::create("chronos_all_timers_table",
                                                               ".1.2.826.0.1.1578918.9.10.4");
-  total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
-                                              ".1.2.826.0.1.1578918.999");
 
   remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
                                                 ".1.2.826.0.1.1578918.9.10.1");
