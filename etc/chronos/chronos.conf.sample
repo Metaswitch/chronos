@@ -7,8 +7,5 @@ threads = 50
 folder = /var/log/chronos
 level = 2
 
-[alarms]
-enabled = true
-
 [exceptions]
 max_ttl = 600

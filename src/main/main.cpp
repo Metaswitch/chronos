@@ -218,22 +218,16 @@ int main(int argc, char** argv)
   // Log the PID, this is useful for debugging if monit restarts chronos.
   TRC_STATUS("Starting with PID %d", getpid());
 
-  bool alarms_enabled;
-  __globals->get_alarms_enabled(alarms_enabled);
+  // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
+  // in the alarm definition JSON file exactly.
+  timer_pop_alarm = new Alarm("chronos", AlarmDef::CHRONOS_TIMER_POP_ERROR,
+                                          AlarmDef::MAJOR);
+  scale_operation_alarm = new Alarm("chronos", AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
+                                               AlarmDef::MINOR);
 
-  if (alarms_enabled)
-  {
-    // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
-    // in the alarm definition JSON file exactly.
-    timer_pop_alarm = new Alarm("chronos", AlarmDef::CHRONOS_TIMER_POP_ERROR,
-                                            AlarmDef::MAJOR);
-    scale_operation_alarm = new Alarm("chronos", AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
-                                                 AlarmDef::MINOR);
-
-    // Start the alarm request agent
-    AlarmReqAgent::get_instance().start();
-    AlarmState::clear_all("chronos");
-  }
+  // Start the alarm request agent
+  AlarmReqAgent::get_instance().start();
+  AlarmState::clear_all("chronos");
 
   // Now create the Chronos components
   HealthChecker* hc = new HealthChecker();
@@ -357,15 +351,12 @@ int main(int argc, char** argv)
   delete hc; hc = NULL;
   delete exception_handler; exception_handler = NULL;
 
-  if (alarms_enabled)
-  {
-    // Stop the alarm request agent
-    AlarmReqAgent::get_instance().stop();
+  // Stop the alarm request agent
+  AlarmReqAgent::get_instance().stop();
 
-    // Delete Chronos's alarm objects
-    delete timer_pop_alarm;
-    delete scale_operation_alarm;
-  }
+  // Delete Chronos's alarm objects
+  delete timer_pop_alarm;
+  delete scale_operation_alarm;
 
   sem_destroy(&term_sem);
 
