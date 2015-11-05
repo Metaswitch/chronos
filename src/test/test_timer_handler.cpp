@@ -43,7 +43,6 @@
 #include "base.h"
 #include "test_interposer.hpp"
 #include "globals.h"
-//#include "snmp_continuous_increment_table.h"
 #include "fakesnmp.hpp"
 
 #include <gtest/gtest.h>
@@ -90,7 +89,6 @@ protected:
   MockCallback* _callback;
   MockReplicator* _replicator;
   TimerHandler* _th;
-  //SNMP::ContinuousIncrementTable* _fake_cont_table;
 };
 
 

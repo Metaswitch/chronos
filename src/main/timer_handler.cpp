@@ -201,7 +201,6 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
           TRC_WARNING("Deleting out of date timer from timer map");
         }
 
-        //new_tp.active_timer = timer;
         new_tp.information_timer = existing_tp.active_timer; // TODO update the replica tracker
         existing_tp.active_timer = NULL;
       }
@@ -209,13 +208,11 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       {
         TRC_DEBUG("Updating the active timer with a new timer");
 
-        //new_tp.active_timer = timer;
         if (existing_tp.information_timer)
         {
           new_tp.information_timer = existing_tp.information_timer;
           existing_tp.information_timer = NULL;
         }
-        //new_tp.information_timer = NULL;
       }
     }
   }
@@ -261,10 +258,6 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     // We need to replace the existing timers
     update_statistics(tags_to_add, tags_to_remove);
   }
-  else
-  {
-    TRC_DEBUG("Timer was returned from callback and will pop again");
-  }
 
   delete existing_tp.active_timer;
   delete existing_tp.information_timer;
@@ -296,6 +289,7 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     {
       _timer_pop_alarm->set();
     }
+
     // Decrement global timer count on deleting timer
     TRC_DEBUG("Callback failed");
     _all_timers_table->decrement(1);
