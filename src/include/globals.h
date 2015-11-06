@@ -74,7 +74,6 @@ public:
   // Per node configuration
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
-  GLOBAL(alarms_enabled, bool);
   GLOBAL(threads, int);
   GLOBAL(max_ttl, int);
   GLOBAL(dns_servers, std::vector<std::string>);
