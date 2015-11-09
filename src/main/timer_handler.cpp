@@ -135,7 +135,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
                                existing_tp.active_timer->start_time_mono_ms))
       {
         TRC_DEBUG("The timer in the store is more recent"
-                  " and both timers have the same sequence number");
+                  "and both timers have the same sequence number");
 
         new_tp.active_timer = existing_tp.active_timer;
         existing_tp.active_timer = NULL;
@@ -171,6 +171,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
         existing_tp.information_timer = NULL;
 
         will_add_timer = false;
+        update_stats = false;
         delete timer; timer = NULL;
       }
     }
