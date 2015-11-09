@@ -166,7 +166,7 @@ void Replicator::worker_thread_entry_point()
                     http_rc,
                     curl_easy_strerror(rc));
       }
-      if (rc != CURLE_OK)
+      else if (rc != CURLE_OK)
       {
         TRC_DEBUG("%s failed at server. %s(%d). fatal", replication_request->url.c_str(),
                                                           curl_easy_strerror(rc), rc);

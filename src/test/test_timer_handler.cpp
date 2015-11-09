@@ -57,7 +57,6 @@ using namespace ::testing;
 static SNMP::U32Scalar _fake_scalar("","");
 static SNMP::InfiniteTimerCountTable* _fake_table;
 static MockIncrementTable* _mock_increment_table;
-static SNMP::ContinuousIncrementTable* _fake_cont_table;
 
 class TestTimerHandler : public Base
 {
@@ -70,7 +69,6 @@ protected:
     _replicator = new MockReplicator();
     _fake_table = SNMP::InfiniteTimerCountTable::create("","");
     _mock_increment_table = new MockIncrementTable();
-    _fake_cont_table = SNMP::ContinuousIncrementTable::create("","");
   }
 
   void TearDown()
@@ -80,7 +78,6 @@ protected:
     delete _replicator;
     delete _fake_table;
     delete _mock_increment_table;
-    delete _fake_cont_table;
     // _callback is deleted by the timer handler.
 
     Base::TearDown();
@@ -385,9 +382,10 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
 
   EXPECT_EQ(insert_pair.active_timer, timer1);
 
+  __globals->set_cluster_view_id(timer2->cluster_view_id);
+
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair1),Return(true)));
-  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair));
 
@@ -396,9 +394,10 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
   EXPECT_EQ(insert_pair.active_timer, timer2);
   EXPECT_EQ(insert_pair.information_timer, timer1);
 
+  __globals->set_cluster_view_id(new_timer->cluster_view_id);
+
   EXPECT_CALL(*_store, fetch(new_timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair2),Return(true)));
-  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, new_timer->id, new_timer->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair));
 
@@ -409,6 +408,9 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
   delete timer1;
   // timer2 has been deleted by the handler
   delete new_timer;
+  std::string cluster_view_id = "cluster-view-id";
+  __globals->set_cluster_view_id(cluster_view_id);
+
 }
 
 
@@ -446,7 +448,7 @@ TEST_F(TestTimerHandler, AddOlderTimer)
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
-  EXPECT_CALL(*_mock_increment_table, increment(1));
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair2));
 
@@ -502,7 +504,6 @@ TEST_F(TestTimerHandler, PreserveInformationTimers)
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
-  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair));
 
@@ -1112,7 +1113,6 @@ TEST_F(TestTimerHandler, UpdateClusterViewID)
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
-  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
               WillOnce(DoAll(SaveArg<0>(&insert_pair),SaveArg<3>(&insert_cluster_ids)));
 

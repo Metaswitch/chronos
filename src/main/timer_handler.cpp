@@ -112,6 +112,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   TRC_DEBUG("Performed fetch operation");
 
   bool will_add_timer = true;
+
   if (timer_found)
   {
     // Compare timers for precedence, start-time then sequence-number.
@@ -134,7 +135,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       else if (Utils::overflow_less_than(timer->start_time_mono_ms,
                                existing_tp.active_timer->start_time_mono_ms))
       {
-        TRC_DEBUG("The timer in the store is more recent"
+        TRC_DEBUG("The timer in the store is more recent "
                   "and both timers have the same sequence number");
 
         new_tp.active_timer = existing_tp.active_timer;
@@ -143,6 +144,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
         new_tp.information_timer = existing_tp.information_timer;
         existing_tp.information_timer = NULL;
 
+        update_stats = false;
         will_add_timer = false;
         delete timer; timer = NULL;
       }
@@ -180,7 +182,6 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     {
       // We want to add the timer, so decide whether this is an update, or
       // if we need to save off the old timer (as an information timer)
-
       save_tombstone_information(new_tp.active_timer, existing_tp.active_timer);
 
       if (existing_tp.active_timer->cluster_view_id != timer->cluster_view_id)
@@ -204,6 +205,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
 
         new_tp.information_timer = existing_tp.active_timer; // TODO update the replica tracker
         existing_tp.active_timer = NULL;
+        update_stats = false;
       }
       else
       {
@@ -222,6 +224,9 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   std::vector<std::string> tags_to_add = std::vector<std::string>();
   std::vector<std::string> tags_to_remove = std::vector<std::string>();
 
+  // TODO The update stats loop does not work for tags. At the moment it
+  // seems to be ok for increment/decrement, but many edge cases where a
+  // new timer updates tags on an old timer are skipped completely
   if (update_stats)
   {
     if (new_tp.active_timer->is_tombstone())
@@ -268,6 +273,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
 
   std::vector<std::string> cluster_view_id_vector;
   cluster_view_id_vector.push_back(new_tp.active_timer->cluster_view_id);
+
   if (new_tp.information_timer)
   {
     cluster_view_id_vector.push_back(new_tp.information_timer->cluster_view_id);
