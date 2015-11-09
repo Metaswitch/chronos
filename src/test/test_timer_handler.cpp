@@ -1138,7 +1138,7 @@ TEST_F(TestTimerHandler, UpdateClusterViewID)
   delete timer2;
 }
 
-// Test that a new, similar, timer with a sequence number lower than the 
+// Test that a new, similar, timer with a sequence number lower than the
 // existing timer is dealt with correctly.
 TEST_F(TestTimerHandler, AddLowerSequenceNumber)
 {
@@ -1191,4 +1191,3 @@ TEST_F(TestTimerHandler, AddLowerSequenceNumber)
   // timer1 is deleted by handler
   delete timer1;
 }
-
