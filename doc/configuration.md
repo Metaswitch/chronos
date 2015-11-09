@@ -15,9 +15,6 @@ The per-node configuration file has the following format:
     folder = /var/log/chronos      # Location to output logs to
     level = 2                      # Logging level: 1(lowest) - 5(highest)
 
-    [alarms]
-    enabled = true                 # Whether SNMP alarms are enabled
-
     [exceptions]
     max_ttl = 600                  # The maximum time before Chronos exits if it hits an exception
 

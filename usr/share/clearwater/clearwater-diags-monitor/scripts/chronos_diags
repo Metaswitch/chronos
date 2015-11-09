@@ -36,3 +36,4 @@
 # (in the clearwater-infrastructure project).
 
 copy_to_dump "/etc/chronos/chronos.conf"
+copy_to_dump "/etc/chronos/chronos_cluster.conf"

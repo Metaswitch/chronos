@@ -65,10 +65,12 @@ Globals::Globals(std::string config_file,
     ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
-    ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
+    
+    // Deprecated option left in for backwards compatibility
+    ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
     ;
 
 #ifndef UNIT_TEST
@@ -125,10 +127,6 @@ void Globals::update_config()
   int bind_port = conf_map["http.bind-port"].as<int>();
   set_bind_port(bind_port);
   TRC_STATUS("Bind port: %d", bind_port);
-
-  bool alarms_enabled = (conf_map["alarms.enabled"].as<std::string>().compare("true") == 0);
-  set_alarms_enabled(alarms_enabled);
-  TRC_STATUS("Alarms enabled: %d", alarms_enabled);
 
   int threads = conf_map["http.threads"].as<int>();
   set_threads(threads);

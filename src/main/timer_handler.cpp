@@ -103,6 +103,7 @@ TimerHandler::~TimerHandler()
 
 void TimerHandler::add_timer(Timer* timer, bool update_stats)
 {
+  pthread_mutex_lock(&_mutex);
   TimerPair new_tp;
   new_tp.active_timer = timer;
 
@@ -281,6 +282,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
 
   TRC_DEBUG("Inserting the new timer with ID %llu", id);
   _store->insert(new_tp, id, next_pop_time, cluster_view_id_vector);
+  pthread_mutex_unlock(&_mutex);
 }
 
 void TimerHandler::return_timer(Timer* timer, bool callback_successful)
