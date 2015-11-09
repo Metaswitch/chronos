@@ -46,6 +46,7 @@
 #include "snmp_infinite_timer_count_table.h"
 #include "snmp_counter_table.h"
 #include "snmp_scalar.h"
+#include "snmp_continuous_increment_table.h"
 
 namespace SNMP
 {
@@ -63,6 +64,14 @@ class FakeCounterTable: public CounterTable
 public:
   FakeCounterTable() {};
   void increment() {};
+};
+
+class FakeContinuousIncrementTable: public ContinuousIncrementTable
+{
+public:
+  FakeContinuousIncrementTable() {};
+  void increment(uint32_t) {};
+  void decrement(uint32_t) {};
 };
 }
 

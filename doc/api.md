@@ -26,8 +26,8 @@ The body of the request should be a JSON block in the following format:
 
     {
       "timing": {
-        "interval": <ms>,
-        "repeat-for": <ms>
+        "interval": <secs>,
+        "repeat-for": <secs>
       },
       "callback": {
         "http": {
@@ -125,8 +125,8 @@ As with the public API, the URL shall be `/timers/<timer-id>` and the body shall
 
     {
       "timing": {
-        "interval": <ms>,
-        "repeat-for": <ms>
+        "interval": <secs>,
+        "repeat-for": <secs>
         "start-time-delta": <ms>
         "sequence-number": <int>
       },
@@ -196,8 +196,8 @@ The JSON body in the response has the format:
                  "OldReplicas": ["replica-1", ...],
                  "Timer": {"timing": {"start-time": <ms since epoch>,
                                       "sequence-number": <int>
-                                      "interval": <ms>,
-                                      "repeat-for": <ms>
+                                      "interval": <secs>,
+                                      "repeat-for": <secs>
                                      },
                            "callback": {"http": {"uri": <callback-uri>,
                                                  "opaque": <opaque-data>

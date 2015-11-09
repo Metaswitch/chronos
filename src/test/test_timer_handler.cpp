@@ -43,8 +43,8 @@
 #include "base.h"
 #include "test_interposer.hpp"
 #include "globals.h"
-#include "snmp_continuous_accumulator_table.h"
 #include "fakesnmp.hpp"
+#include "mock_increment_table.h"
 
 #include <gtest/gtest.h>
 
@@ -56,6 +56,7 @@ using namespace ::testing;
 
 static SNMP::U32Scalar _fake_scalar("","");
 static SNMP::InfiniteTimerCountTable* _fake_table;
+static MockIncrementTable* _mock_increment_table;
 
 class TestTimerHandler : public Base
 {
@@ -67,7 +68,7 @@ protected:
     _callback = new MockCallback();
     _replicator = new MockReplicator();
     _fake_table = SNMP::InfiniteTimerCountTable::create("","");
-    _fake_cont_table = NULL;
+    _mock_increment_table = new MockIncrementTable();
   }
 
   void TearDown()
@@ -76,6 +77,7 @@ protected:
     delete _store;
     delete _replicator;
     delete _fake_table;
+    delete _mock_increment_table;
     // _callback is deleted by the timer handler.
 
     Base::TearDown();
@@ -88,7 +90,6 @@ protected:
   MockCallback* _callback;
   MockReplicator* _replicator;
   TimerHandler* _th;
-  SNMP::ContinuousAccumulatorTable* _fake_cont_table;
 };
 
 
@@ -101,7 +102,7 @@ TEST_F(TestTimerHandler, StartUpAndShutDown)
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 }
 
@@ -120,7 +121,7 @@ TEST_F(TestTimerHandler, PopOneTimer)
 
   EXPECT_CALL(*_callback, perform(timer));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -142,7 +143,7 @@ TEST_F(TestTimerHandler, PopRepeatedTimer)
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -167,7 +168,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSimultaneously)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -195,7 +196,7 @@ TEST_F(TestTimerHandler, PopMultipleTimersSeries)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -227,7 +228,7 @@ TEST_F(TestTimerHandler, PopMultipleRepeatingTimers)
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -256,7 +257,7 @@ TEST_F(TestTimerHandler, EmptyStore)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   // The first timer has been handled, but the store's now empty.  Pretend the store
@@ -279,10 +280,11 @@ TEST_F(TestTimerHandler, AddTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&pair));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   _th->add_timer(timer);
@@ -312,10 +314,11 @@ TEST_F(TestTimerHandler, AddExistingTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair1));
 
@@ -367,16 +370,19 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair));
 
   _th->add_timer(timer1);
 
   EXPECT_EQ(insert_pair.active_timer, timer1);
+
+  __globals->set_cluster_view_id(timer2->cluster_view_id);
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair1),Return(true)));
@@ -387,6 +393,8 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
 
   EXPECT_EQ(insert_pair.active_timer, timer2);
   EXPECT_EQ(insert_pair.information_timer, timer1);
+
+  __globals->set_cluster_view_id(new_timer->cluster_view_id);
 
   EXPECT_CALL(*_store, fetch(new_timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair2),Return(true)));
@@ -400,6 +408,9 @@ TEST_F(TestTimerHandler, AddExistingTimerPair)
   delete timer1;
   // timer2 has been deleted by the handler
   delete new_timer;
+  std::string cluster_view_id = "cluster-view-id";
+  __globals->set_cluster_view_id(cluster_view_id);
+
 }
 
 
@@ -423,10 +434,11 @@ TEST_F(TestTimerHandler, AddOlderTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair1));
 
@@ -436,6 +448,7 @@ TEST_F(TestTimerHandler, AddOlderTimer)
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair2));
 
@@ -477,10 +490,11 @@ TEST_F(TestTimerHandler, PreserveInformationTimers)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair));
 
@@ -534,10 +548,11 @@ TEST_F(TestTimerHandler, AddTombstoneToExisting)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, _, _));
 
   _th->add_timer(timer1);
@@ -548,6 +563,7 @@ TEST_F(TestTimerHandler, AddTombstoneToExisting)
   EXPECT_CALL(*_store, fetch(tombstone->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, tombstone->id, _, _));
+  EXPECT_CALL(*_mock_increment_table, decrement(1));
 
   _th->add_timer(tombstone);
 
@@ -572,7 +588,7 @@ TEST_F(TestTimerHandler, PopTombstoneTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   _th->pop(timer1);
@@ -595,7 +611,7 @@ TEST_F(TestTimerHandler, ReturnTimerSuccessful)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   EXPECT_CALL(*_replicator, replicate(timer1));
@@ -628,9 +644,10 @@ TEST_F(TestTimerHandler, ReturnTimerFailure)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
+  EXPECT_CALL(*_mock_increment_table, decrement(1));
   _th->return_timer(timer1, false);
 
   _cond()->block_till_waiting();
@@ -658,9 +675,10 @@ TEST_F(TestTimerHandler, ReturnTimerToTombstone)
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
               WillOnce(SaveArg<0>(&insert_pair));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
+  EXPECT_CALL(*_mock_increment_table, decrement(1));
   _th->return_timer(timer1, true);
 
   EXPECT_EQ(insert_pair.active_timer, timer1);
@@ -685,7 +703,7 @@ TEST_F(TestTimerHandler, LeakTest)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(timers));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 }
 
@@ -724,7 +742,7 @@ TEST_F(TestTimerHandler, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
   EXPECT_CALL(*_callback, perform(_));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
   _cond()->block_till_waiting();
 
   cwtest_advance_time_ms(100);
@@ -774,10 +792,11 @@ TEST_F(TestTimerHandler, UpdateReplicaTrackerValueForNewTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
 
   EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _));
 
   _th->add_timer(timer);
@@ -829,10 +848,11 @@ TEST_F(TestTimerHandler, UpdateReplicaTrackerValueForOldTimer)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
 
   EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _));
 
   _th->add_timer(timer);
@@ -886,22 +906,25 @@ TEST_F(TestTimerHandler, SelectTimers)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_,timer1->id, timer1->next_pop_time(), _));
 
   _th->add_timer(timer1);
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_,timer2->id, timer2->next_pop_time(), _));
 
   _th->add_timer(timer2);
 
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _));
 
   _th->add_timer(timer3);
@@ -961,22 +984,25 @@ TEST_F(TestTimerHandler, SelectTimersNoMatchesReqNode)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _));
 
   _th->add_timer(timer1);
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _));
 
   _th->add_timer(timer2);
 
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _));
 
   _th->add_timer(timer3);
@@ -1015,22 +1041,25 @@ TEST_F(TestTimerHandler, SelectTimersNoMatchesClusterID)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _));
 
   _th->add_timer(timer1);
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _));
 
   _th->add_timer(timer2);
 
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _));
 
   _th->add_timer(timer3);
@@ -1068,10 +1097,11 @@ TEST_F(TestTimerHandler, UpdateClusterViewID)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
 
-  _th = new TimerHandler(_store, _callback, _replicator, NULL, _fake_cont_table, _fake_table);
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
 
   EXPECT_CALL(*_store, fetch(timer1->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(empty_pair),Return(false)));
+  EXPECT_CALL(*_mock_increment_table, increment(1));
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _));
 
   _th->add_timer(timer1);
@@ -1106,4 +1136,58 @@ TEST_F(TestTimerHandler, UpdateClusterViewID)
 
   delete timer1;
   delete timer2;
+}
+
+// Test that a new, similar, timer with a sequence number lower than the
+// existing timer is dealt with correctly.
+TEST_F(TestTimerHandler, AddLowerSequenceNumber)
+{
+  cwtest_completely_control_time();
+
+  Timer* timer1 = default_timer(1);
+  Timer* timer2 = default_timer(1);
+  timer1->sequence_number=2;
+  timer2->sequence_number=1;
+
+  TimerPair return_pair;
+  return_pair.active_timer = timer1;
+
+  TimerPair insert_pair1;
+  TimerPair insert_pair2;
+
+  // Once we add the timer, we'll poll the store for a new timer, expect an extra
+  // call to fetch_next_timers().
+  EXPECT_CALL(*_store, fetch_next_timers(_)).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _fake_table);
+  _cond()->block_till_waiting();
+
+  EXPECT_CALL(*_store, fetch(timer1->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1));
+  EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
+              WillOnce(SaveArg<0>(&insert_pair1));
+
+  _th->add_timer(timer1);
+
+  EXPECT_EQ(insert_pair1.active_timer, timer1);
+
+  EXPECT_CALL(*_store, fetch(timer2->id, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(return_pair),Return(true)));
+  // Should not call in to update statistics
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
+  EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
+              WillOnce(SaveArg<0>(&insert_pair2));
+
+  _th->add_timer(timer2);
+
+  EXPECT_EQ(insert_pair2.active_timer, timer1);
+
+  _cond()->block_till_waiting();
+
+  cwtest_reset_time();
+
+  // timer1 is deleted by handler
+  delete timer1;
 }

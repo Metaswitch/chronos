@@ -135,7 +135,7 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimer)
   fakecurl_responses["http://10.42.42.42:9999/timers/references"] = HTTP_ACCEPTED;
   Timer* added_timer;
 
-  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
 
   EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.3:9999")); // Update
   EXPECT_CALL(*_replicator, replicate_timer_to_node(IsTombstone(), "10.0.0.2:9999")); // Tombstone
@@ -158,7 +158,7 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
   fakecurl_responses["http://10.42.42.42:9999/timers/references"] = HTTP_ACCEPTED;
   Timer* added_timer;
 
-  EXPECT_CALL(*_th, add_timer(_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_replicator, replicate_timer_to_node(IsTombstone(), "10.0.0.2:9999")); // Tombstone
   EXPECT_CALL(*_replicator, replicate_timer_to_node(IsTombstone(), "10.0.0.4:9999")); // Tombstone
   EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.3:9999")); // Update
@@ -189,7 +189,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
 
   // There should be no calls to add a timer, as the node has moved higher up
   // the replica list
-  EXPECT_CALL(*_th, add_timer(_)).Times(0);
+  EXPECT_CALL(*_th, add_timer(_,_)).Times(0);
   // There are no calls to replicate to 10.0.0.3 as it is lower in the replica list
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.3:9999")).Times(0);
   // There are three calls to replicate to 10.0.0.2 as it is lower/equal in the old/new replica lists
@@ -207,7 +207,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithInvalidGetResponse)
   fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":}";
 
   // There should be no calls to add/replicate a timer
-  EXPECT_CALL(*_th, add_timer(_)).Times(0);
+  EXPECT_CALL(*_th, add_timer(_,_)).Times(0);
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, _)).Times(0);
   _chronos->resynchronize();
 }
@@ -218,7 +218,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithGetRequestFailed)
   fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = HTTP_BAD_REQUEST;
 
   // There should be no calls to add/replicate a timer
-  EXPECT_CALL(*_th, add_timer(_)).Times(0);
+  EXPECT_CALL(*_th, add_timer(_,_)).Times(0);
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, _)).Times(0);
   _chronos->resynchronize();
 }
