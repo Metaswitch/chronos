@@ -77,7 +77,8 @@ do_start()
 {
   setup_environment
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
-  $start_prefix start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON || return 2
+  DAEMON_ARGS="--pidfile $PIDFILE"
+  $start_prefix start-stop-daemon --start --quiet --background --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_ARGS || return 2
 }
 
 do_stop()
@@ -85,7 +86,6 @@ do_stop()
   start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $EXECNAME
   RETVAL="$?"
   [ "$RETVAL" = 2 ] && return 2
-  rm -f $PIDFILE
   return $RETVAL
 }
 
@@ -112,7 +112,6 @@ do_abort()
   start-stop-daemon --stop --quiet --retry=ABRT/60/KILL/5 --pidfile $PIDFILE --name $EXECNAME
   RETVAL="$?"
   [ "$RETVAL" = 2 ] && return 2
-  rm -f $PIDFILE
   return $RETVAL
 }
 
