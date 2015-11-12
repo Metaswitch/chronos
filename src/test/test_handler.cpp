@@ -50,6 +50,7 @@
 using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
+using ::testing::MatchesRegex;
 
 class TestHandler : public Base
 {
@@ -114,9 +115,17 @@ TEST_F(TestHandler, ValidJSONDeleteTimer)
   delete added_timer; added_timer = NULL;
 }
 
-// Tests a valid request to create a new timer
-TEST_F(TestHandler, ValidJSONCreateTimer)
+// Tests a valid request to create a new timer that is on the local node
+TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
 {
+  // Only have a single node in the cluster so we can guarantee the local node
+  // is chosen as a replica
+  std::vector<std::string> new_cluster_addresses;
+  new_cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_addresses(new_cluster_addresses);
+  __globals->unlock();
+
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
@@ -126,9 +135,40 @@ TEST_F(TestHandler, ValidJSONCreateTimer)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
-  // TODO: Check that the timer is plausible - unfortunately, it's very hard to define "plausible" programmatically.
-  // EXPECT_EQ("/timers/...", std::string(evhtp_header_find(req.req()->headers_out, "Location")));
+  // Check that the timer is plausible.
+  EXPECT_EQ(added_timer->callback_url, "localhost");
+  EXPECT_EQ(added_timer->callback_body, "stuff");
+  EXPECT_EQ(added_timer->repeat_for, 200000);
+  EXPECT_EQ(added_timer->interval_ms, 100000);
+  EXPECT_EQ(added_timer->sequence_number, 0);
+  std::string exp_rsp = "/timers/.*";
+  EXPECT_THAT(std::string(evhtp_header_find(req.req()->headers_out, "Location")), MatchesRegex(exp_rsp));
 
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests a valid request to create a new timer that won't be on the local node
+TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
+{
+  // Change the cluser replicas to not include the local node so we
+  // can guarantee that the node isn't chosen as a replica
+  std::vector<std::string> new_cluster_addresses;
+  new_cluster_addresses.push_back("10.0.0.2:9999");
+  __globals->lock();
+  __globals->set_cluster_addresses(new_cluster_addresses);
+  __globals->unlock();
+
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
+  EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  // Check that the timer is a tombstone
+  EXPECT_TRUE(added_timer->is_tombstone());
   delete added_timer; added_timer = NULL;
 }
 
