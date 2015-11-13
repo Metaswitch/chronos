@@ -96,7 +96,7 @@ run_test: ${TARGET_BIN_TEST}
 
 .PHONY: debug
 debug: ${TARGET_BIN_TEST}
-	gdb --args ${TARGET_BIN_TEST}
+	gdb --args ${TARGET_BIN_TEST} $(EXTRA_TEST_ARGS)
 
 .PHONY: testall
 testall: $(patsubst %, %_test, ${SUBMODULES}) test
