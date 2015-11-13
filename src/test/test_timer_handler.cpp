@@ -567,8 +567,8 @@ TEST_F(TestTimerHandler, AddTombstoneToExisting)
 
   _th->add_timer(tombstone);
 
-  EXPECT_EQ(tombstone->interval_ms, 1000);
-  EXPECT_EQ(tombstone->repeat_for, 1000);
+  EXPECT_EQ(tombstone->interval_ms, (unsigned)1000);
+  EXPECT_EQ(tombstone->repeat_for, (unsigned)1000);
 
   _cond()->block_till_waiting();
 
