@@ -53,6 +53,7 @@
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
 #include "snmp_infinite_timer_count_table.h"
+#include "snmp_infinite_scalar_table.h"
 #include "snmp_continuous_increment_table.h"
 #include "snmp_counter_table.h"
 #include "snmp_scalar.h"
@@ -165,6 +166,7 @@ int main(int argc, char** argv)
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
   SNMP::ContinuousIncrementTable* all_timers_table = NULL;
   SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
+  SNMP::InfiniteScalarTable* scalar_timers_table = NULL;
 
   // Sets up SNMP statistics
   snmp_setup("chronos");
@@ -173,6 +175,8 @@ int main(int argc, char** argv)
                                                             ".1.2.826.0.1.1578918.9.10.4");
   total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
                                                              ".1.2.826.0.1.1578918.999");
+  scalar_timers_table = SNMP::InfiniteScalarTable::create("chronos_scalar_timers_table",
+                                                             ".1.2.826.0.1.1578918.998");
 
   remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
                                                ".1.2.826.0.1.1578918.9.10.1");
@@ -251,7 +255,8 @@ int main(int argc, char** argv)
                                            handler_rep,
                                            timer_pop_alarm,
                                            all_timers_table,
-                                           total_timers_table);
+                                           total_timers_table,
+                                           scalar_timers_table);
   callback->start(handler);
 
   // Create a Chronos internal connection class for scaling operations.
