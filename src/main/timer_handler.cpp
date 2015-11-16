@@ -137,7 +137,8 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       if (Utils::overflow_less_than(timer->start_time_mono_ms,
                                     existing_tp.active_timer->start_time_mono_ms))
       {
-        TRC_DEBUG("Not adding timer as it's older than the timer in the store");
+        TRC_DEBUG("Timer sequence numbers the same, but timer is older than the "
+                  "timer in the store");
 
         delete new_tp.active_timer;
         new_tp.active_timer = new Timer(*existing_tp.active_timer);
@@ -158,8 +159,9 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     {
       // One of the sequence numbers is non-zero - at least one request is not
       // from the client
-      if ((near_time(timer->start_time_mono_ms, existing_tp.active_timer->start_time_mono_ms)) &&
-          (timer->sequence_number < existing_tp.active_timer->sequence_number)                 &&
+      if ((near_time(timer->start_time_mono_ms,
+                     existing_tp.active_timer->start_time_mono_ms))            &&
+          (timer->sequence_number < existing_tp.active_timer->sequence_number) &&
           (timer->sequence_number != 0))
       {
         // These are probably the same timer, and the timer we are trying to add is both
@@ -209,13 +211,11 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
           TRC_WARNING("Deleting out of date timer from timer map");
         }
 
-        delete new_tp.information_timer;
         new_tp.information_timer = new Timer(*existing_tp.active_timer);
       }
       else if (existing_tp.information_timer)
       {
         // If there's an existing informational timer save it off
-        delete new_tp.information_timer;
         new_tp.information_timer = new Timer(*existing_tp.information_timer);
       }
     }
@@ -559,6 +559,9 @@ void TimerHandler::run() {
       struct timespec next_pop;
       clock_gettime(CLOCK_MONOTONIC, &next_pop);
 
+      // Work out how long we should wait for (this should be the length of the
+      // short wheel bucket - if this crosses a second boundary then set the
+      // secs/nsecs appropriately).
       if (next_pop.tv_nsec < (1000 - _store->SHORT_WHEEL_RESOLUTION_MS) * 1000 * 1000)
       {
         next_pop.tv_nsec += _store->SHORT_WHEEL_RESOLUTION_MS * 1000 * 1000;
