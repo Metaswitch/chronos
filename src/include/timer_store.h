@@ -139,6 +139,11 @@ public:
   // resynchronising between Chronos's.
   std::map<TimerID, TimerPair> _timer_lookup_id_table;
 
+  // Constants controlling the size of the short wheel buckets (this needs to
+  // be public so that the timer handler can work out how long it should
+  // wait for a tick)
+  static const int SHORT_WHEEL_RESOLUTION_MS = 8;
+
   class TSIterator
   {
   public:
@@ -222,7 +227,6 @@ private:
   HealthChecker* _health_checker;
 
   // Constants controlling the size and resolution of the timer wheels.
-  static const int SHORT_WHEEL_RESOLUTION_MS = 8;
   static const int SHORT_WHEEL_NUM_BUCKETS = 128;
   static const int SHORT_WHEEL_PERIOD_MS =
                                  (SHORT_WHEEL_RESOLUTION_MS * SHORT_WHEEL_NUM_BUCKETS);

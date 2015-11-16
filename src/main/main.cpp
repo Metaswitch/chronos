@@ -68,6 +68,7 @@ struct options
 {
   std::string config_file;
   std::string cluster_config_file;
+  std::string pidfile;
 };
 
 // Enum for option types not assigned short-forms
@@ -75,6 +76,7 @@ enum OptionTypes
 {
   CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
   CLUSTER_CONFIG_FILE,
+  PIDFILE,
   HELP
 };
 
@@ -82,6 +84,7 @@ const static struct option long_opt[] =
 {
   {"config-file", required_argument, NULL, CONFIG_FILE},
   {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
+  {"pidfile", required_argument, NULL, PIDFILE},
   {"help", no_argument, NULL, HELP},
   {NULL, 0, NULL, 0},
 };
@@ -92,6 +95,7 @@ void usage(void)
        "\n"
        " --config-file <filename> Specify the per node configuration file\n"
        " --cluster-config-file <filename> Specify the cluster configuration file\n"
+       " --pidfile <filename> Specify the pidfile\n"
        " --help Show this help screen\n");
 }
 
@@ -110,6 +114,10 @@ int init_options(int argc, char**argv, struct options& options)
 
     case CLUSTER_CONFIG_FILE:
       options.cluster_config_file = std::string(optarg);
+      break;
+
+    case PIDFILE:
+      options.pidfile = std::string(optarg);
       break;
 
     case HELP:
@@ -202,6 +210,7 @@ int main(int argc, char** argv)
   struct options options;
   options.config_file = "/etc/chronos/chronos.conf";
   options.cluster_config_file = "/etc/chronos/chronos_cluster.conf";
+  options.pidfile = "";
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -222,6 +231,17 @@ int main(int argc, char** argv)
 
   // Log the PID, this is useful for debugging if monit restarts chronos.
   TRC_STATUS("Starting with PID %d", getpid());
+
+  if (options.pidfile != "")
+  {
+    int rc = Utils::lock_and_write_pidfile(options.pidfile);
+    if (rc == -1)
+    {
+      // Failure to acquire pidfile lock
+      TRC_ERROR("Could not write pidfile - exiting");
+      return 2;
+    }
+  }
 
   // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
   // in the alarm definition JSON file exactly.

@@ -105,7 +105,9 @@ void TimerStore::insert(TimerPair tp,
 {
   if (_timer_lookup_id_table.find(id) != _timer_lookup_id_table.end())
   {
+    // LCOV_EXCL_START - Not in UTs as this is a logic error
     throw std::logic_error("There is already a timer with this ID in the store!");
+    // LCOV_EXCL_STOP
   }
 
   Bucket* bucket;
@@ -367,16 +369,18 @@ void TimerStore::remove_timer_from_timer_wheel(TimerPair timer)
   // overdue bucket first, then the short wheel then the long wheel, then
   // finally the heap.
   num_erased = _overdue_timers.erase(timer);
+
   if (num_erased == 0)
   {
     bucket = short_wheel_bucket(timer);
     num_erased = bucket->erase(timer);
+
     if (num_erased == 0)
     {
       bucket = long_wheel_bucket(timer);
       num_erased = bucket->erase(timer);
-      if (num_erased == 0)
 
+      if (num_erased == 0)
       {
         std::vector<TimerPair>::iterator heap_it;
         heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
@@ -392,7 +396,6 @@ void TimerStore::remove_timer_from_timer_wheel(TimerPair timer)
           // We failed to remove the timer from any data structure.  Try and
           // purge the timer from all the timer wheels (we're already sure
           // that it's not in the heap).
-
           // LCOV_EXCL_START
           TRC_ERROR("Failed to remove timer consistently");
           purge_timer_from_wheels(timer);

@@ -68,7 +68,9 @@ void HTTPCallback::start(TimerHandler* handler)
                                    (void*)this);
     if (thread_rc != 0)
     {
+      // LCOV_EXCL_START
       TRC_ERROR("Failed to start callback worker thread: %s", strerror(thread_rc));
+      // LCOV_EXCL_STOP
     }
 
     _worker_threads[ii] = thread;

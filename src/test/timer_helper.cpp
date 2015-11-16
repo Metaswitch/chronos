@@ -38,11 +38,11 @@
 
 Timer* default_timer(TimerID id)
 {
-  Timer* timer = new Timer(id, 100, 100);
+  Timer* timer = new Timer(id, 100000, 100000);
   timer->start_time_mono_ms = 1000000;
   timer->sequence_number = 0;
   timer->replicas = std::vector<std::string>(1, "10.0.0.1:9999");
-  timer->tags = std::vector<std::string>(1, "TAG"+id);
+  timer->tags = std::vector<std::string>(1, "TAG" + std::to_string(id));
   timer->callback_url = "localhost:80/callback" + std::to_string(id);
   timer->callback_body = "stuff stuff stuff";
   timer->_replica_tracker = 1;
