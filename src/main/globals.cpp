@@ -145,18 +145,39 @@ void Globals::update_config()
   set_cluster_local_ip(cluster_local_address);
   TRC_STATUS("Cluster local address: %s", cluster_local_address.c_str());
 
-  std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
-  set_cluster_addresses(cluster_addresses);
+  std::vector<std::string> cluster_joining_addresses = conf_map["cluster.joining"].as<std::vector<std::string>>();
+  set_cluster_joining_addresses(cluster_joining_addresses);
+
+  std::vector<std::string> cluster_staying_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
+  set_cluster_staying_addresses(cluster_staying_addresses);
+
+  std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
+  set_cluster_leaving_addresses(cluster_leaving_addresses);
+
+  // Figure out the new cluster by combining the nodes that are stayng and the
+  // nodes that are joining.
+  std::vector<std::string> new_cluster_addresses = cluster_staying_addresses;
+  new_cluster_addresses.insert(new_cluster_addresses.end(),
+                               cluster_joining_addresses.begin(),
+                               cluster_joining_addresses.end());
+  std::vector<uint32_t> new_cluster_rendezvous_hashes = generate_hashes(new_cluster_addresses);
+  set_new_cluster_hashes(new_cluster_rendezvous_hashes);
   
-  std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
-  set_cluster_hashes(cluster_rendezvous_hashes);
+  // Figure out the old cluster by combining the nodes that are stayng and the
+  // nodes that are leaving.
+  std::vector<std::string> old_cluster_addresses = cluster_staying_addresses;
+  new_cluster_addresses.insert(old_cluster_addresses.end(),
+                               cluster_leaving_addresses.begin(),
+                               cluster_leaving_addresses.end());
+  std::vector<uint32_t> old_cluster_rendezvous_hashes = generate_hashes(old_cluster_addresses);
+  set_old_cluster_hashes(old_cluster_rendezvous_hashes);
  
   std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 
   TRC_STATUS("Cluster nodes:");
-  for (std::vector<std::string>::iterator it = cluster_addresses.begin();
-                                          it != cluster_addresses.end();
+  for (std::vector<std::string>::iterator it = new_cluster_addresses.begin();
+                                          it != new_cluster_addresses.end();
                                           ++it)
   {
     TRC_STATUS(" - %s", it->c_str());
@@ -171,10 +192,7 @@ void Globals::update_config()
   set_cluster_view_id(cluster_view_id_str);
   TRC_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
 
-  std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
-  set_cluster_leaving_addresses(cluster_leaving_addresses);
-
-  CL_CHRONOS_CLUSTER_CFG_READ.log(cluster_addresses.size(),
+  CL_CHRONOS_CLUSTER_CFG_READ.log(new_cluster_addresses.size(),
                                   cluster_leaving_addresses.size());
 
   unlock();

@@ -80,10 +80,12 @@ public:
 
   // Clustering configuration
   GLOBAL(cluster_local_ip, std::string);
-  GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
-  GLOBAL(cluster_addresses, std::vector<std::string>);
-  GLOBAL(cluster_hashes, std::vector<uint32_t>);
+  GLOBAL(cluster_joining_addresses, std::vector<std::string>);
+  GLOBAL(cluster_staying_addresses, std::vector<std::string>);
   GLOBAL(cluster_leaving_addresses, std::vector<std::string>);
+  GLOBAL(new_cluster_hashes, std::vector<uint32_t>);
+  GLOBAL(old_cluster_hashes, std::vector<uint32_t>);
+  GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
   GLOBAL(cluster_view_id, std::string);
 
 public:
