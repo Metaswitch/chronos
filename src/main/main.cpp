@@ -193,6 +193,7 @@ int main(int argc, char** argv)
 
   sem_init(&term_sem, 0, 0);
   signal(SIGTERM, terminate_handler);
+  signal(SIGINT, terminate_handler);
 
   struct options options;
   options.config_file = "/etc/chronos/chronos.conf";

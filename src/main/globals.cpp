@@ -68,7 +68,7 @@ Globals::Globals(std::string config_file,
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
-    
+
     // Deprecated option left in for backwards compatibility
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
     ;

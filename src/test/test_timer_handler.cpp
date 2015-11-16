@@ -761,8 +761,8 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   _th->add_timer(tombstone);
 
   // Check that the new tombstone has the correct interval
-  EXPECT_EQ(insert_pair.active_timer->interval_ms, 1000000);
-  EXPECT_EQ(insert_pair.active_timer->repeat_for, 1000000);
+  EXPECT_EQ(insert_pair.active_timer->interval_ms, (unsigned)1000000);
+  EXPECT_EQ(insert_pair.active_timer->repeat_for, (unsigned)1000000);
   EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
 
   // Delete the timer (this is normally done by the insert call, but this
