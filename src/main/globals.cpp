@@ -117,8 +117,10 @@ void Globals::update_config()
 
   // Set up the per node configuration. Set up logging early so we can 
   // log the other settings
+#ifndef UNIT_TEST
   Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
   Log::setLoggingLevel(conf_map["logging.level"].as<int>());
+#endif
 
   std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
@@ -162,6 +164,7 @@ void Globals::update_config()
     cluster_bloom_filters[*it] = bloom;
     cluster_view_id |= bloom;
   }
+
   set_cluster_bloom_filters(cluster_bloom_filters);
 
   std::string cluster_view_id_str = std::to_string(cluster_view_id);
@@ -217,4 +220,3 @@ std::vector<uint32_t> Globals::generate_hashes(std::vector<std::string> data)
 
   return ret;
 }
-

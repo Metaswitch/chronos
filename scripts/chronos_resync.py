@@ -34,7 +34,7 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-from flask import Flask
+from flask import Flask, request
 import logging
 import json
 import requests
@@ -71,6 +71,7 @@ chronos_nodes = [
 
 receiveCount = 0
 processes = []
+timerCounts = []
 
 # Create log folders for each Chronos process. These are useful for
 # debugging any problems. Running the tests deletes the logs from the
@@ -101,6 +102,8 @@ app = Flask(__name__)
 def pop():
     global receiveCount
     receiveCount += 1
+    global timerCounts
+    timerCounts.append(request.data)
     return 'success'
 
 
@@ -117,6 +120,7 @@ def start_nodes(lower, upper):
             CLUSTER_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL))
 
     sleep(2)
+
 
 def kill_nodes(lower, upper):
     # kill nodes with indexes [lower, upper)
@@ -149,11 +153,15 @@ def create_timers(target, num):
         'callback': {
             'http': {
                 'uri': 'http://%s:%s/pop' % (flask_server.ip, flask_server.port),
-                'opaque': 'stuff',
+                'opaque': 'REPLACE',
             }
         }
     }
+
+    # Set the number of the timer in the opaque data - this way we can check we
+    # get the correct timers back
     for i in range(num):
+        body_dict['callback']['http']['opaque'] = str(i)
         r = requests.post('http://%s:%s/timers' % (target.ip, target.port),
                           data=json.dumps(body_dict)
                           )
@@ -205,8 +213,10 @@ class ChronosLiveTests(unittest.TestCase):
         # Track the Chronos processes and timer pops
         global receiveCount
         global processes
+        global timerCounts
         receiveCount = 0
         processes = []
+        timerCounts = []
 
     def tearDown(self):
         # Kill all the Chronos processes
@@ -214,14 +224,17 @@ class ChronosLiveTests(unittest.TestCase):
 
     def assert_correct_timers_received(self, expected_number):
         # Check that enough timers pop as expected.
-        # This should typically be as many as were added in the first place.
+        # This should be as many as were added in the first place.
         # Ideally, we'd be checking where the timers popped from, but that's
         # not possible with these tests (as everything looks like it comes
         # from 127.0.0.1)
         self.assertEqual(receiveCount,
-                                expected_number,
-                               ('Incorrect number of popped timers: received %i, expected at least %i' %
-                               (receiveCount, expected_number)))
+                         expected_number,
+                         ('Incorrect number of popped timers: received %i, expected at least %i' %
+                         (receiveCount, expected_number)))
+
+        for i in range(expected_number):
+            assert str(i) in timerCounts, "Missing timer pop for %i" % i
 
     def write_config_for_nodes(self, lower, upper):
         # Write configuration files for the nodes
@@ -246,21 +259,21 @@ class ChronosLiveTests(unittest.TestCase):
         # 100 timers pop.
 
         # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 1)
-        start_nodes(0, 1)
-        create_timers(chronos_nodes[0], 50)
+        self.write_config_for_nodes(0, 2)
+        start_nodes(0, 2)
+        create_timers(chronos_nodes[0], 100)
 
         # Scale up
-        self.write_config_for_nodes(0, 3)
-        start_nodes(1, 3)
-        node_reload_config(0, 1)
-        node_trigger_scaling(0, 3)
+        self.write_config_for_nodes(0, 4)
+        start_nodes(2, 4)
+        node_reload_config(0, 2)
+        node_trigger_scaling(0, 4)
 
         # Check that all the timers have popped
         sleep(12)
-        self.assert_correct_timers_received(50)
+        self.assert_correct_timers_received(100)
 
-    def atest_scale_down(self):
+    def test_scale_down(self):
         # Test that scaling down works. This test creates 4 Chronos nodes,
         # adds 100 timers, scales down to 2 Chronos nodes, then checks that
         # 100 timers pop.
@@ -277,13 +290,13 @@ class ChronosLiveTests(unittest.TestCase):
         kill_nodes(2, 4)
 
         # Check that all the timers have popped
-        sleep(10)
+        sleep(12)
         self.assert_correct_timers_received(100)
 
-    def atest_scale_up_scale_down(self):
+    def test_scale_up_scale_down(self):
         # Test a scale up and scale down. This test creates 2 Chronos nodes,
         # and adds 100 timers. It then scales up to 4 Chronos nodes, then
-        # scales back down to 2 Chronos nodes. It then checks that
+        # scales back down to the 2 new Chronos nodes. It then checks that
         # 100 timers pop.
 
         # Start initial nodes and add timers
@@ -304,30 +317,30 @@ class ChronosLiveTests(unittest.TestCase):
         node_trigger_scaling(0, 4)
 
         # Check that all the timers have popped
-        sleep(10)
+        sleep(12)
         self.assert_correct_timers_received(100)
 
-    def atest_scale_up_and_kill(self):
-        # Test that scaling up definitely moves timers. This test creates 2
-        # Chronos nodes and adds 100 timers. It then scales up to 4 Chronos
+    def test_scale_up_and_kill(self):
+        # Test that scaling up definitely moves timers. This test creates 1
+        # Chronos node and adds 100 timers. It then scales up to 2 Chronos
         # nodes, then kills the first node. It then checks all 100 timers pop
 
         # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 2)
-        start_nodes(0, 2)
+        self.write_config_for_nodes(0, 1)
+        start_nodes(0, 1)
         create_timers(chronos_nodes[0], 100)
 
         # Scale up
-        self.write_config_for_nodes(0, 4)
-        start_nodes(2, 4)
-        node_reload_config(0, 2)
-        node_trigger_scaling(0, 4)
+        self.write_config_for_nodes(0, 2)
+        start_nodes(1, 2)
+        node_reload_config(0, 1)
+        node_trigger_scaling(0, 2)
 
         # Now kill the first node
         kill_nodes(0, 1)
 
         # Check that all the timers have popped
-        sleep(10)
+        sleep(12)
         self.assert_correct_timers_received(100)
 
 if __name__ == '__main__':

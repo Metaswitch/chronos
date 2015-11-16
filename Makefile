@@ -14,7 +14,7 @@ GMOCK_DIR := $(ROOT)/modules/gmock
 TARGET := chronos
 TARGET_TEST := chronos_test
 TARGET_SOURCES_BUILD := main.cpp snmp_infinite_timer_count_table.cpp snmp_counter_table.cpp snmp_continuous_increment_table.cpp
-TARGET_SOURCES_TEST := $(notdir $(wildcard src/test/*.cpp)) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp
+TARGET_SOURCES_TEST := $(notdir $(wildcard src/test/*.cpp)) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(notdir $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp)))
 TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp snmp_scalar.cpp snmp_agent.cpp snmp_row.cpp timer_counter.cpp
 
@@ -127,12 +127,22 @@ ${BUILD_DIR}/usr/include/chronos_alarmdefinition.h : ${BUILD_DIR}/bin/chronos_al
 resync_test: build
 	./scripts/chronos_resync.py
 
+VG_LIST = ${OBJ_DIR_TEST}/vg_chronos_list
 VG_OPTS := --leak-check=full --gen-suppressions=all
 ${OBJ_DIR_TEST}/chronos.memcheck: build_test
 	valgrind ${VG_OPTS} --xml=yes --xml-file=${OBJ_DIR_TEST}/chronos.memcheck $(TARGET_BIN_TEST)
 
 .PHONY: valgrind valgrind_xml
 valgrind_xml: ${OBJ_DIR_TEST}/chronos.memcheck
+	@xmllint --xpath '//error/kind' ${OBJ_DIR_TEST}/chronos.memcheck 2>&1 | \
+		sed -e 's#<kind>##g' | \
+                sed -e 's#</kind>#\n#g' | \
+                sort > $(VG_LIST)
+	@if grep -q -v "XPath set is empty" $(VG_LIST) ; then \
+                echo "Error: some memory errors have been detected" ; \
+                cat $(VG_LIST) ; \
+                echo "See ${OBJ_DIR_TEST}/chronos.memcheck for further details." ; \
+	fi
 valgrind: ${TARGET_BIN_TEST}
 	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
 
