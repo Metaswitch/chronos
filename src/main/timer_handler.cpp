@@ -227,7 +227,12 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     TRC_DEBUG("Adding new timer");
   }
 
-  // Update statistics
+  // Would be good in future work to pull all statistics logic out into a 
+  // separate statistics module, passing in new and old tags, and what is
+  // happening to the timer (add, update, delete), to keep the timer_handler
+  // scope of responsibility clear.
+
+  // Update statistics 
   if (update_stats)
   {
     std::vector<std::string> tags_to_add = std::vector<std::string>();
@@ -687,6 +692,7 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
     {
       TRC_DEBUG("Incrementing for %s:", (*it).c_str());
       _tagged_timers_table->increment(*it);
+      _scalar_timers_table->increment(*it);
     }
 
     TRC_DEBUG("Statistics to delete:");
@@ -696,6 +702,7 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
     {
       TRC_DEBUG("Decrementing for %s:", (*it).c_str());
       _tagged_timers_table->decrement(*it);
+      _scalar_timers_table->decrement(*it);
     }
   }
 }
