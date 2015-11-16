@@ -426,7 +426,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTimer)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // The timer is succesfully added. As it's a new timer it's passed through to
@@ -449,7 +449,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
@@ -459,7 +459,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer2);
 
   // The timer is successfully updated
@@ -472,7 +472,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer3);
 
   // The timer is successfully updated
@@ -494,7 +494,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
@@ -508,7 +508,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   EXPECT_CALL(*_mock_tag_table, increment("NEWTAG")).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1")).Times(1);
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer2);
 
   // The timer is successfully updated
@@ -531,7 +531,7 @@ TEST_F(TestTimerHandlerAddAndReturn, OverrideInformationTimer)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // The first timer has the current cluster view ID and no informational
@@ -548,7 +548,7 @@ TEST_F(TestTimerHandlerAddAndReturn, OverrideInformationTimer)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer2);
 
   EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "updated-cluster-view-id");
@@ -563,7 +563,7 @@ TEST_F(TestTimerHandlerAddAndReturn, OverrideInformationTimer)
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer3);
 
   EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "updated-again-cluster-view-id");
@@ -594,15 +594,15 @@ TEST_F(TestTimerHandlerAddAndReturn, AddOlderTimer)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Add an older timer. This doesn't change the stored timer
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                    WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
   EXPECT_CALL(*_store, insert(_, _, _, _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
 
   _th->add_timer(timer2);
 
@@ -627,7 +627,7 @@ TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimers)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Add the second timer. This causes the first timer to move to an
@@ -636,7 +636,7 @@ TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimers)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
 
   _th->add_timer(timer2);
   EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "cluster-view-id");
@@ -648,7 +648,7 @@ TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimers)
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
 
   _th->add_timer(timer3);
 
@@ -681,7 +681,7 @@ TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimersNoUpdateStartTime)
   EXPECT_CALL(*_store, fetch(timer_active->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(new_timer);
 
   // Check that the informational timer is preserved
@@ -714,7 +714,7 @@ TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimersNoUpdateSeqNum)
   EXPECT_CALL(*_store, fetch(timer_active->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(new_timer);
 
   // Check that the informational timer is preserved
@@ -746,7 +746,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Now add the tombstone. This should decrement the tags/counts from the
@@ -754,7 +754,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   EXPECT_CALL(*_store, fetch(tombstone->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, tombstone->id, _, _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1")).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("NEWTAG")).Times(0);
@@ -783,7 +783,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddNewTombstone)
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1")).Times(0);
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(0);
   EXPECT_CALL(*_store, insert(_, tombstone->id, _, _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
 
   _th->add_timer(tombstone);
 
@@ -812,7 +812,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer1);
   EXPECT_EQ(insert_pair.active_timer->sequence_number, 2);
 
@@ -821,7 +821,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer2->id, _, _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer2);
 
   // Check that the sequence number hasn't changed
@@ -843,7 +843,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerSuccessful)
   EXPECT_CALL(*_replicator, replicate(timer));
   EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->return_timer(timer, true);
 
   // The timer is succesfully added. As it's a new timer (as the pop would have
@@ -883,7 +883,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerToTombstone)
   EXPECT_CALL(*_replicator, replicate(timer));
   EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1")).Times(1);
   _th->return_timer(timer, true);
@@ -910,14 +910,14 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForNewTimer)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Try to update the replica tracker value. This shouldn't change the timer
   EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->update_replica_tracker_for_timer(1u, 1);
 
   // Check that the replica tracker hasn't changed
@@ -943,14 +943,14 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimer)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
   // Try to update the replica tracker value. This should change the timer
   EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_,timer->id, timer->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->update_replica_tracker_for_timer(1u, 3);
 
   // Check that the tracker value has updated
@@ -963,7 +963,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimer)
   EXPECT_CALL(*_store, fetch(timer->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_,timer->id, timer->next_pop_time(), _)).
-              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->update_replica_tracker_for_timer(1u, 0);
 
   ASSERT_EQ(0u, insert_pair.active_timer->_replica_tracker);
@@ -993,7 +993,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForInformationTime
   EXPECT_CALL(*_store, fetch(timer_active->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->update_replica_tracker_for_timer(1u, 2);
   ASSERT_EQ(15u, insert_pair.active_timer->_replica_tracker);
   ASSERT_EQ(3u, insert_pair.information_timer->_replica_tracker);
@@ -1003,7 +1003,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForInformationTime
   EXPECT_CALL(*_store, fetch(timer_active->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                    WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SaveArg<0>(&insert_pair));
   _th->update_replica_tracker_for_timer(1u, 0);
   ASSERT_EQ(15u, insert_pair.active_timer->_replica_tracker);
   ASSERT_TRUE(insert_pair.information_timer == NULL);
