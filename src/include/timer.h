@@ -88,6 +88,20 @@ public:
   // Check if the timer has a matching cluster view ID
   bool is_matching_cluster_view_id(std::string cluster_view_id_to_match);
 
+  // Calculate the replicas for this timer.
+  void calculate_replicas();
+
+  // Class method for calculating replicas, for easy UT.
+  static void calculate_replicas(TimerID id,
+                                 std::vector<std::string> new_cluster,
+                                 std::vector<uint32_t> new_cluster_rendezvous_hashes,
+                                 std::vector<std::string> old_cluster,
+                                 std::vector<uint32_t> old_cluster_rendezvous_hashes,
+                                 uint32_t replication_factor,
+                                 std::vector<std::string>& replicas,
+                                 std::vector<std::string>& extra_replicas,
+                                 Hasher* hasher);
+
   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
   void calculate_replicas(uint64_t);
 

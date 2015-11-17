@@ -392,6 +392,76 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
 }
 
 void Timer::calculate_replicas(TimerID id,
+                               std::vector<std::string> new_cluster,
+                               std::vector<uint32_t> new_cluster_rendezvous_hashes,
+                               std::vector<std::string> old_cluster,
+                               std::vector<uint32_t> old_cluster_rendezvous_hashes,
+                               uint32_t replication_factor,
+                               std::vector<std::string>& replicas,
+                               std::vector<std::string>& extra_replicas,
+                               Hasher* hasher)
+{
+  std::vector<std::string> old_replicas;
+
+  calculate_rendezvous_hash(new_cluster,
+                            new_cluster_rendezvous_hashes,
+                            id,
+                            replication_factor,
+                            replicas,
+                            hasher);
+
+  calculate_rendezvous_hash(old_cluster,
+                            old_cluster_rendezvous_hashes,
+                            id,
+                            replication_factor,
+                            old_replicas,
+                            hasher);
+
+  for (unsigned int ii = 0; ii < old_replicas.size(); ++ii)
+  {
+    if (std::find(replicas.begin(), replicas.end(), old_replicas[ii]) == replicas.end())
+    {
+      extra_replicas.push_back(old_replicas[ii]);
+    }
+  }
+}
+
+void Timer::calculate_replicas()
+{
+  std::vector<std::string> new_cluster;
+  std::vector<std::string> joining_cluster_addresses;
+  __globals->get_cluster_staying_addresses(new_cluster);
+  __globals->get_cluster_joining_addresses(joining_cluster_addresses);
+  new_cluster.insert(new_cluster.end(),
+                     joining_cluster_addresses.begin(),
+                     joining_cluster_addresses.end());
+
+  std::vector<std::string> old_cluster;
+  std::vector<std::string> leaving_cluster_addresses;
+  __globals->get_cluster_staying_addresses(old_cluster);
+  __globals->get_cluster_leaving_addresses(leaving_cluster_addresses);
+  old_cluster.insert(old_cluster.end(),
+                     leaving_cluster_addresses.begin(),
+                     leaving_cluster_addresses.end());
+
+  std::vector<uint32_t> new_cluster_rendezvous_hashes;
+  __globals->get_new_cluster_hashes(new_cluster_rendezvous_hashes);
+
+  std::vector<uint32_t> old_cluster_rendezvous_hashes;
+  __globals->get_old_cluster_hashes(old_cluster_rendezvous_hashes);
+
+  calculate_replicas(id,
+                     new_cluster,
+                     new_cluster_rendezvous_hashes,
+                     old_cluster,
+                     old_cluster_rendezvous_hashes,
+                     _replication_factor,
+                     replicas,
+                     extra_replicas,
+                     &hasher);
+}
+
+void Timer::calculate_replicas(TimerID id,
                                uint64_t replica_bloom_filter,
                                std::map<std::string, uint64_t> cluster_bloom_filters,
                                std::vector<std::string> cluster,
@@ -459,10 +529,15 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
 
   std::vector<std::string> cluster;
-  __globals->get_cluster_addresses(cluster);
+  std::vector<std::string> joining_cluster_addresses;
+  __globals->get_cluster_staying_addresses(cluster);
+  __globals->get_cluster_joining_addresses(joining_cluster_addresses);
+  cluster.insert(cluster.end(),
+                 joining_cluster_addresses.begin(),
+                 joining_cluster_addresses.end());
 
   std::vector<uint32_t> cluster_rendezvous_hashes;
-  __globals->get_cluster_hashes(cluster_rendezvous_hashes);
+  __globals->get_new_cluster_hashes(cluster_rendezvous_hashes);
 
   Timer::calculate_replicas(id,
                             replica_hash,

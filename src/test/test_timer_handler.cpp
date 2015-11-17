@@ -1080,7 +1080,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
   std::vector<std::string> cluster_addresses;
   cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->set_cluster_staying_addresses(cluster_addresses);
   __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 
@@ -1108,7 +1108,7 @@ TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
   std::vector<std::string> cluster_addresses;
   cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->set_cluster_staying_addresses(cluster_addresses);
   __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 
@@ -1160,7 +1160,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
   std::vector<std::string> cluster_addresses;
   cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->set_cluster_staying_addresses(cluster_addresses);
   __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 
@@ -1189,7 +1189,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeInformationalTimers)
   std::vector<std::string> cluster_addresses;
   cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(cluster_addresses);
+  __globals->set_cluster_staying_addresses(cluster_addresses);
   __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 

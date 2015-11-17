@@ -290,7 +290,7 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
 {
   // Check the requesting node is a Chronos node
   std::vector<std::string> cluster;
-  __globals->get_cluster_addresses(cluster);
+  __globals->get_cluster_staying_addresses(cluster);
 
   bool node_in_cluster = false;
 
@@ -304,6 +304,25 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
                 node_for_replicas.c_str());
       node_in_cluster = true;
       break;
+    }
+  }
+
+  if (!node_in_cluster)
+  {
+    std::vector<std::string> joining;
+    __globals->get_cluster_joining_addresses(joining);
+
+    for (std::vector<std::string>::iterator it = joining.begin();
+                                            it != joining.end();
+                                            ++it)
+    {
+      if (*it == node_for_replicas)
+      {
+        TRC_DEBUG("Found requesting node in joining nodes: %s",
+                  node_for_replicas.c_str());
+        node_in_cluster = true;
+        break;
+      }
     }
   }
 

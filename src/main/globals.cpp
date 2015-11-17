@@ -61,7 +61,8 @@ Globals::Globals(std::string config_file,
     ("http.bind-address", po::value<std::string>()->default_value("0.0.0.0"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
-    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster")
+    ("cluster.joining", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are joining")
+    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster that are staying")
     ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
@@ -166,7 +167,7 @@ void Globals::update_config()
   // Figure out the old cluster by combining the nodes that are stayng and the
   // nodes that are leaving.
   std::vector<std::string> old_cluster_addresses = cluster_staying_addresses;
-  new_cluster_addresses.insert(old_cluster_addresses.end(),
+  old_cluster_addresses.insert(old_cluster_addresses.end(),
                                cluster_leaving_addresses.begin(),
                                cluster_leaving_addresses.end());
   std::vector<uint32_t> old_cluster_rendezvous_hashes = generate_hashes(old_cluster_addresses);

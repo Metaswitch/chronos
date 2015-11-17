@@ -123,7 +123,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
   std::vector<std::string> new_cluster_addresses;
   new_cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(new_cluster_addresses);
+  __globals->set_cluster_staying_addresses(new_cluster_addresses);
   __globals->unlock();
 
   Timer* added_timer;
@@ -155,7 +155,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
   std::vector<std::string> new_cluster_addresses;
   new_cluster_addresses.push_back("10.0.0.2:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(new_cluster_addresses);
+  __globals->set_cluster_staying_addresses(new_cluster_addresses);
   __globals->unlock();
 
   Timer* added_timer;

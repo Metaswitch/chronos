@@ -97,16 +97,22 @@ void ChronosInternalConnection::resynchronize()
 {
   // Get the cluster nodes
   std::vector<std::string> cluster_nodes;
-  __globals->get_cluster_addresses(cluster_nodes);
+  std::vector<std::string> joining_nodes;
+  __globals->get_cluster_joining_addresses(joining_nodes);
+  std::vector<std::string> staying_nodes;
+  __globals->get_cluster_staying_addresses(staying_nodes);
   std::vector<std::string> leaving_nodes;
   __globals->get_cluster_leaving_addresses(leaving_nodes);
 
-  if (leaving_nodes.size() > 0)
-  {
-    cluster_nodes.insert(cluster_nodes.end(),
-                         leaving_nodes.begin(),
-                         leaving_nodes.end());
-  }
+  cluster_nodes.insert(cluster_nodes.end(),
+                       joining_nodes.begin(),
+                       joining_nodes.end());
+  cluster_nodes.insert(cluster_nodes.end(),
+                       staying_nodes.begin(),
+                       staying_nodes.end());
+  cluster_nodes.insert(cluster_nodes.end(),
+                       leaving_nodes.begin(),
+                       leaving_nodes.end());
 
   // Shuffle the lists (so the same Chronos node doesn't get queried by
   // all the other nodes at the same time) and remove the local node
