@@ -60,7 +60,7 @@ def write_chronos_cluster_settings(filename, cluster_view, current_server):
         {}
         [cluster]
         localhost = {}
-        ''').format(WARNING_HEADER, current_server))
+        ''').format(WARNING_HEADER, current_server)
 
     for node in staying_servers:
         contents += 'node = {}\n'.format(node)
