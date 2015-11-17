@@ -74,7 +74,21 @@ void ControllerTask::run()
       handle_delete();
     }
   }
-  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
+//   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
+//   {
+//     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
+//     {
+//       TRC_DEBUG("Timer present, but the method wasn't PUT or DELETE");
+//       send_http_reply(HTTP_BADMETHOD);
+//     }
+//     else
+//     {
+//       TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
+//       uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
+//       add_or_update_timer(timer_id, replica_hash);
+//     }
+//   }
+  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
     {
@@ -84,8 +98,8 @@ void ControllerTask::run()
     else
     {
       TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
-      uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
-      add_or_update_timer(timer_id, replica_hash);
+      uint32_t replication_factor = std::stoull(matches[2].str(), NULL);
+      add_or_update_timer(timer_id, replication_factor);
     }
   }
   else
@@ -97,7 +111,7 @@ void ControllerTask::run()
   delete this;
 }
 
-void ControllerTask::add_or_update_timer(TimerID timer_id, uint64_t replica_hash)
+void ControllerTask::add_or_update_timer(TimerID timer_id, uint32_t replication_factor)
 {
   Timer* timer = NULL;
   bool replicated_timer;
@@ -107,14 +121,14 @@ void ControllerTask::add_or_update_timer(TimerID timer_id, uint64_t replica_hash
     // Replicated deletes are implemented as replicated tombstones so no DELETE
     // can be a replication request.
     replicated_timer = false;
-    timer = Timer::create_tombstone(timer_id, replica_hash);
+    timer = Timer::create_tombstone(timer_id);
   }
   else
   {
     std::string body = _req.get_rx_body();
     std::string error_str;
     timer = Timer::from_json(timer_id,
-                             replica_hash,
+                             replication_factor,
                              body,
                              error_str,
                              replicated_timer);

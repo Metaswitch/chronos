@@ -204,23 +204,31 @@ TEST_F(TestTimer, FromJSONTests)
   delete timer;
 
   // Get the replicas from the bloom filter if given
-  timer = Timer::from_json(1, 0x11011100011101, default_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 2, default_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
   EXPECT_EQ(2, get_replication_factor(timer));
   delete timer;
 
-  timer = Timer::from_json(1, 0x11011100011101, custom_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 3, custom_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
   EXPECT_EQ(3, get_replication_factor(timer));
   delete timer;
 
+  // If the replication factor on the URL (in this case 2) doesn't match the
+  // replication factor in the JSON body, reject the JSON.
+  timer = Timer::from_json(1, 2, custom_repl_factor, err, replicated);
+  EXPECT_EQ((void*)NULL, timer);
+  EXPECT_NE("", err);
+  err = "";
+  delete timer;
+
   // If specific replicas are specified, use them (regardless of presence of
   // bloom hash).
-  timer = Timer::from_json(1, 0x11011100011101, specific_replicas, err, replicated);
+  timer = Timer::from_json(1, 2, specific_replicas, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_TRUE(replicated);
@@ -228,20 +236,20 @@ TEST_F(TestTimer, FromJSONTests)
   delete timer;
 
   // If no repeat for was specifed, use the interval
-  timer = Timer::from_json(1, 0x11011100011101, no_repeat_for, err, replicated);
+  timer = Timer::from_json(1, 3, no_repeat_for, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(timer->interval_ms, timer->repeat_for);
   delete timer;
 
   // If delta-start-time was provided, use that
-  timer = Timer::from_json(1, 0x11011100011101, delta_start_time, err, replicated);
+  timer = Timer::from_json(1, 2, delta_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, timer->start_time_mono_ms);
   delete timer;
 
   // If absolute start time was proved (and no delta-time), use that.
-  timer = Timer::from_json(1, 0x11011100011101, absolute_start_time, err, replicated);
+  timer = Timer::from_json(1, 2, absolute_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
 
@@ -377,7 +385,7 @@ TEST_F(TestTimer, IsLocal)
 
 TEST_F(TestTimer, IsTombstone)
 {
-  Timer* t2 = Timer::create_tombstone(100, 0);
+  Timer* t2 = Timer::create_tombstone(100);
   EXPECT_NE(0u, t2->start_time_mono_ms);
   EXPECT_TRUE(t2->is_tombstone());
   delete t2;

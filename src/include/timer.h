@@ -153,10 +153,10 @@ private:
   // Class functions
 public:
   static TimerID generate_timer_id();
-  static Timer* create_tombstone(TimerID, uint64_t);
-  static Timer* from_json(TimerID, uint64_t, std::string, std::string&, bool&);
+  static Timer* create_tombstone(TimerID);
+  static Timer* from_json(TimerID, uint32_t, std::string, std::string&, bool&);
   static Timer* from_json_obj(TimerID id,
-                              uint64_t replica_hash,
+                              uint32_t replication_factor,
                               std::string& error,
                               bool& replicated,
                               rapidjson::Value& doc);

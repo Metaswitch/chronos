@@ -56,11 +56,13 @@ protected:
   virtual void SetUp()
   {
     Base::SetUp();
-    cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
-    new_cluster = cluster;
+    old_cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253"};
+    new_cluster = old_cluster;
+    old_cluster.push_back("10.0.0.4:7253");
     new_cluster.push_back("10.0.0.100:7253");
+    new_cluster.push_back("10.0.0.101:7253");
     
-    cluster_rendezvous_hashes = __globals->generate_hashes(cluster);
+    old_cluster_rendezvous_hashes = __globals->generate_hashes(old_cluster);
     new_cluster_rendezvous_hashes = __globals->generate_hashes(new_cluster);
   }
 
@@ -71,34 +73,33 @@ protected:
 
   void calculate_timers_for_id(TimerID id)
   {
-    std::map<std::string, uint64_t> cluster_bloom_filters;
     old_replicas.clear();
     new_replicas.clear();
     Timer::calculate_replicas(id,
-                              0u,
-                              cluster_bloom_filters,
-                              cluster,
-                              cluster_rendezvous_hashes,
+                              new_cluster,
+                              new_cluster_rendezvous_hashes,
+                              old_cluster,
+                              old_cluster_rendezvous_hashes,
                               REPLICATION_FACTOR,
                               old_replicas,
                               extra_replicas,
                               &normal_hasher);
 
     Timer::calculate_replicas(id,
-                              0u,
-                              cluster_bloom_filters,
                               new_cluster,
                               new_cluster_rendezvous_hashes,
+                              old_cluster,
+                              old_cluster_rendezvous_hashes,
                               REPLICATION_FACTOR,
                               new_replicas,
                               extra_replicas,
                               &normal_hasher);
   }
 
-  std::vector<std::string> cluster;
+  std::vector<std::string> old_cluster;
   std::vector<std::string> new_cluster;
   
-  std::vector<uint32_t> cluster_rendezvous_hashes;
+  std::vector<uint32_t> old_cluster_rendezvous_hashes;
   std::vector<uint32_t> new_cluster_rendezvous_hashes;
 
   std::vector<std::string> old_replicas;
@@ -122,11 +123,11 @@ TEST_F(TestTimerReplicaChoosing, ClusteringIsBalanced)
     cluster_counts[old_replicas[0]]++;
   }
 
-  uint32_t expected_max = MAX_TIMERS / (cluster.size() - 1);
-  uint32_t expected_min = MAX_TIMERS / (cluster.size() + 1);
+  uint32_t expected_max = MAX_TIMERS / (new_cluster.size() - 1);
+  uint32_t expected_min = MAX_TIMERS / (new_cluster.size() + 1);
   
-  for (std::vector<std::string>::iterator ii = cluster.begin();
-      ii != cluster.end();
+  for (std::vector<std::string>::iterator ii = new_cluster.begin();
+      ii != new_cluster.end();
       ii++)
   {
     EXPECT_GT(cluster_counts[*ii], expected_min);
@@ -209,14 +210,14 @@ protected:
   virtual void SetUp()
   {
     Base::SetUp();
-    cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
+    old_cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
     new_cluster = {"10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
 
     // Emulate behaviour if "10.0.0.1:7253" and "10.0.0.2:7253" both hashed to 100.
     //  - On the initial collision, "10.0.0.2:7253"'s hash would be decremented to 99.
     //  - Once "10.0.0.1:7253" was removed, "10.0.0.2:7253"'s hash would no longer need
     //    to be decremented, and would change to 100.
-    cluster_rendezvous_hashes = {100, 99, 4, 5};
+    old_cluster_rendezvous_hashes = {100, 99, 4, 5};
     new_cluster_rendezvous_hashes = {100, 4, 5};
   }
 
@@ -239,11 +240,11 @@ TEST_F(TestTimerReplicaChoosingWithCollision, ClusteringIsBalanced)
     cluster_counts[old_replicas[0]]++;
   }
 
-  uint32_t expected_max = MAX_TIMERS / (cluster.size() - 1);
-  uint32_t expected_min = MAX_TIMERS / (cluster.size() + 1);
+  uint32_t expected_max = MAX_TIMERS / (new_cluster.size() - 1);
+  uint32_t expected_min = MAX_TIMERS / (new_cluster.size() + 1);
   
-  for (std::vector<std::string>::iterator ii = cluster.begin();
-      ii != cluster.end();
+  for (std::vector<std::string>::iterator ii = new_cluster.begin();
+      ii != new_cluster.end();
       ii++)
   {
     EXPECT_GT(cluster_counts[*ii], expected_min);
@@ -282,7 +283,7 @@ TEST_F(TestTimerReplicaChoosingWithCollision, MinimumTimersMovePrimary)
   //  - B's hash has disappeared, so all B's timers (1/N) get rehashed
   //  - Of those 1/N timers, M-1/M move to other nodes, and 1/M stay on B
   //  - Overall, 1/N + (M-1/MN) of the total timers movetimers move = (M/MN + M-1/MN) = 2M-1/MN
-  int expected_to_move = MAX_TIMERS * ((2 * new_cluster.size()) - 1) / (new_cluster.size() * cluster.size());
+  int expected_to_move = MAX_TIMERS * ((2 * new_cluster.size()) - 1) / (new_cluster.size() * old_cluster.size());
 
   // Allow a 5% deviation from the expected value (as our subset of timers won't necessarily be perfectly distributed).
   EXPECT_THAT(different, ::testing::Lt(expected_to_move * 1.05));
