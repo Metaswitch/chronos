@@ -573,7 +573,7 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
   // Create a tombstone record that will last for 10 seconds.
   Timer* tombstone = new Timer(id, 10000, 10000);
-  tombstone->calculate_replicas(replica_hash);
+  tombstone->calculate_replicas();
   return tombstone;
 }
 
@@ -745,7 +745,7 @@ Timer* Timer::from_json_obj(TimerID id,
       // Replicas not determined above, determine them now.  Note that this implies
       // the request is from a client, not another replica.
       replicated = false;
-      timer->calculate_replicas(replica_hash);
+      timer->calculate_replicas();
     }
     else
     {
@@ -801,7 +801,7 @@ void Timer::update_cluster_information()
 {
   // Update the replica list
   replicas.clear();
-  calculate_replicas(0);
+  calculate_replicas();
 
   // Update the cluster view ID
   std::string global_cluster_view_id;

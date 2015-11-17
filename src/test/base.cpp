@@ -62,6 +62,7 @@ void Base::SetUp()
   __globals->set_cluster_bloom_filters(cluster_bloom_filters);
   std::vector<uint32_t> cluster_rendezvous_hashes = __globals->generate_hashes(cluster_addresses);
   __globals->set_new_cluster_hashes(cluster_rendezvous_hashes);
+  __globals->set_old_cluster_hashes(cluster_rendezvous_hashes);
 
   std::string cluster_view_id = "cluster-view-id";
   __globals->set_cluster_view_id(cluster_view_id);
