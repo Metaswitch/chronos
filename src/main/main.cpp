@@ -167,35 +167,6 @@ void signal_handler(int sig)
 
 int main(int argc, char** argv)
 {
-  Alarm* timer_pop_alarm = NULL;
-  Alarm* scale_operation_alarm = NULL;
-  SNMP::U32Scalar* remaining_nodes_scalar = NULL;
-  SNMP::CounterTable* timers_processed_table = NULL;
-  SNMP::CounterTable* invalid_timers_processed_table = NULL;
-  SNMP::ContinuousIncrementTable* all_timers_table = NULL;
-  SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
-  SNMP::InfiniteScalarTable* scalar_timers_table = NULL;
-
-  // Sets up SNMP statistics
-  snmp_setup("chronos");
-
-  all_timers_table = SNMP::ContinuousIncrementTable::create("chronos_all_timers_table",
-                                                            ".1.2.826.0.1.1578918.9.10.4");
-  total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
-                                                             ".1.2.826.0.1.1578918.999");
-  scalar_timers_table = SNMP::InfiniteScalarTable::create("chronos_scalar_timers_table",
-                                                             ".1.2.826.0.1.1578918.998");
-
-  remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
-                                               ".1.2.826.0.1.1578918.9.10.1");
-  timers_processed_table = SNMP::CounterTable::create("chronos_processed_timers_table",
-                                                      ".1.2.826.0.1.1578918.9.10.2");
-  invalid_timers_processed_table = SNMP::CounterTable::create("chronos_invalid_timers_processed_table",
-                                                              ".1.2.826.0.1.1578918.9.10.3");
-
-  // Must be called after all SNMP tables have been registered
-  init_snmp_handler_threads("chronos");
-
   // Initialize cURL before creating threads
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
@@ -242,6 +213,35 @@ int main(int argc, char** argv)
       return 2;
     }
   }
+
+  Alarm* timer_pop_alarm = NULL;
+  Alarm* scale_operation_alarm = NULL;
+  SNMP::U32Scalar* remaining_nodes_scalar = NULL;
+  SNMP::CounterTable* timers_processed_table = NULL;
+  SNMP::CounterTable* invalid_timers_processed_table = NULL;
+  SNMP::ContinuousIncrementTable* all_timers_table = NULL;
+  SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
+  SNMP::InfiniteScalarTable* scalar_timers_table = NULL;
+
+  // Sets up SNMP statistics
+  snmp_setup("chronos");
+
+  all_timers_table = SNMP::ContinuousIncrementTable::create("chronos_all_timers_table",
+                                                            ".1.2.826.0.1.1578918.9.10.4");
+  total_timers_table = SNMP::InfiniteTimerCountTable::create("chronos_tagged_timers_table",
+                                                             ".1.2.826.0.1.1578918.999");
+  scalar_timers_table = SNMP::InfiniteScalarTable::create("chronos_scalar_timers_table",
+                                                             ".1.2.826.0.1.1578918.998");
+
+  remaining_nodes_scalar = new SNMP::U32Scalar("chronos_remaining_nodes_scalar",
+                                               ".1.2.826.0.1.1578918.9.10.1");
+  timers_processed_table = SNMP::CounterTable::create("chronos_processed_timers_table",
+                                                      ".1.2.826.0.1.1578918.9.10.2");
+  invalid_timers_processed_table = SNMP::CounterTable::create("chronos_invalid_timers_processed_table",
+                                                              ".1.2.826.0.1.1578918.9.10.3");
+
+  // Must be called after all SNMP tables have been registered
+  init_snmp_handler_threads("chronos");
 
   // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
   // in the alarm definition JSON file exactly.
