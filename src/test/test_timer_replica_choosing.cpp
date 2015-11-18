@@ -56,11 +56,9 @@ protected:
   virtual void SetUp()
   {
     Base::SetUp();
-    old_cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253"};
+    old_cluster = {"10.0.0.1:7253", "10.0.0.2:7253", "10.0.0.3:7253", "10.0.0.4:7253"};
     new_cluster = old_cluster;
-    old_cluster.push_back("10.0.0.4:7253");
     new_cluster.push_back("10.0.0.100:7253");
-    new_cluster.push_back("10.0.0.101:7253");
     
     old_cluster_rendezvous_hashes = __globals->generate_hashes(old_cluster);
     new_cluster_rendezvous_hashes = __globals->generate_hashes(new_cluster);
@@ -76,8 +74,8 @@ protected:
     old_replicas.clear();
     new_replicas.clear();
     Timer::calculate_replicas(id,
-                              new_cluster,
-                              new_cluster_rendezvous_hashes,
+                              old_cluster,
+                              old_cluster_rendezvous_hashes,
                               old_cluster,
                               old_cluster_rendezvous_hashes,
                               REPLICATION_FACTOR,
@@ -123,11 +121,11 @@ TEST_F(TestTimerReplicaChoosing, ClusteringIsBalanced)
     cluster_counts[old_replicas[0]]++;
   }
 
-  uint32_t expected_max = MAX_TIMERS / (new_cluster.size() - 1);
-  uint32_t expected_min = MAX_TIMERS / (new_cluster.size() + 1);
+  uint32_t expected_max = MAX_TIMERS / (old_cluster.size() - 1);
+  uint32_t expected_min = MAX_TIMERS / (old_cluster.size() + 1);
   
-  for (std::vector<std::string>::iterator ii = new_cluster.begin();
-      ii != new_cluster.end();
+  for (std::vector<std::string>::iterator ii = old_cluster.begin();
+      ii != old_cluster.end();
       ii++)
   {
     EXPECT_GT(cluster_counts[*ii], expected_min);
@@ -240,11 +238,11 @@ TEST_F(TestTimerReplicaChoosingWithCollision, ClusteringIsBalanced)
     cluster_counts[old_replicas[0]]++;
   }
 
-  uint32_t expected_max = MAX_TIMERS / (new_cluster.size() - 1);
-  uint32_t expected_min = MAX_TIMERS / (new_cluster.size() + 1);
+  uint32_t expected_max = MAX_TIMERS / (old_cluster.size() - 1);
+  uint32_t expected_min = MAX_TIMERS / (old_cluster.size() + 1);
   
-  for (std::vector<std::string>::iterator ii = new_cluster.begin();
-      ii != new_cluster.end();
+  for (std::vector<std::string>::iterator ii = old_cluster.begin();
+      ii != old_cluster.end();
       ii++)
   {
     EXPECT_GT(cluster_counts[*ii], expected_min);

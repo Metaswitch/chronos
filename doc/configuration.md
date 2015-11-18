@@ -29,6 +29,8 @@ The cluster configuration file has the following format:
 
     [cluster]
     localhost = 1.2.3.4            # The address of the local host
+    joining = 3.4.5.6              # The addresses of all nodes that are joining
+    joining = 3.4.5.7              # the cluster (only used during scale-up)
     node = 1.2.3.4                 # The addresses of all nodes in the cluster. If the
     node = 1.2.3.5                 # address doesn't include a port, then the bind-port
     node = 1.2.3.6                 # value is used.

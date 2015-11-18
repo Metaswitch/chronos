@@ -74,6 +74,13 @@ void ControllerTask::run()
       handle_delete();
     }
   }
+////////////////////////////////////////////////////////////////////////////////
+//
+// This branch has been replaced by the branch below, but it will still be
+// needed for upgrade, to be sorted out at a later date.
+//
+////////////////////////////////////////////////////////////////////////////////
+
 //   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
 //   {
 //     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
@@ -88,6 +95,9 @@ void ControllerTask::run()
 //       add_or_update_timer(timer_id, replica_hash);
 //     }
 //   }
+
+  // For a PUT or a POST the URL should be of the format
+  // <timer_id>-<replication_factor>.
   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))

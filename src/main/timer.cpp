@@ -140,6 +140,15 @@ std::string Timer::url(std::string host)
   ss << "/timers/";
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
   ss << "-" << std::to_string(_replication_factor);
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// The format of the URL has changed to <timer_id>-<replication_factor> (as
+// implemented above). This code is still needed for upgrade, to be sorted out
+// at a later date.
+//
+////////////////////////////////////////////////////////////////////////////////
+
 //   uint64_t hash = 0;
 //   std::map<std::string, uint64_t> cluster_bloom_filters;
 //   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
@@ -404,6 +413,7 @@ void Timer::calculate_replicas(TimerID id,
 {
   std::vector<std::string> old_replicas;
 
+  // Calculate the replicas for the current cluster.
   calculate_rendezvous_hash(new_cluster,
                             new_cluster_rendezvous_hashes,
                             id,
@@ -411,6 +421,7 @@ void Timer::calculate_replicas(TimerID id,
                             replicas,
                             hasher);
 
+  // Calculate what the replicas would have been in the previous cluster.
   calculate_rendezvous_hash(old_cluster,
                             old_cluster_rendezvous_hashes,
                             id,
@@ -418,6 +429,9 @@ void Timer::calculate_replicas(TimerID id,
                             old_replicas,
                             hasher);
 
+  // Set any nodes that were replicas in the old cluster but aren't in the
+  // current cluster in extra_replicas to ensure that these replicas get
+  // deleted.
   for (unsigned int ii = 0; ii < old_replicas.size(); ++ii)
   {
     if (std::find(replicas.begin(), replicas.end(), old_replicas[ii]) == replicas.end())
@@ -461,6 +475,13 @@ void Timer::calculate_replicas()
                      extra_replicas,
                      &hasher);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// These functions have been replaced by the calculate_replacs methods above,
+// but they will still be needed for upgrade, to be sorted out at a later date.
+//
+////////////////////////////////////////////////////////////////////////////////
 
 // void Timer::calculate_replicas(TimerID id,
 //                                uint64_t replica_bloom_filter,
@@ -727,6 +748,8 @@ Timer* Timer::from_json_obj(TimerID id,
                               "replication-factor",
                               timer->_replication_factor);
 
+          // If the URL contained a replication factor then this replication
+          // factor must match the replication factor in the JSON body.
           if ((replication_factor > 0) &&
               (timer->_replication_factor != replication_factor))
           {
