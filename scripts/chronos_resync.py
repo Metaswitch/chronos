@@ -183,13 +183,15 @@ def write_conf(filename, this_node):
         """).format(**locals()))
 
 
-def write_cluster_conf(filename, this_node, nodes, leaving):
+def write_cluster_conf(filename, this_node, joining, nodes, leaving):
     # Create a configuration file for a chronos process
     with open(filename, 'w') as f:
         f.write(dedent("""\
         [cluster]
         localhost = {this_node.ip}:{this_node.port}
         """).format(**locals()))
+        for node in joining:
+            f.write('joining = {node.ip}:{node.port}\n'.format(**locals()))
         for node in nodes:
             f.write('node = {node.ip}:{node.port}\n'.format(**locals()))
         for node in leaving:
@@ -230,28 +232,22 @@ class ChronosLiveTests(unittest.TestCase):
         # from 127.0.0.1)
         self.assertEqual(receiveCount,
                          expected_number,
-                         ('Incorrect number of popped timers: received %i, expected at least %i' %
+                         ('Incorrect number of popped timers: received %i, expected exactly %i' %
                          (receiveCount, expected_number)))
 
         for i in range(expected_number):
             assert str(i) in timerCounts, "Missing timer pop for %i" % i
 
-    def write_config_for_nodes(self, lower, upper):
+    def write_config_for_nodes(self, staying, joining=[], leaving=[]):
         # Write configuration files for the nodes
-        for num in range(lower, upper):
+        for num in staying + joining + leaving:
             write_conf(CONFIG_FILE_PATTERN % num,
                        chronos_nodes[num])
             write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
                                chronos_nodes[num],
-                               chronos_nodes[:upper],
-                               [])
-
-    def write_scale_down_config_for_all_nodes(self, leaving_lower, leaving_upper):
-        # Write configuration files including leaving nodes
-        for num in range(len(chronos_nodes)):
-            write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num, chronos_nodes[num],
-                               chronos_nodes[:leaving_lower] + chronos_nodes[leaving_upper:],
-                               chronos_nodes[leaving_lower: leaving_upper])
+                               [chronos_nodes[i] for i in joining],
+                               [chronos_nodes[i] for i in staying],
+                               [chronos_nodes[i] for i in leaving])
 
     def test_scale_up(self):
         # Test that scaling up works. This test creates 2 Chronos nodes,
@@ -259,12 +255,12 @@ class ChronosLiveTests(unittest.TestCase):
         # 100 timers pop.
 
         # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 2)
+        self.write_config_for_nodes([0,1])
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 100)
 
         # Scale up
-        self.write_config_for_nodes(0, 4)
+        self.write_config_for_nodes([0,1], [2,3])
         start_nodes(2, 4)
         node_reload_config(0, 2)
         node_trigger_scaling(0, 4)
@@ -279,12 +275,12 @@ class ChronosLiveTests(unittest.TestCase):
         # 100 timers pop.
 
         # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 4)
+        self.write_config_for_nodes([0,1,2,3])
         start_nodes(0, 4)
         create_timers(chronos_nodes[0], 100)
 
         # Scale down
-        self.write_scale_down_config_for_all_nodes(2, 4)
+        self.write_config_for_nodes([0,1], [], [2,3])
         node_reload_config(0, 4)
         node_trigger_scaling(0, 4)
         kill_nodes(2, 4)
@@ -300,19 +296,19 @@ class ChronosLiveTests(unittest.TestCase):
         # 100 timers pop.
 
         # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 2)
+        self.write_config_for_nodes([0,1])
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 100)
 
         # Scale up
-        self.write_config_for_nodes(0, 4)
+        self.write_config_for_nodes([0,1], [2,3])
         start_nodes(2, 4)
         node_reload_config(0, 2)
         node_trigger_scaling(0, 4)
         sleep(10)
 
         # Scale down the initial nodes
-        self.write_scale_down_config_for_all_nodes(0, 2)
+        self.write_config_for_nodes([2,3], [], [0,1])
         node_reload_config(0, 4)
         node_trigger_scaling(0, 4)
 
@@ -326,12 +322,12 @@ class ChronosLiveTests(unittest.TestCase):
         # nodes, then kills the first node. It then checks all 100 timers pop
 
         # Start initial nodes and add timers
-        self.write_config_for_nodes(0, 1)
+        self.write_config_for_nodes([0])
         start_nodes(0, 1)
         create_timers(chronos_nodes[0], 100)
 
         # Scale up
-        self.write_config_for_nodes(0, 2)
+        self.write_config_for_nodes([0], [1])
         start_nodes(1, 2)
         node_reload_config(0, 1)
         node_trigger_scaling(0, 2)
