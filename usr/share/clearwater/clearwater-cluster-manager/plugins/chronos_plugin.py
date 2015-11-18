@@ -37,7 +37,7 @@ from metaswitch.clearwater.cluster_manager.plugin_base import SynchroniserPlugin
 from metaswitch.clearwater.cluster_manager.plugin_utils import WARNING_HEADER
 from metaswitch.clearwater.cluster_manager.alarms import issue_alarm
 from metaswitch.clearwater.cluster_manager import pdlogs, alarm_constants, constants
-from metaswitch.clearwater.etcd_shared.plugin_utils import run_command
+from metaswitch.clearwater.etcd_shared.plugin_utils import run_command, safely_write
 import logging
 
 _log = logging.getLogger("chronos_plugin")
@@ -58,18 +58,20 @@ def write_chronos_cluster_settings(filename, cluster_view, current_server):
     leaving_servers = ([k for k, v in cluster_view.iteritems()
                         if v in leaving])
 
-    with open(filename, 'w') as f:
-        f.write(dedent('''\
+    contents = dedent('''\
         {}
         [cluster]
         localhost = {}
-        ''').format(WARNING_HEADER, current_server))
-        for node in joining_servers:
-            f.write('joining = {}\n'.format(node))
-        for node in staying_servers:
-            f.write('node = {}\n'.format(node))
-        for node in leaving_servers:
-            f.write('leaving = {}\n'.format(node))
+        ''').format(WARNING_HEADER, current_server)
+
+    for node in joining_servers:
+        contents += 'joining = {}\n'.format(node)
+    for node in staying_servers:
+        contents += 'node = {}\n'.format(node)
+    for node in leaving_servers:
+        contents += 'leaving = {}\n'.format(node)
+
+    safely_write(filename, contents)
 
 class ChronosPlugin(SynchroniserPluginBase):
     def __init__(self, params):
