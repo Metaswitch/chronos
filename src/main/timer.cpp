@@ -139,17 +139,18 @@ std::string Timer::url(std::string host)
 
   ss << "/timers/";
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
-  uint64_t hash = 0;
-  std::map<std::string, uint64_t> cluster_bloom_filters;
-  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
-
-  for (std::vector<std::string>::iterator it = replicas.begin();
-                                          it != replicas.end();
-                                          ++it)
-  {
-    hash |= cluster_bloom_filters[*it];
-  }
-  ss << std::setfill('0') << std::setw(16) << std::hex << hash;
+  ss << "-" << std::to_string(_replication_factor);
+//   uint64_t hash = 0;
+//   std::map<std::string, uint64_t> cluster_bloom_filters;
+//   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
+// 
+//   for (std::vector<std::string>::iterator it = replicas.begin();
+//                                           it != replicas.end();
+//                                           ++it)
+//   {
+//     hash |= cluster_bloom_filters[*it];
+//   }
+//   ss << std::setfill('0') << std::setw(16) << std::hex << hash;
 
   return ss.str();
 }
@@ -595,8 +596,8 @@ Timer* Timer::from_json(TimerID id,
 
   if (doc.HasParseError())
   {
-    error = "Failed to parse timer as JSON. Error: %s",
-            rapidjson::GetParseError_En(doc.GetParseError());
+    error = "Failed to parse timer as JSON. Error: ";
+    error.append(rapidjson::GetParseError_En(doc.GetParseError()));
     return NULL;
   }
 
@@ -639,8 +640,9 @@ Timer* Timer::from_json_obj(TimerID id,
     if ((interval_s.GetInt() == 0) && (repeat_for_int != 0))
     {
       // If the interval time is 0 and the repeat_for_int isn't then reject the timer.
-      error = "Can't have a zero interval time with a non-zero (%s) repeat-for time",
-              std::to_string(repeat_for_int);
+      error = "Can't have a zero interval time with a non-zero (";
+      error.append(std::to_string(repeat_for_int));
+      error.append(") repeat-for time");
       return NULL;
     }
 
@@ -728,24 +730,28 @@ Timer* Timer::from_json_obj(TimerID id,
           if ((replication_factor > 0) &&
               (timer->_replication_factor != replication_factor))
           {
-            error = "Replication factor on the timer ID (%s) doesn't match the JSON body (%s)",
-                    std::to_string(replication_factor),
-                    std::to_string(timer->_replication_factor);
+            error = "Replication factor on the timer ID (";
+            error.append(std::to_string(replication_factor));
+            error.append(") doesn't match the JSON body (");
+            error.append(std::to_string(timer->_replication_factor));
+            error.append(")");
             delete timer; timer = NULL;
             return NULL;
           }
         }
         else
         {
-          // Default replication factor is 2.
-          timer->_replication_factor = 2;
+          // If the URL contained a replication factor, use that, otherwise
+          // default replication factor is 2.
+          timer->_replication_factor = replication_factor ? replication_factor : 2;
         }
       }
     }
     else
     {
-      // Default to 2 replicas
-      timer->_replication_factor = 2;
+      // If the URL contained a replication factor, use that, otherwise
+      // default replication factor is 2.
+      timer->_replication_factor = replication_factor ? replication_factor : 2;
     }
 
     timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;

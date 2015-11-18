@@ -64,6 +64,7 @@ protected:
     t1->start_time_mono_ms = 1000000;
     t1->sequence_number = 0;
     t1->replicas = replicas;
+    t1->_replication_factor = 2;
     t1->tags = tags;
     t1->callback_url = "http://localhost:80/callback";
     t1->callback_body = "stuff stuff stuff";
@@ -319,8 +320,8 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 
 TEST_F(TestTimer, URL)
 {
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
+  EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname:9999"));
+  EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname"));
 }
 
 TEST_F(TestTimer, ToJSON)

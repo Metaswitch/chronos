@@ -135,7 +135,8 @@ void ControllerTask::add_or_update_timer(TimerID timer_id, uint32_t replication_
 
     if (!timer)
     {
-      TRC_DEBUG("Unable to create timer");
+      TRC_ERROR("Unable to create timer - %s", error_str.c_str());
+      _req.add_content(error_str);
       send_http_reply(HTTP_BAD_REQUEST);
       return;
     }
