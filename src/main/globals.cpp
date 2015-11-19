@@ -142,6 +142,18 @@ void Globals::update_config()
   set_max_ttl(ttl);
   TRC_STATUS("Maximum post-exception TTL: %d", ttl);
 
+  int target_latency = conf_map["throttling.target_latency"].as<int>();
+  set_target_latency(target_latency);
+
+  int max_tokens = conf_map["throttling.max_tokens"].as<int>();
+  set_max_tokens(max_tokens);
+
+  int initial_token_rate = conf_map["throttling.initial_token_rate"].as<int>();
+  set_initial_token_rate(initial_token_rate);
+
+  int min_token_rate = conf_map["throttling.min_token_rate"].as<int>();
+  set_min_token_rate(min_token_rate);
+
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
 
