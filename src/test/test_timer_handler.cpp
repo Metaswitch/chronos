@@ -1176,15 +1176,9 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
 // (up to the maximum requested)
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 {
-  // Start the timer right now.
-  //struct timespec ts;
-  //clock_gettime(CLOCK_MONOTONIC, &ts);
-
   // Add a single timer to the store
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
-  //timer1->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
-  //timer2->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
 
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1")).Times(1);
