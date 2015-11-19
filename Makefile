@@ -13,8 +13,8 @@ GMOCK_DIR := $(ROOT)/modules/gmock
 
 TARGET := chronos
 TARGET_TEST := chronos_test
-TARGET_SOURCES_BUILD := main.cpp snmp_infinite_timer_count_table.cpp snmp_counter_table.cpp snmp_continuous_increment_table.cpp
-TARGET_SOURCES_TEST := $(notdir $(wildcard src/test/*.cpp)) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp
+TARGET_SOURCES_BUILD := main.cpp snmp_infinite_timer_count_table.cpp snmp_infinite_scalar_table.cpp snmp_counter_table.cpp snmp_continuous_increment_table.cpp snmp_infinite_base_table.cpp
+TARGET_SOURCES_TEST := $(notdir $(wildcard src/test/*.cpp)) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp mock_scalar_table.cpp
 TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(notdir $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp)))
 TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp snmp_scalar.cpp snmp_agent.cpp snmp_row.cpp timer_counter.cpp
 

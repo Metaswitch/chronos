@@ -51,6 +51,7 @@
 #include "alarm.h"
 #include "snmp_continuous_increment_table.h"
 #include "snmp_infinite_timer_count_table.h"
+#include "snmp_infinite_scalar_table.h"
 #include "snmp_scalar.h"
 
 class TimerHandler
@@ -58,7 +59,8 @@ class TimerHandler
 public:
   TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*,
                SNMP::ContinuousIncrementTable*,
-               SNMP::InfiniteTimerCountTable*);
+               SNMP::InfiniteTimerCountTable*,
+               SNMP::InfiniteScalarTable*);
   virtual ~TimerHandler();
   virtual void add_timer(Timer*, bool=true);
   virtual void return_timer(Timer*, bool);
@@ -110,6 +112,7 @@ private:
   Alarm* _timer_pop_alarm;
   SNMP::ContinuousIncrementTable* _all_timers_table;
   SNMP::InfiniteTimerCountTable* _tagged_timers_table;
+  SNMP::InfiniteScalarTable* _scalar_timers_table;
   SNMP::U32Scalar* _current_timers_scalar;
 
   pthread_t _handler_thread;
