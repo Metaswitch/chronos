@@ -67,6 +67,10 @@ Globals::Globals(std::string config_file,
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
+    ("throttling.target_latency", po::value<int>()->default_value(500000), "Target latency (in microseconds) for HTTP responses")
+    ("throttling.max_tokens", po::value<int>()->default_value(20), "Maximum token bucket size for HTTP overload control")
+    ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
+    ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
 
     // Deprecated option left in for backwards compatibility
