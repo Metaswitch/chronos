@@ -38,8 +38,13 @@
 
 Timer* default_timer(TimerID id)
 {
+  // Start the timer right now.
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add a single timer to the store
   Timer* timer = new Timer(id, 100000, 100000);
-  timer->start_time_mono_ms = 1000000;
+  timer->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
   timer->sequence_number = 0;
   timer->replicas = std::vector<std::string>(1, "10.0.0.1:9999");
   timer->tags = std::vector<std::string>(1, "TAG" + std::to_string(id));

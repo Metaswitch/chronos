@@ -55,13 +55,15 @@ TimerHandler::TimerHandler(TimerStore* store,
                            Replicator* replicator,
                            Alarm* timer_pop_alarm,
                            SNMP::ContinuousIncrementTable* all_timers_table,
-                           SNMP::InfiniteTimerCountTable* tagged_timers_table) :
+                           SNMP::InfiniteTimerCountTable* tagged_timers_table,
+                           SNMP::InfiniteScalarTable* scalar_timers_table) :
                            _store(store),
                            _callback(callback),
                            _replicator(replicator),
                            _timer_pop_alarm(timer_pop_alarm),
                            _all_timers_table(all_timers_table),
                            _tagged_timers_table(tagged_timers_table),
+                           _scalar_timers_table(scalar_timers_table),
                            _terminate(false),
                            _nearest_new_timer(-1)
 {
@@ -225,7 +227,12 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     TRC_DEBUG("Adding new timer");
   }
 
-  // Update statistics
+  // Would be good in future work to pull all statistics logic out into a 
+  // separate statistics module, passing in new and old tags, and what is
+  // happening to the timer (add, update, delete), to keep the timer_handler
+  // scope of responsibility clear.
+
+  // Update statistics 
   if (update_stats)
   {
     std::vector<std::string> tags_to_add = std::vector<std::string>();
@@ -685,6 +692,7 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
     {
       TRC_DEBUG("Incrementing for %s:", (*it).c_str());
       _tagged_timers_table->increment(*it);
+      _scalar_timers_table->increment(*it);
     }
 
     TRC_DEBUG("Statistics to delete:");
@@ -694,6 +702,7 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
     {
       TRC_DEBUG("Decrementing for %s:", (*it).c_str());
       _tagged_timers_table->decrement(*it);
+      _scalar_timers_table->decrement(*it);
     }
   }
 }
