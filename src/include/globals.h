@@ -77,6 +77,10 @@ public:
   GLOBAL(threads, int);
   GLOBAL(max_ttl, int);
   GLOBAL(dns_servers, std::vector<std::string>);
+  GLOBAL(target_latency, int);
+  GLOBAL(max_tokens, int);
+  GLOBAL(initial_token_rate, int);
+  GLOBAL(min_token_rate, int);
 
   // Clustering configuration
   GLOBAL(cluster_local_ip, std::string);

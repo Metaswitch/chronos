@@ -47,6 +47,7 @@
 #include "httpstack.h"
 #include "httpstack_utils.h"
 #include "handlers.h"
+#include "load_monitor.h"
 #include "health_checker.h"
 #include "exception_handler.h"
 #include <getopt.h>
@@ -309,6 +310,22 @@ int main(int argc, char** argv)
                                           timers_processed_table,
                                           invalid_timers_processed_table);
 
+
+  int target_latency;
+  int max_tokens;
+  int initial_token_rate;
+  int min_token_rate;
+  __globals->get_target_latency(target_latency);
+  __globals->get_max_tokens(max_tokens);
+  __globals->get_initial_token_rate(initial_token_rate);
+  __globals->get_min_token_rate(min_token_rate);
+
+
+  LoadMonitor* load_monitor = new LoadMonitor(target_latency,
+                                              max_tokens,
+                                              initial_token_rate,
+                                              min_token_rate);
+
   // Finally, set up the HTTPStack and handlers
   HttpStack* http_stack = HttpStack::get_instance();
   int bind_port;
@@ -324,7 +341,7 @@ int main(int argc, char** argv)
   try
   {
     http_stack->initialize();
-    http_stack->configure(bind_address, bind_port, http_threads, exception_handler);
+    http_stack->configure(bind_address, bind_port, http_threads, exception_handler, NULL, load_monitor, NULL);
     http_stack->register_handler((char*)"^/ping$", &ping_handler);
     http_stack->register_handler((char*)"^/timers", &controller_handler);
     http_stack->start();
