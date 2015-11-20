@@ -169,13 +169,17 @@ def create_timers(target, num):
 
 
 def write_conf(filename, this_node):
-    # Create a configuration file for a chronos process
+    # Create a configuration file for a chronos process. Use a generous token
+    # bucket size so we can make lots of requests quickly.
     log_path = LOG_FILE_PATTERN % this_node.port
     with open(filename, 'w') as f:
         f.write(dedent("""\
         [http]
         bind-address = {this_node.ip}
         bind-port = {this_node.port}
+
+        [throttling]
+        max_tokens = 1000
 
         [logging]
         folder = {log_path}

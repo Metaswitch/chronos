@@ -68,6 +68,10 @@ Globals::Globals(std::string config_file,
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
+    ("throttling.target_latency", po::value<int>()->default_value(500000), "Target latency (in microseconds) for HTTP responses")
+    ("throttling.max_tokens", po::value<int>()->default_value(20), "Maximum token bucket size for HTTP overload control")
+    ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
+    ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
 
     // Deprecated option left in for backwards compatibility
@@ -138,6 +142,18 @@ void Globals::update_config()
   int ttl = conf_map["exceptions.max_ttl"].as<int>();
   set_max_ttl(ttl);
   TRC_STATUS("Maximum post-exception TTL: %d", ttl);
+
+  int target_latency = conf_map["throttling.target_latency"].as<int>();
+  set_target_latency(target_latency);
+
+  int max_tokens = conf_map["throttling.max_tokens"].as<int>();
+  set_max_tokens(max_tokens);
+
+  int initial_token_rate = conf_map["throttling.initial_token_rate"].as<int>();
+  set_initial_token_rate(initial_token_rate);
+
+  int min_token_rate = conf_map["throttling.min_token_rate"].as<int>();
+  set_min_token_rate(min_token_rate);
 
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
