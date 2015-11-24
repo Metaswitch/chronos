@@ -121,8 +121,6 @@ std::string Timer::url(std::string host)
 {
   std::stringstream ss;
 
-  // Here (and below) we render the timer ID (and replica hash) as 0-padded
-  // hex strings so we can parse it back out later easily.
   if (host != "")
   {
     std::string address;
@@ -138,6 +136,8 @@ std::string Timer::url(std::string host)
   }
 
   ss << "/timers/";
+  // We render the timer ID as a 0-padded hex string so we can parse it back out
+  // later easily.
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
   ss << "-" << std::to_string(_replication_factor);
 
@@ -412,6 +412,7 @@ void Timer::calculate_replicas(TimerID id,
                                Hasher* hasher)
 {
   std::vector<std::string> old_replicas;
+  replicas.empty();
 
   // Calculate the replicas for the current cluster.
   calculate_rendezvous_hash(new_cluster,

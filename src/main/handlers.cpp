@@ -96,7 +96,7 @@ void ControllerTask::run()
 //     }
 //   }
 
-  // For a PUT or a POST the URL should be of the format
+  // For a PUT or a DELETE the URL should be of the format
   // <timer_id>-<replication_factor>.
   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)")))
   {

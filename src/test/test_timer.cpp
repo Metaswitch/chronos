@@ -157,7 +157,7 @@ TEST_F(TestTimer, FromJSONTests)
   std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"cluster-view-id\": \"cluster-view-id\", \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}";
 
   // You can skip the `repeat-for` to set up a one-shot timer.
-  std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
+  std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 2 }}";
 
   // You can (should) specify start time by relative delta, not absolute
   // timestamp, the relative number should be preferred.
@@ -237,7 +237,7 @@ TEST_F(TestTimer, FromJSONTests)
   delete timer;
 
   // If no repeat for was specifed, use the interval
-  timer = Timer::from_json(1, 3, no_repeat_for, err, replicated);
+  timer = Timer::from_json(1, 2, no_repeat_for, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(timer->interval_ms, timer->repeat_for);

@@ -174,7 +174,7 @@ const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
     "is possible between all nodes."
 );
 
-const static PDLog2<int, int> CL_CHRONOS_CLUSTER_CFG_READ
+const static PDLog2<int, int> CL_CHRONOS_CLUSTER_OLD_CFG_READ
 (
   PDLog::CL_CHRONOS_ID + 13,
   PDLOG_NOTICE,
@@ -184,5 +184,14 @@ const static PDLog2<int, int> CL_CHRONOS_CLUSTER_CFG_READ
   "None."
 );
 
+const static PDLog3<int, int, int> CL_CHRONOS_CLUSTER_CFG_READ
+(
+  PDLog::CL_CHRONOS_ID + 14,
+  PDLOG_NOTICE,
+  "The Chronos cluster configuration has been loaded. There are %d joining nodes, %d staying nodes and %d leaving nodes.",
+  "Chronos has reloaded its cluster configuration file.",
+  "If necessary, timers will be resynced across the Chronos cluster.",
+  "None."
+);
 
 #endif

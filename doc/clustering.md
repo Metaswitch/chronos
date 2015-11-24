@@ -19,7 +19,7 @@ Additional nodes are added to the cluster by adding `joining` lines and sending 
     joining = 3.4.5.6
     joining = 4.5.6.7
 
-To rebalance any existing timers across the Chronos cluster, run `service chronos resync` on each Chronos node. Once this has completed set the new nodes to `node` rather than `joining` in the cluster settings file. There is no need to reload the Chronos config again. You can find more details about scaling up procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
+To rebalance any existing timers across the Chronos cluster, run `service chronos resync` on each Chronos node. Once this has completed set the new nodes to `node` rather than `joining` in the cluster settings file and send another SIGHUP to force Chronos to reload the config again. You can find more details about scaling up procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
 
 ## Scaling down
 

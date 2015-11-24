@@ -171,7 +171,7 @@ void Globals::update_config()
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
 
-  // Figure out the new cluster by combining the nodes that are stayng and the
+  // Figure out the new cluster by combining the nodes that are staying and the
   // nodes that are joining.
   std::vector<std::string> new_cluster_addresses = cluster_staying_addresses;
   new_cluster_addresses.insert(new_cluster_addresses.end(),
@@ -180,7 +180,7 @@ void Globals::update_config()
   std::vector<uint32_t> new_cluster_rendezvous_hashes = generate_hashes(new_cluster_addresses);
   set_new_cluster_hashes(new_cluster_rendezvous_hashes);
   
-  // Figure out the old cluster by combining the nodes that are stayng and the
+  // Figure out the old cluster by combining the nodes that are staying and the
   // nodes that are leaving.
   std::vector<std::string> old_cluster_addresses = cluster_staying_addresses;
   old_cluster_addresses.insert(old_cluster_addresses.end(),
@@ -192,12 +192,26 @@ void Globals::update_config()
   std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 
-  TRC_STATUS("Cluster nodes:");
+  TRC_STATUS("Staying nodes:");
+  for (std::vector<std::string>::iterator it = cluster_staying_addresses.begin();
+                                          it != cluster_staying_addresses.end();
+                                          ++it)
+  {
+    TRC_STATUS(" - %s", it->c_str());
+  }
+
+  TRC_STATUS("Joining nodes:");
+  for (std::vector<std::string>::iterator it = cluster_joining_addresses.begin();
+                                          it != cluster_joining_addresses.end();
+                                          ++it)
+  {
+    TRC_STATUS(" - %s", it->c_str());
+  }
+
   for (std::vector<std::string>::iterator it = new_cluster_addresses.begin();
                                           it != new_cluster_addresses.end();
                                           ++it)
   {
-    TRC_STATUS(" - %s", it->c_str());
     uint64_t bloom = generate_bloom_filter(*it);
     cluster_bloom_filters[*it] = bloom;
     cluster_view_id |= bloom;
@@ -209,7 +223,8 @@ void Globals::update_config()
   set_cluster_view_id(cluster_view_id_str);
   TRC_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
 
-  CL_CHRONOS_CLUSTER_CFG_READ.log(new_cluster_addresses.size(),
+  CL_CHRONOS_CLUSTER_CFG_READ.log(cluster_joining_addresses.size(),
+                                  cluster_staying_addresses.size(),
                                   cluster_leaving_addresses.size());
 
   unlock();
