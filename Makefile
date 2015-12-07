@@ -33,8 +33,9 @@ DEB_COMPONENT := chronos
 DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
 
-MODULE_DIR := $(shell pwd)/modules
-INSTALL_DIR := build/usr
+ROOT := $(shell pwd)
+MODULE_DIR := ${ROOT}/modules
+INSTALL_DIR := ${ROOT}/build/usr
 LIB_DIR := ${INSTALL_DIR}/lib
 SUBMODULES := c-ares curl libevhtp sas-client cpp-common
 
@@ -42,11 +43,8 @@ include build-infra/cw-deb.mk
 include $(patsubst %, mk/%.mk, ${SUBMODULES})
 
 .PHONY : submodules
-submodules : ${BUILD_DIR}/.submodules_built
-
-${BUILD_DIR}/.submodules_built : .gitmodules
+submodules :
 	${MAKE} ${SUBMODULES}
-	touch $@
 
 .PHONY: deb
 deb: chronos
