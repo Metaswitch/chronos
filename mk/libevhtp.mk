@@ -1,7 +1,7 @@
 # included mk file for the libevhtp module
 
 LIBEVHTP_DIR := ${MODULE_DIR}/libevhtp
-LIBEVHTP_BUILD_DIR := ${ROOT}/build/libevhtp
+LIBEVHTP_BUILD_DIR := ${MODULE_DIR}/../build/libevhtp
 LIBEVHTP_MAKEFILE := ${LIBEVHTP_BUILD_DIR}/build/Makefile
 
 ${LIBEVHTP_BUILD_DIR}:
