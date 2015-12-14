@@ -18,6 +18,8 @@ COMMON_LDFLAGS := -Lbuild/usr/lib -lrt -lpthread -lcurl -levent -lboost_program_
 chronos_LDFLAGS := ${COMMON_LDFLAGS} -lsas -lz
 chronos_test_LDFLAGS := ${COMMON_LDFLAGS} -ldl
 
+chronos_test_EXCLUSION_FILE := src/test/coverage-not-yet
+
 VPATH := modules/cpp-common/src modules/cpp-common/test_utils src/main src/test src/main/murmur
 
 BUILD_DIR := build
