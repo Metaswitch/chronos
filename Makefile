@@ -3,7 +3,7 @@ TEST_TARGETS := chronos_test
 
 COMMON_SOURCES := chronos_internal_connection.cpp handlers.cpp replicator.cpp timer_handler.cpp globals.cpp http_callback.cpp timer.cpp timer_store.cpp log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp snmp_scalar.cpp snmp_agent.cpp snmp_row.cpp timer_counter.cpp MurmurHash3.cpp
 chronos_SOURCES := ${COMMON_SOURCES} main.cpp snmp_infinite_timer_count_table.cpp snmp_infinite_scalar_table.cpp snmp_counter_table.cpp snmp_continuous_increment_table.cpp snmp_infinite_base_table.cpp load_monitor.cpp
-chronos_test_SOURCES := ${COMMON_SOURCES} base.cpp fakesnmp.cpp test_globals.cpp test_handler.cpp test_main.cpp test_timer.cpp test_timer_handler.cpp test_timer_replica_choosing.cpp test_timer_store.cpp timer_helper.cpp test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp mock_scalar_table.cpp
+chronos_test_SOURCES := ${COMMON_SOURCES} base.cpp fakesnmp.cpp test_globals.cpp test_handler.cpp test_main.cpp test_timer.cpp test_timer_handler.cpp test_timer_replica_choosing.cpp test_timer_store.cpp timer_helper.cpp test_interposer.cpp test_chronos_internal_connection.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp mock_scalar_table.cpp
 
 COMMON_CPPFLAGS := -Isrc/include \
                    -Imodules/cpp-common/include \
@@ -24,6 +24,9 @@ BUILD_DIR := build
 GMOCK_DIR := modules/gmock
 GCOVR_DIR := modules/gcovr
 
+chronos_test_EXCLUSION_FILE := src/test/coverage-not-yet
+chronos_test_COVERAGE_EXCLUSIONS := ^modules|^src/test
+chronos_test_LD_LIBRARY_PATH := build/usr/lib
 include build-infra/cpp.mk
 
 .PHONY: default
