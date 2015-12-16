@@ -79,6 +79,8 @@ Globals::Globals(std::string config_file,
 
 #ifndef UNIT_TEST
   _updater = new Updater<void, Globals>(this, std::mem_fun(&Globals::update_config));
+#else
+  _updater = NULL;
 #endif
 }
 
