@@ -1,187 +1,66 @@
-# This uses platform.mk to perform the heavy lifting of defining pre-requisites and build flags.
+TARGETS := chronos
+TEST_TARGETS := chronos_test
 
-SHELL := /bin/bash
+COMMON_SOURCES := chronos_internal_connection.cpp handlers.cpp replicator.cpp timer_handler.cpp globals.cpp http_callback.cpp timer.cpp timer_store.cpp log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp snmp_scalar.cpp snmp_agent.cpp snmp_row.cpp timer_counter.cpp MurmurHash3.cpp
+chronos_SOURCES := ${COMMON_SOURCES} main.cpp snmp_infinite_timer_count_table.cpp snmp_infinite_scalar_table.cpp snmp_counter_table.cpp snmp_continuous_increment_table.cpp snmp_infinite_base_table.cpp load_monitor.cpp
+chronos_test_SOURCES := ${COMMON_SOURCES} base.cpp fakesnmp.cpp test_globals.cpp test_handler.cpp test_main.cpp test_timer.cpp test_timer_handler.cpp test_timer_replica_choosing.cpp test_timer_store.cpp timer_helper.cpp test_interposer.cpp test_chronos_internal_connection.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp mock_scalar_table.cpp
 
-ROOT := ${PWD}
-MK_DIR := ${ROOT}/mk
-PREFIX ?= ${ROOT}/build/usr
-INSTALL_DIR ?= ${PREFIX}
-MODULE_DIR := ${ROOT}/modules
+COMMON_CPPFLAGS := -Isrc/include \
+                   -Imodules/cpp-common/include \
+                   -Imodules/rapidjson/include \
+                   -Imodules/sas-client/include \
+                   -Ibuild/usr/include
+chronos_CPPFLAGS := ${COMMON_CPPFLAGS}
+chronos_test_CPPFLAGS := ${COMMON_CPPFLAGS} -Imodules/cpp-common/test_utils -Isrc/test
 
-GTEST_DIR := $(ROOT)/modules/gmock/gtest
-GMOCK_DIR := $(ROOT)/modules/gmock
+COMMON_LDFLAGS := -Lbuild/usr/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp -levent_pthreads -lcares $(shell net-snmp-config --netsnmp-agent-libs)
 
-TARGET := chronos
-TARGET_TEST := chronos_test
-TARGET_SOURCES_BUILD := main.cpp snmp_infinite_timer_count_table.cpp snmp_infinite_scalar_table.cpp snmp_counter_table.cpp snmp_continuous_increment_table.cpp snmp_infinite_base_table.cpp load_monitor.cpp
-TARGET_SOURCES_TEST := $(notdir $(wildcard src/test/*.cpp)) test_interposer.cpp fakelogger.cpp mock_sas.cpp fakecurl.cpp pthread_cond_var_helper.cpp mock_increment_table.cpp mock_infinite_table.cpp mock_scalar_table.cpp
-TARGET_SOURCES := $(filter-out $(TARGET_SOURCES_BUILD) $(TARGET_SOURCES_TEST), $(notdir $(wildcard src/main/*.cpp) $(wildcard src/main/**/*.cpp)))
-TARGET_SOURCES += log.cpp logger.cpp unique.cpp signalhandler.cpp alarm.cpp httpstack.cpp httpstack_utils.cpp accesslogger.cpp utils.cpp health_checker.cpp exception_handler.cpp httpconnection.cpp statistic.cpp baseresolver.cpp dnscachedresolver.cpp dnsparser.cpp zmq_lvc.cpp httpresolver.cpp counter.cpp snmp_scalar.cpp snmp_agent.cpp snmp_row.cpp timer_counter.cpp
+chronos_LDFLAGS := ${COMMON_LDFLAGS} -lsas -lz
+chronos_test_LDFLAGS := ${COMMON_LDFLAGS} -ldl
 
-TARGET_EXTRA_OBJS_TEST := gmock-all.o gtest-all.o
-INCLUDE_DIR := ${ROOT}/src/include
-LIB_DIR := ${INSTALL_DIR}/lib
-CPPFLAGS := -ggdb -I${INCLUDE_DIR} -I${ROOT}/modules/cpp-common/include -I${ROOT}/modules/rapidjson/include -I${ROOT}/modules/sas-client/include -std=c++0x -I${INSTALL_DIR}/include -Werror
-CPPFLAGS_BUILD := -O2
-CPPFLAGS_TEST := -O0 -fprofile-arcs -ftest-coverage -DUNIT_TEST -I${ROOT}/src/test/ -I${ROOT}/modules/cpp-common/test_utils/ -fno-access-control -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include
-LDFLAGS := -L${INSTALL_DIR}/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp \
-           -levent_pthreads -lcares $(shell net-snmp-config --netsnmp-agent-libs)
-LDFLAGS_BUILD := -lsas -lz
-LDFLAGS_TEST := -ldl
+VPATH := modules/cpp-common/src modules/cpp-common/test_utils src/main src/test src/main/murmur
 
-TEST_XML = $(TEST_OUT_DIR)/test_detail_$(TARGET_TEST).xml
-COVERAGE_XML = $(TEST_OUT_DIR)/coverage_$(TARGET_TEST).xml
-COVERAGE_LIST_TMP = $(TEST_OUT_DIR)/coverage_list_tmp
-COVERAGE_LIST = $(TEST_OUT_DIR)/coverage_list
-COVERAGE_MASTER_LIST = src/test/coverage-not-yet
+BUILD_DIR := build
+GMOCK_DIR := modules/gmock
+GCOVR_DIR := modules/gcovr
 
-EXTRA_CLEANS += $(TEST_XML) \
-                $(COVERAGE_XML) \
-                $(OBJ_DIR_TEST)/*.gcno \
-                $(OBJ_DIR_TEST)/*.gcda \
-                *.gcov \
-                ${OBJ_DIR_TEST}/chronos.memcheck
-
-# Now the GMock / GTest boilerplate.
-GTEST_HEADERS := $(GTEST_DIR)/include/gtest/*.h \
-                 $(GTEST_DIR)/include/gtest/internal/*.h
-GMOCK_HEADERS := $(GMOCK_DIR)/include/gmock/*.h \
-                 $(GMOCK_DIR)/include/gmock/internal/*.h \
-                 $(GTEST_HEADERS)
-
-GTEST_SRCS_ := $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
-GMOCK_SRCS_ := $(GMOCK_DIR)/src/*.cc $(GMOCK_HEADERS)
-# End of boilerplate
-
-VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils:${ROOT}/src/main/:${ROOT}/src/test:${ROOT}/src/main/murmur
-
-COVERAGEFLAGS = $(OBJ_DIR_TEST) --object-directory=$(shell pwd) --root=${ROOT} \
-                --exclude='(^src/include/|^modules/gmock/|^modules/sas-client/|^modules/rapidjson/|^modules/cpp-common/include/|^modules/cpp-common/test_utils/|^src/test/|^usr/)' \
-                --sort-percentage
+chronos_test_EXCLUSION_FILE := src/test/coverage-not-yet
+chronos_test_COVERAGE_EXCLUSIONS := ^modules|^src/test
+chronos_test_LD_LIBRARY_PATH := build/usr/lib
+include build-infra/cpp.mk
 
 .PHONY: default
 default: build
-
-include ${ROOT}/mk/platform.mk
 
 DEB_COMPONENT := chronos
 DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos chronos-dbg
 
+ROOT := $(shell pwd)
+MODULE_DIR := ${ROOT}/modules
+INSTALL_DIR := ${ROOT}/build/usr
+LIB_DIR := ${INSTALL_DIR}/lib
 SUBMODULES := c-ares curl libevhtp sas-client cpp-common
 
 include build-infra/cw-deb.mk
-include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
+include $(patsubst %, mk/%.mk, ${SUBMODULES})
+
+.PHONY : submodules
+submodules :
+	${MAKE} ${SUBMODULES}
 
 .PHONY: deb
-deb: build deb-only
+deb: chronos
+	${MAKE} deb-only
 
-.PHONY: build
-build: ${SUBMODULES} ${BUILD_DIR}/usr/include/chronos_alarmdefinition.h ${TARGET_BIN}
+ROOT := $(shell pwd)
+include modules/cpp-common/makefiles/alarm-utils.mk
 
-# Define JUSTTEST=<testname> to test just that test.  Easier than
-# passing the --gtest_filter in EXTRA_TEST_ARGS.
-ifdef JUSTTEST
-  EXTRA_TEST_ARGS ?= --gtest_filter=$(JUSTTEST)
-endif
-
-.PHONY: test
-test: ${SUBMODULES} ${TARGET_BIN_TEST} run_test coverage coverage-check
-
-.PHONY: run_test
-run_test: ${TARGET_BIN_TEST}
-	rm -f $(TEST_XML)
-	rm -f $(OBJ_DIR_TEST)/*.gcda
-	$(TARGET_BIN_TEST) $(EXTRA_TEST_ARGS) --gtest_output=xml:$(TEST_XML)
-
-.PHONY: debug
-debug: ${TARGET_BIN_TEST}
-	gdb --args ${TARGET_BIN_TEST} $(EXTRA_TEST_ARGS)
-
-.PHONY: testall
-testall: $(patsubst %, %_test, ${SUBMODULES}) test
-
-.PHONY: clean
-clean: $(patsubst %, %_clean, ${SUBMODULES})
-	rm -f ${TARGET_BIN}
-	rm -f ${TARGET_OBJS}
-	rm -f ${TARGET_OBJS_TEST}
-	rm -rf ${EXTRA_CLEANS}
-	rm -f $(DEPS)
-
-.PHONY: distclean
-distclean: $(patsubst %, %_distclean, ${SUBMODULES})
-	rm -rf ${ROOT}/build
-
-${BUILD_DIR}/bin/chronos_alarm_header : modules/cpp-common/src/json_alarms.cpp \
-                                        modules/cpp-common/src/alarm_header.cpp \
-                                        modules/cpp-common/src/alarmdefinition.cpp \
-                                        alarms-header.mk
-	${MAKE} -f alarms-header.mk
-
-${BUILD_DIR}/usr/include/chronos_alarmdefinition.h : ${BUILD_DIR}/bin/chronos_alarm_header ${ROOT}/usr/share/clearwater/infrastructure/alarms/chronos_alarms.json
-	${BUILD_DIR}/bin/chronos_alarm_header -j "${ROOT}/usr/share/clearwater/infrastructure/alarms/chronos_alarms.json" -n "chronos"
-	mv ${ROOT}/chronos_alarmdefinition.h $@
+${chronos_OBJECT_DIR}/main.o : build/usr/include/chronos_alarmdefinition.h
+build/usr/include/chronos_alarmdefinition.h : build/bin/alarm_header usr/share/clearwater/infrastructure/alarms/chronos_alarms.json
+	$< -j "usr/share/clearwater/infrastructure/alarms/chronos_alarms.json" -n "chronos"
+	mv chronos_alarmdefinition.h $@
 
 .PHONY: resync_test
-resync_test: build
+resync_test: build/bin/chronos
 	./scripts/chronos_resync.py
-
-VG_LIST = ${OBJ_DIR_TEST}/vg_chronos_list
-VG_OPTS := --leak-check=full --gen-suppressions=all
-${OBJ_DIR_TEST}/chronos.memcheck: build_test
-	valgrind ${VG_OPTS} --xml=yes --xml-file=${OBJ_DIR_TEST}/chronos.memcheck $(TARGET_BIN_TEST)
-
-.PHONY: valgrind valgrind_xml
-valgrind_xml: ${OBJ_DIR_TEST}/chronos.memcheck
-	@xmllint --xpath '//error/kind' ${OBJ_DIR_TEST}/chronos.memcheck 2>&1 | \
-		sed -e 's#<kind>##g' | \
-                sed -e 's#</kind>#\n#g' | \
-                sort > $(VG_LIST)
-	@if grep -q -v "XPath set is empty" $(VG_LIST) ; then \
-                echo "Error: some memory errors have been detected" ; \
-                cat $(VG_LIST) ; \
-                echo "See ${OBJ_DIR_TEST}/chronos.memcheck for further details." ; \
-	fi
-valgrind: ${TARGET_BIN_TEST}
-	valgrind ${VG_OPTS} ${TARGET_BIN_TEST}
-
-.PHONY: coverage
-coverage: | run_test
-	$(GCOVR) $(COVERAGEFLAGS) --xml > $(COVERAGE_XML)
-
-# Check that we have 100% coverage of all files except those that we
-# have declared we're being relaxed on.  In particular, all new files
-# must have 100% coverage or be added to $(COVERAGE_MASTER_LIST).
-# The string "Marking build unstable" is recognised by the CI scripts
-# and if it is found the build is marked unstable.
-.PHONY: coverage-check
-coverage-check: | coverage
-	@xmllint --xpath '//class[@line-rate!="1.0"]/@filename' $(COVERAGE_XML) \
-		| tr ' ' '\n' \
-                | grep filename= \
-                | cut -d\" -f2 \
-                | sort > $(COVERAGE_LIST_TMP)
-	@sort $(COVERAGE_MASTER_LIST) | comm -23 $(COVERAGE_LIST_TMP) - > $(COVERAGE_LIST)
-	@if grep -q ^ $(COVERAGE_LIST) ; then \
-                echo "Error: some files unexpectedly have less than 100% code coverage:" ; \
-                cat $(COVERAGE_LIST) ; \
-                /bin/false ; \
-                echo "Marking build unstable." ; \
-        fi
-
-# Get quick coverage data at the command line. Add --branches to get branch info
-# instead of line info in report.  *.gcov files generated in current directory
-# if you need to see full detail.
-.PHONY: coverage_raw
-coverage_raw: | run_test
-	$(GCOVR) $(COVERAGEFLAGS) --keep
-
-# Build rules for GMock/GTest library.
-$(OBJ_DIR_TEST)/gtest-all.o : $(GTEST_SRCS_)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) -I$(GTEST_DIR)/include -I$(GMOCK_DIR) -I$(GMOCK_DIR)/include \
-            -DGTEST_USE_OWN_TR1_TUPLE=0 -c $(GTEST_DIR)/src/gtest-all.cc -o $@
-
-$(OBJ_DIR_TEST)/gmock-all.o : $(GMOCK_SRCS_)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) -I$(GTEST_DIR)/include -I$(GMOCK_DIR) -I$(GMOCK_DIR)/include \
-            -c $(GMOCK_DIR)/src/gmock-all.cc -o $@

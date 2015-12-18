@@ -138,9 +138,9 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
   // Check that the timer is plausible.
   EXPECT_EQ(added_timer->callback_url, "localhost");
   EXPECT_EQ(added_timer->callback_body, "stuff");
-  EXPECT_EQ(added_timer->repeat_for, 200000);
-  EXPECT_EQ(added_timer->interval_ms, 100000);
-  EXPECT_EQ(added_timer->sequence_number, 0);
+  EXPECT_EQ(added_timer->repeat_for, (unsigned)200000);
+  EXPECT_EQ(added_timer->interval_ms, (unsigned)100000);
+  EXPECT_EQ(added_timer->sequence_number, (unsigned)0);
   std::string exp_rsp = "/timers/.*";
   EXPECT_THAT(std::string(evhtp_header_find(req.req()->headers_out, "Location")), MatchesRegex(exp_rsp));
 

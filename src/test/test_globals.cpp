@@ -75,7 +75,7 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 
   std::vector<std::string> dns_servers;
   test_global->get_dns_servers(dns_servers);
-  EXPECT_EQ(dns_servers.size(), 1);
+  EXPECT_EQ(dns_servers.size(), (unsigned)1);
   EXPECT_EQ(dns_servers[0], "127.0.0.1");
 
   std::string cluster_local_address;
@@ -84,16 +84,16 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 
   std::vector<std::string> cluster_addresses;
   test_global->get_cluster_staying_addresses(cluster_addresses);
-  EXPECT_EQ(cluster_addresses.size(), 1);
+  EXPECT_EQ(cluster_addresses.size(), (unsigned)1);
   EXPECT_EQ(cluster_addresses[0], "localhost:7253");
 
   std::vector<std::string> cluster_joining_addresses;
   test_global->get_cluster_joining_addresses(cluster_joining_addresses);
-  EXPECT_EQ(cluster_joining_addresses.size(), 0);
+  EXPECT_EQ(cluster_joining_addresses.size(), (unsigned)0);
 
   std::vector<std::string> cluster_leaving_addresses;
   test_global->get_cluster_leaving_addresses(cluster_leaving_addresses);
-  EXPECT_EQ(cluster_leaving_addresses.size(), 0);
+  EXPECT_EQ(cluster_leaving_addresses.size(), (unsigned)0);
 
   std::vector<uint32_t> new_cluster_hashes;
   std::vector<uint32_t> old_cluster_hashes;
@@ -132,7 +132,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 
   std::vector<std::string> dns_servers;
   test_global->get_dns_servers(dns_servers);
-  EXPECT_EQ(dns_servers.size(), 3);
+  EXPECT_EQ(dns_servers.size(), (unsigned)3);
   EXPECT_EQ(dns_servers[0], "1.1.1.1");
   EXPECT_EQ(dns_servers[1], "2.2.2.2");
   EXPECT_EQ(dns_servers[2], "3.3.3.3");
@@ -143,19 +143,19 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 
   std::vector<std::string> cluster_addresses;
   test_global->get_cluster_staying_addresses(cluster_addresses);
-  EXPECT_EQ(cluster_addresses.size(), 2);
+  EXPECT_EQ(cluster_addresses.size(), (unsigned)2);
   EXPECT_EQ(cluster_addresses[0], "1.2.3.4");
   EXPECT_EQ(cluster_addresses[1], "1.2.3.5");
 
   std::vector<std::string> cluster_joining_addresses;
   test_global->get_cluster_joining_addresses(cluster_joining_addresses);
-  EXPECT_EQ(cluster_joining_addresses.size(), 2);
+  EXPECT_EQ(cluster_joining_addresses.size(), (unsigned)2);
   EXPECT_EQ(cluster_joining_addresses[0], "3.4.5.6");
   EXPECT_EQ(cluster_joining_addresses[1], "3.4.5.7");
 
   std::vector<std::string> cluster_leaving_addresses;
   test_global->get_cluster_leaving_addresses(cluster_leaving_addresses);
-  EXPECT_EQ(cluster_leaving_addresses.size(), 2);
+  EXPECT_EQ(cluster_leaving_addresses.size(), (unsigned)2);
   EXPECT_EQ(cluster_leaving_addresses[0], "2.3.4.5");
   EXPECT_EQ(cluster_leaving_addresses[1], "2.3.4.6");
 

@@ -620,7 +620,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddOlderTimer)
 
   _th->add_timer(timer2);
 
-  EXPECT_EQ(insert_pair.active_timer->interval_ms, 10000);
+  EXPECT_EQ(insert_pair.active_timer->interval_ms, (unsigned)10000);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
@@ -834,7 +834,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer1);
-  EXPECT_EQ(insert_pair.active_timer->sequence_number, 2);
+  EXPECT_EQ(insert_pair.active_timer->sequence_number, (unsigned)2);
 
   // Add a timer with a lower sequence number - this timer should not replace
   // the existing timer
@@ -845,7 +845,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   _th->add_timer(timer2);
 
   // Check that the sequence number hasn't changed
-  EXPECT_EQ(insert_pair.active_timer->sequence_number, 2);
+  EXPECT_EQ(insert_pair.active_timer->sequence_number, (unsigned)2);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
