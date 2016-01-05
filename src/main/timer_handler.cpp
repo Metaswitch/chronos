@@ -671,38 +671,59 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
 {
   if (_tagged_timers_table)
   {
-    std::set<std::string> to_add;
-    std::set<std::string> to_remove;
+    std::map<std::string, int> new_tags_map;
+    std::map<std::string, int> old_tags_map;
 
-    std::set<std::string> old_tags_set(old_tags.begin(), old_tags.end());
-    std::set<std::string> new_tags_set(new_tags.begin(), new_tags.end());
+    std::map<std::string, int> to_add;
+    std::map<std::string, int> to_remove;
+    std::map<std::string, int> output_map;
 
-    std::set_difference(old_tags_set.begin(), old_tags_set.end(),
-                        new_tags_set.begin(), new_tags_set.end(),
-                        std::inserter(to_remove, to_remove.end()));
-
-    std::set_difference(new_tags_set.begin(), new_tags_set.end(),
-                        old_tags_set.begin(), old_tags_set.end(),
-                        std::inserter(to_add, to_add.end()));
-
-    TRC_DEBUG("Statistics to add:");
-    for (std::set<std::string>::iterator it = to_add.begin();
-         it != to_add.end();
-         ++it)
+//TEMP // convert vectors to maps
+    for (std::vector<std::string>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
     {
-      TRC_DEBUG("Incrementing for %s:", (*it).c_str());
-      _tagged_timers_table->increment(*it);
-      _scalar_timers_table->increment(*it);
+      new_tags_map[*it]++;
+    }
+    for (std::vector<std::string>::const_iterator it = old_tags.begin(); it != old_tags.end(); ++it)
+    {
+      old_tags_map[*it]++;
+    }
+    //populate output from above maps
+    for(std::map<std::string, int>::const_iterator it = old_tags_map.begin(); it != old_tags_map.end(); ++it)
+    {
+      output_map[it->first] -= it->second;
     }
 
-    TRC_DEBUG("Statistics to delete:");
-    for (std::set<std::string>::iterator it = to_remove.begin();
-         it != to_remove.end();
-         ++it)
+    for (std::map<std::string, int>::const_iterator it = new_tags_map.begin(); it != new_tags_map.end(); ++it)
     {
-      TRC_DEBUG("Decrementing for %s:", (*it).c_str());
-      _tagged_timers_table->decrement(*it);
-      _scalar_timers_table->decrement(*it);
+      output_map[it->first] += it->second;
+    }
+
+    int i = 0;
+    //actually update stats from output_map
+    for (std::map<std::string, int>::const_iterator it = output_map.begin(); it != output_map.end(); ++it)
+    {
+      if (it->second == 0)
+      {
+        // Do nothing
+      }
+      else if (it->second > 0)
+      {
+        TRC_DEBUG("Incrementing for %s, %d times:", (it->first).c_str(), it->second);
+        for (i = 0; i < it->second; i++)
+        {
+          _tagged_timers_table->increment(it->first);
+          _scalar_timers_table->increment(it->first);
+        }
+      }
+      else if (it->second < 0)
+      {
+        TRC_DEBUG("Decrementing for %s, %d times:", (it->first).c_str(), abs(it->second));
+        for (i = 0; i < abs(it->second); i++)
+        {
+          _tagged_timers_table->decrement(it->first);
+          _scalar_timers_table->decrement(it->first);
+        }
+      }
     }
   }
 }
