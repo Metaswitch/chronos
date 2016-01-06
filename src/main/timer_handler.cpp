@@ -235,8 +235,8 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   // Update statistics 
   if (update_stats)
   {
-    std::vector<std::string> tags_to_add = std::vector<std::string>();
-    std::vector<std::string> tags_to_remove = std::vector<std::string>();
+    std::map<std::string, int> tags_to_add = std::map<std::string, int>();
+    std::map<std::string, int> tags_to_remove = std::map<std::string, int>();
 
     if (new_tp.active_timer->is_tombstone())
     {
@@ -300,7 +300,7 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     // The HTTP Callback failed, so we should set the alarm
     // We also wipe all the tags this timer had from our count, as the timer
     // will be destroyed
-    update_statistics(std::vector<std::string>(), timer->tags);
+    update_statistics(std::map<std::string, int>(), timer->tags);
 
     if ((_timer_pop_alarm) && (timer->is_last_replica()))
     {
@@ -320,7 +320,7 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
   {
     // This timer won't pop again, so tombstone it and update statistics
     timer->become_tombstone();
-    update_statistics(std::vector<std::string>(), timer->tags);
+    update_statistics(std::map<std::string, int>(), timer->tags);
 
     // Decrement global timer count for tombstoned timer
     TRC_DEBUG("Timer won't pop again and is being tombstoned");
@@ -666,20 +666,20 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 // This should be called when we remove a timer (by adding an empty set of new
 // tags) and when we add a new timer (using an empty set of existing tags) and
 // can be used for updating purposes (providing both new and old tags)
-void TimerHandler::update_statistics(std::vector<std::string> new_tags,
-                                     std::vector<std::string> old_tags)
+void TimerHandler::update_statistics(std::map<std::string, int> new_tags,
+                                     std::map<std::string, int> old_tags)
 {
   if (_tagged_timers_table)
   {
-    std::map<std::string, int> new_tags_map;
+/*    std::map<std::string, int> new_tags_map;
     std::map<std::string, int> old_tags_map;
 
     std::map<std::string, int> to_add;
-    std::map<std::string, int> to_remove;
+    std::map<std::string, int> to_remove;*/
     std::map<std::string, int> output_map;
 
 //TEMP // convert vectors to maps
-    for (std::vector<std::string>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
+/*    for (std::vector<std::string>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
     {
       new_tags_map[*it]++;
     }
@@ -687,18 +687,20 @@ void TimerHandler::update_statistics(std::vector<std::string> new_tags,
     {
       old_tags_map[*it]++;
     }
+*/
     //populate output from above maps
-    for(std::map<std::string, int>::const_iterator it = old_tags_map.begin(); it != old_tags_map.end(); ++it)
+    for(std::map<std::string, int>::const_iterator it = old_tags.begin(); it != old_tags.end(); ++it)
     {
       output_map[it->first] -= it->second;
     }
 
-    for (std::map<std::string, int>::const_iterator it = new_tags_map.begin(); it != new_tags_map.end(); ++it)
+    for (std::map<std::string, int>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
     {
       output_map[it->first] += it->second;
     }
 
     int i = 0;
+
     //actually update stats from output_map
     for (std::map<std::string, int>::const_iterator it = output_map.begin(); it != output_map.end(); ++it)
     {

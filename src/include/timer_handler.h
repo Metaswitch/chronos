@@ -98,9 +98,9 @@ private:
   // as the previous timer
   void save_tombstone_information(Timer* timer, Timer* existing);
 
-  // Report a statistics changed - called with empty vectors if a timer has only
+  // Report a statistics changed - called with empty maps if a timer has only
   // just been introduced, or is being permanently deleted/tombstoned
-  void update_statistics(std::vector<std::string> new_tags, std::vector<std::string> old_tags);
+  void update_statistics(std::map<std::string, int> new_tags, std::map<std::string, int> old_tags);
 
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);

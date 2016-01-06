@@ -77,7 +77,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
-  tags(std::vector<std::string>()),
+  tags(std::map<std::string, int>()),
   callback_url(""),
   callback_body(""),
   _replication_factor(0),
@@ -177,8 +177,10 @@ std::string Timer::url(std::string host)
 //         ]
 //     }
 //     "statistics": {
-//         "tags": [
-//             <comma separated "string"s>
+//         "tag-info": [ {"type": <TAG>,
+//                        "count": <int>},
+//                       {"type": <TAG2>,
+//                        "count": <int2>} 
 //         ]
 //     }
 // }
@@ -254,14 +256,19 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->String("statistics");
     writer->StartObject();
     {
-      writer->String("tags");
+      writer->String("tag-info");
       writer->StartArray();
       {
-        for (std::vector<std::string>::iterator it = tags.begin();
+        for (std::map<std::string, int>::iterator it = tags.begin();
                                                 it != tags.end();
                                                 ++it)
         {
-          writer->String((*it).c_str());
+          writer->StartObject();
+          {
+            writer->String(it->first.c_str());
+            writer->Int(it->second);
+          }
+          writer->EndObject();
         }
       }
       writer->EndArray();
@@ -683,21 +690,52 @@ Timer* Timer::from_json_obj(TimerID id,
     {
       // Parse out the 'statistics' block
       rapidjson::Value& statistics = doc["statistics"];
-      JSON_ASSERT_OBJECT(statistics);
 
-      if (statistics.HasMember("tags"))
+      if ((statistics.IsObject())            &&
+          (statistics.HasMember("tag-info")) &&
+          (statistics["tag-info"].IsArray()))
       {
-        rapidjson::Value& tags = statistics["tags"];
-        JSON_ASSERT_ARRAY(tags);
+        rapidjson::Value& tag_info = statistics["tag-info"];
 
-        for (rapidjson::Value::ConstValueIterator it = tags.Begin();
-                                                  it != tags.End();
+        for (rapidjson::Value::ValueIterator it = tag_info.Begin();
+                                                  it != tag_info.End();
                                                   ++it)
         {
-          // All tags get store within the timer as a vector
-          JSON_ASSERT_STRING(*it);
-          timer->tags.push_back(std::string(it->GetString(), it->GetStringLength()));
+          // All correctly formed tags get stored in the timer as a map of tag to count.
+          bool add_tags = true;
+
+          // Default tag count if no value is found in the JSON object.
+          int count = 1;
+
+          // Check that the tag is a string. If not, set add_tags to false.
+          if (((*it).IsObject())       &&
+               (it->HasMember("type")) &&
+               (add_tags = ((*it)["type"]).IsString()))
+          {
+            rapidjson::Value& type = (*it)["type"];
+
+            // If a count is provided, check it is an Int. If not, set add_tags to false.
+            if ((it->HasMember("count")) &&
+                (add_tags = (*it)["count"].IsInt()))
+            {
+              count = (*it)["count"].GetInt();
+            }
+
+            // If above checks pass, Increment map entry for the tags by count.
+            if (add_tags)
+            {
+              timer->tags[(type.GetString())] += count;
+            }
+          }
+          else
+          {
+            TRC_DEBUG("Tag type not present or badly formed, or count present but badly formed. Discarding some tags.");
+          }
         }
+      }
+      else
+      {
+        TRC_DEBUG("Statistics object badly formed. Discarding all tags.");
       }
     }
   }

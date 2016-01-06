@@ -53,9 +53,9 @@ protected:
     std::vector<std::string> replicas;
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
-    std::vector<std::string> tags;
-    tags.push_back("TAG1");
-    tags.push_back("TAG2");
+    std::map<std::string, int> tags;
+    tags["TAG1"]++;
+    tags["TAG2"]++;
     TimerID id = (TimerID)UINT_MAX + 10;
     uint32_t interval_ms = 100;
     uint32_t repeat_for = 200;

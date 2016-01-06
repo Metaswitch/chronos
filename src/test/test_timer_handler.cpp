@@ -512,7 +512,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   Timer* timer2 = default_timer(1);
   timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
   timer2->tags.clear();
-  timer2->tags.push_back("NEWTAG");
+  timer2->tags["NEWTAG"]++;
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_mock_tag_table, increment("NEWTAG")).Times(1);
@@ -751,7 +751,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   Timer* tombstone = default_timer(1);
   timer->interval_ms = tombstone->interval_ms * 10;
   timer->repeat_for = tombstone->repeat_for * 10;
-  tombstone->tags.push_back("NEWTAG");
+  tombstone->tags["NEWTAG"]++;
   tombstone->become_tombstone();
   TimerPair insert_pair;
 
@@ -1116,7 +1116,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
   // There should be one returned timer. We check this by matching the JSON
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[\"TAG1\"]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tag-info\":[{\"TAG1\":1}]}}}]}";
 
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
@@ -1199,7 +1199,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[\"TAG2\"]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tag-info\":[{\"TAG1\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 206);
 }
@@ -1240,7 +1240,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeInformationalTimers)
   // (so there's still a body)
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tags\":\\\[\"TAG1\"]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"]},\"statistics\":\\\{\"tag-info\":[{\"TAG1\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
 }
