@@ -77,7 +77,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
-  tags(std::map<std::string, int>()),
+  tags(std::map<std::string, uint32_t>()),
   callback_url(""),
   callback_body(""),
   _replication_factor(0),
@@ -178,9 +178,9 @@ std::string Timer::url(std::string host)
 //     }
 //     "statistics": {
 //         "tag-info": [ {"type": <TAG>,
-//                        "count": <int>},
+//                        "count": <uint>},
 //                       {"type": <TAG2>,
-//                        "count": <int2>} 
+//                        "count": <uint2>}
 //         ]
 //     }
 // }
@@ -259,13 +259,15 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
       writer->String("tag-info");
       writer->StartArray();
       {
-        for (std::map<std::string, int>::iterator it = tags.begin();
-                                                it != tags.end();
-                                                ++it)
+        for (std::map<std::string, uint32_t>::iterator it = tags.begin();
+                                                       it != tags.end();
+                                                       ++it)
         {
           writer->StartObject();
           {
+            writer->String("type");
             writer->String(it->first.c_str());
+            writer->String("count");
             writer->Int(it->second);
           }
           writer->EndObject();
@@ -705,7 +707,7 @@ Timer* Timer::from_json_obj(TimerID id,
           bool add_tags = true;
 
           // Default tag count if no value is found in the JSON object.
-          int count = 1;
+          uint32_t count = 1;
 
           // Check that the tag is a string. If not, set add_tags to false.
           if (((*it).IsObject())       &&
@@ -716,9 +718,9 @@ Timer* Timer::from_json_obj(TimerID id,
 
             // If a count is provided, check it is an Int. If not, set add_tags to false.
             if ((it->HasMember("count")) &&
-                (add_tags = (*it)["count"].IsInt()))
+                (add_tags = (*it)["count"].IsUint()))
             {
-              count = (*it)["count"].GetInt();
+              count = (*it)["count"].GetUint();
             }
 
             // If above checks pass, Increment map entry for the tags by count.

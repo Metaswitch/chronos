@@ -235,8 +235,8 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   // Update statistics 
   if (update_stats)
   {
-    std::map<std::string, int> tags_to_add = std::map<std::string, int>();
-    std::map<std::string, int> tags_to_remove = std::map<std::string, int>();
+    std::map<std::string, uint32_t> tags_to_add = std::map<std::string, uint32_t>();
+    std::map<std::string, uint32_t> tags_to_remove = std::map<std::string, uint32_t>();
 
     if (new_tp.active_timer->is_tombstone())
     {
@@ -300,7 +300,7 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     // The HTTP Callback failed, so we should set the alarm
     // We also wipe all the tags this timer had from our count, as the timer
     // will be destroyed
-    update_statistics(std::map<std::string, int>(), timer->tags);
+    update_statistics(std::map<std::string, uint32_t>(), timer->tags);
 
     if ((_timer_pop_alarm) && (timer->is_last_replica()))
     {
@@ -320,7 +320,7 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
   {
     // This timer won't pop again, so tombstone it and update statistics
     timer->become_tombstone();
-    update_statistics(std::map<std::string, int>(), timer->tags);
+    update_statistics(std::map<std::string, uint32_t>(), timer->tags);
 
     // Decrement global timer count for tombstoned timer
     TRC_DEBUG("Timer won't pop again and is being tombstoned");
@@ -663,45 +663,93 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 }
 
 // Report an update to the number of timers to statistics
-// This should be called when we remove a timer (by adding an empty set of new
-// tags) and when we add a new timer (using an empty set of existing tags) and
+// This should be called when we remove a timer (by adding an empty map of new
+// tags) and when we add a new timer (using an empty map of existing tags) and
 // can be used for updating purposes (providing both new and old tags)
-void TimerHandler::update_statistics(std::map<std::string, int> new_tags,
-                                     std::map<std::string, int> old_tags)
+void TimerHandler::update_statistics(std::map<std::string, uint32_t> new_tags,
+                                     std::map<std::string, uint32_t> old_tags)
 {
   if (_tagged_timers_table)
   {
-/*    std::map<std::string, int> new_tags_map;
-    std::map<std::string, int> old_tags_map;
+    std::map<std::string, uint32_t> tags_to_add;
+    std::map<std::string, uint32_t> tags_to_remove;
 
-    std::map<std::string, int> to_add;
-    std::map<std::string, int> to_remove;*/
-    std::map<std::string, int> output_map;
+    // Calculate difference in supplied maps:
+    // Iterate over the old_tags, and decrement for any not in new_tags
+    for (std::map<std::string, uint32_t>::const_iterator it = old_tags.begin();
+                                                         it != old_tags.end();
+                                                         ++it)
+    {
+      // Check if the old tag is not present in new_tags
+      if (new_tags.count(it->first) == 0)
+      {
+        // Not present in new_tags. Add tags to tags_to_remove
+        tags_to_remove[it->first] = it->second;
+      }
+      // Any tags also present in new_tags are processed below
+    }
 
-//TEMP // convert vectors to maps
-/*    for (std::vector<std::string>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
+    // Iterate over new_tags, and calculate correct increment/decrement
+    for (std::map<std::string, uint32_t>::const_iterator it = new_tags.begin();
+                                                         it != new_tags.end();
+                                                         ++it)
     {
-      new_tags_map[*it]++;
+      // Check if the new tag is not present in old_tags
+      if (old_tags.count(it->first) == 0)
+      {
+        // Not present in old_tags. Add tags to tags_to_add
+        tags_to_add[it->first] = it->second;
+      }
+      else
+      {
+        // If new_tag count is greater, add difference to tags_to_add
+        if (it->second > old_tags[it->first])
+        {
+          tags_to_add[it->first] = (it->second) - old_tags[it->first];
+        }
+        // If new_tag count is smaller, add difference to tags_to_remove
+        else if (it->second < old_tags[it->first])
+        {
+          tags_to_remove[it->first] = old_tags[it->first] - (it->second);
+        }
+        // If the tag counts are equal, do nothing
+      }
     }
-    for (std::vector<std::string>::const_iterator it = old_tags.begin(); it != old_tags.end(); ++it)
+
+    // Increment correct statistics
+    for (std::map<std::string, uint32_t>::const_iterator it = tags_to_add.begin();
+                                                         it != tags_to_add.end();
+                                                         ++it)
     {
-      old_tags_map[*it]++;
+      TRC_DEBUG("Incrementing for %s, %d times:", (it->first).c_str(), it->second);
+      _scalar_timers_table->increment(it->first, it->second);
+      _tagged_timers_table->increment(it->first, it->second);
     }
-*/
-    //populate output from above maps
+
+    // Decrement correct statistics
+    for (std::map<std::string, uint32_t>::const_iterator it = tags_to_remove.begin();
+                                                         it != tags_to_remove.end();
+                                                         ++it)
+    {
+      TRC_DEBUG("Decrementing for %s, %d times:", (it->first).c_str(), it->second);
+      _scalar_timers_table->decrement(it->first, it->second);
+      _tagged_timers_table->decrement(it->first, it->second);
+    }
+
+
+/*    std::map<std::string, int> output_map;
+    // Subtract old tags
     for(std::map<std::string, int>::const_iterator it = old_tags.begin(); it != old_tags.end(); ++it)
     {
       output_map[it->first] -= it->second;
     }
-
+    // Add new tags
     for (std::map<std::string, int>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
     {
       output_map[it->first] += it->second;
     }
 
-    int i = 0;
-
-    //actually update stats from output_map
+    // Update stats using output_map.
     for (std::map<std::string, int>::const_iterator it = output_map.begin(); it != output_map.end(); ++it)
     {
       if (it->second == 0)
@@ -711,22 +759,17 @@ void TimerHandler::update_statistics(std::map<std::string, int> new_tags,
       else if (it->second > 0)
       {
         TRC_DEBUG("Incrementing for %s, %d times:", (it->first).c_str(), it->second);
-        for (i = 0; i < it->second; i++)
-        {
-          _tagged_timers_table->increment(it->first);
-          _scalar_timers_table->increment(it->first);
-        }
+        _scalar_timers_table->increment(it->first, it->second);
+        _tagged_timers_table->increment(it->first, it->second);
       }
       else if (it->second < 0)
       {
         TRC_DEBUG("Decrementing for %s, %d times:", (it->first).c_str(), abs(it->second));
-        for (i = 0; i < abs(it->second); i++)
-        {
-          _tagged_timers_table->decrement(it->first);
-          _scalar_timers_table->decrement(it->first);
-        }
+        _scalar_timers_table->decrement(it->first, abs(it->second));
+        _tagged_timers_table->decrement(it->first, abs(it->second));
       }
-    }
+    }*/
+
   }
 }
 

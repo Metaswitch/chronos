@@ -100,7 +100,7 @@ private:
 
   // Report a statistics changed - called with empty maps if a timer has only
   // just been introduced, or is being permanently deleted/tombstoned
-  void update_statistics(std::map<std::string, int> new_tags, std::map<std::string, int> old_tags);
+  void update_statistics(std::map<std::string, uint32_t> new_tags, std::map<std::string, uint32_t> old_tags);
 
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);

@@ -53,7 +53,7 @@ protected:
     std::vector<std::string> replicas;
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
-    std::map<std::string, int> tags;
+    std::map<std::string, uint32_t> tags;
     tags["TAG1"]++;
     tags["TAG2"]++;
     TimerID id = (TimerID)UINT_MAX + 10;

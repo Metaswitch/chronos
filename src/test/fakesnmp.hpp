@@ -55,8 +55,8 @@ class FakeInfiniteTimerCountTable: public InfiniteTimerCountTable
 {
 public:
   FakeInfiniteTimerCountTable() {};
-  void increment(std::string) {};
-  void decrement(std::string) {};
+  void increment(std::string, uint32_t) {};
+  void decrement(std::string, uint32_t) {};
 };
 
 class FakeCounterTable: public CounterTable
