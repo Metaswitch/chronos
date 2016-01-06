@@ -735,41 +735,6 @@ void TimerHandler::update_statistics(std::map<std::string, uint32_t> new_tags,
       _scalar_timers_table->decrement(it->first, it->second);
       _tagged_timers_table->decrement(it->first, it->second);
     }
-
-
-/*    std::map<std::string, int> output_map;
-    // Subtract old tags
-    for(std::map<std::string, int>::const_iterator it = old_tags.begin(); it != old_tags.end(); ++it)
-    {
-      output_map[it->first] -= it->second;
-    }
-    // Add new tags
-    for (std::map<std::string, int>::const_iterator it = new_tags.begin(); it != new_tags.end(); ++it)
-    {
-      output_map[it->first] += it->second;
-    }
-
-    // Update stats using output_map.
-    for (std::map<std::string, int>::const_iterator it = output_map.begin(); it != output_map.end(); ++it)
-    {
-      if (it->second == 0)
-      {
-        // Do nothing
-      }
-      else if (it->second > 0)
-      {
-        TRC_DEBUG("Incrementing for %s, %d times:", (it->first).c_str(), it->second);
-        _scalar_timers_table->increment(it->first, it->second);
-        _tagged_timers_table->increment(it->first, it->second);
-      }
-      else if (it->second < 0)
-      {
-        TRC_DEBUG("Decrementing for %s, %d times:", (it->first).c_str(), abs(it->second));
-        _scalar_timers_table->decrement(it->first, abs(it->second));
-        _tagged_timers_table->decrement(it->first, abs(it->second));
-      }
-    }*/
-
   }
 }
 
