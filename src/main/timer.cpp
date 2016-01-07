@@ -529,8 +529,8 @@ Timer* Timer::from_json(TimerID id,
 
   if (doc.HasParseError())
   {
-    error = "Failed to parse timer as JSON. Error: %s",
-            rapidjson::GetParseError_En(doc.GetParseError());
+    error = "Failed to parse timer as JSON. Error: " +
+             std::string(rapidjson::GetParseError_En(doc.GetParseError()));
     return NULL;
   }
 
@@ -573,8 +573,8 @@ Timer* Timer::from_json_obj(TimerID id,
     if ((interval_s.GetInt() == 0) && (repeat_for_int != 0))
     {
       // If the interval time is 0 and the repeat_for_int isn't then reject the timer.
-      error = "Can't have a zero interval time with a non-zero (%s) repeat-for time",
-              std::to_string(repeat_for_int);
+      error = "Can't have a zero interval time with a non-zero (" +
+               std::to_string(repeat_for_int) + ") repeat-for time";
       return NULL;
     }
 
