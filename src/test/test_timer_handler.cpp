@@ -453,9 +453,23 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   // increment (counts and tags)
   Timer* timer = default_timer(1);
   TimerPair insert_pair;
+
+  // Add more tags, to test that update_stats correctly calculates tag changes
+  timer->tags["REG"] = 1;
+  timer->tags["SUB"] = 5;
+  timer->tags["BIND"] = 7;
+
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  // Expect all tag increments
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("REG", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("REG", 1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("SUB", 5)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("SUB", 5)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("BIND", 7)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("BIND", 7)).Times(1);
+
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
                        WillOnce(SaveArg<0>(&insert_pair));
@@ -465,8 +479,19 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   // start time
   Timer* timer2 = default_timer(1);
   timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
+  // Add tags of different count values
+  timer2->tags["REG"] = 1;
+  timer2->tags["SUB"] = 3;
+  timer2->tags["BIND"] = 10;
+
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  // Expect correct tag increments and decrements
+  EXPECT_CALL(*_mock_tag_table, decrement("SUB", 2)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, decrement("SUB", 2)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("BIND", 3)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("BIND", 3)).Times(1);
+
   EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer2);
@@ -478,6 +503,15 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   // sequence number
   Timer* timer3 = default_timer(1);
   timer3->sequence_number = 3;
+  // Do not add tags, effectively removing tags with this timer
+  // Expect decrements accordingly
+  EXPECT_CALL(*_mock_tag_table, decrement("REG", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, decrement("REG", 1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, decrement("SUB", 3)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, decrement("SUB", 3)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, decrement("BIND", 10)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, decrement("BIND", 10)).Times(1);
+
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).

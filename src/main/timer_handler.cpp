@@ -721,7 +721,7 @@ void TimerHandler::update_statistics(std::map<std::string, uint32_t> new_tags,
                                                          it != tags_to_add.end();
                                                          ++it)
     {
-      TRC_DEBUG("Incrementing for %s, %d times:", (it->first).c_str(), it->second);
+      TRC_DEBUG("Incrementing %s by %d", (it->first).c_str(), it->second);
       _scalar_timers_table->increment(it->first, it->second);
       _tagged_timers_table->increment(it->first, it->second);
     }
@@ -731,7 +731,7 @@ void TimerHandler::update_statistics(std::map<std::string, uint32_t> new_tags,
                                                          it != tags_to_remove.end();
                                                          ++it)
     {
-      TRC_DEBUG("Decrementing for %s, %d times:", (it->first).c_str(), it->second);
+      TRC_DEBUG("Decrementing %s by %d", (it->first).c_str(), it->second);
       _scalar_timers_table->decrement(it->first, it->second);
       _tagged_timers_table->decrement(it->first, it->second);
     }

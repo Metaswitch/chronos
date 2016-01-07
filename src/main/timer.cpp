@@ -688,13 +688,13 @@ Timer* Timer::from_json_obj(TimerID id,
       replicated = true;
     }
 
-    if (doc.HasMember("statistics"))
+    if ((doc.HasMember("statistics")) &&
+        (doc["statistics"].IsObject()))
     {
       // Parse out the 'statistics' block
       rapidjson::Value& statistics = doc["statistics"];
 
-      if ((statistics.IsObject())            &&
-          (statistics.HasMember("tag-info")) &&
+      if ((statistics.HasMember("tag-info")) &&
           (statistics["tag-info"].IsArray()))
       {
         rapidjson::Value& tag_info = statistics["tag-info"];
@@ -737,8 +737,12 @@ Timer* Timer::from_json_obj(TimerID id,
       }
       else
       {
-        TRC_DEBUG("Statistics object badly formed. Discarding all tags.");
+        TRC_DEBUG("Tag-info array not present, or badly formed. Discarding all tags.");
       }
+    }
+    else
+    {
+      TRC_DEBUG("Statistics object not present, or badly formed. Discarding all tags.");
     }
   }
   catch (JsonFormatError err)
