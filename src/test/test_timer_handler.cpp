@@ -44,7 +44,7 @@
 #include "test_interposer.hpp"
 #include "globals.h"
 #include "mock_infinite_table.h"
-#include "mock_scalar_table.h"
+#include "mock_infinite_scalar_table.h"
 #include "mock_increment_table.h"
 #include "mockalarm.h"
 
@@ -72,7 +72,7 @@ protected:
     _callback = new MockCallback();
     _replicator = new MockReplicator();
     _mock_tag_table = new MockInfiniteTable();
-    _mock_scalar_table = new MockScalarTable();
+    _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
     _mock_timer_alarm = new MockAlarm();
   }
@@ -100,7 +100,7 @@ protected:
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
   MockInfiniteTable* _mock_tag_table;
-  MockScalarTable* _mock_scalar_table;
+  MockInfiniteScalarTable* _mock_scalar_table;
   MockIncrementTable* _mock_increment_table;
   MockTimerStore* _store;
   MockCallback* _callback;
@@ -378,7 +378,7 @@ protected:
     _callback = new MockCallback();
     _replicator = new MockReplicator();
     _mock_tag_table = new MockInfiniteTable();
-    _mock_scalar_table = new MockScalarTable();
+    _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
     _mock_timer_alarm = new MockAlarm();
 
@@ -413,7 +413,7 @@ protected:
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
   MockInfiniteTable* _mock_tag_table;
-  MockScalarTable* _mock_scalar_table;
+  MockInfiniteScalarTable* _mock_scalar_table;
   MockIncrementTable* _mock_increment_table;
   MockTimerStore* _store;
   MockCallback* _callback;
@@ -1085,7 +1085,7 @@ protected:
     _callback = new MockCallback();
     _replicator = new MockReplicator();
     _mock_tag_table = new MockInfiniteTable();
-    _mock_scalar_table = new MockScalarTable();
+    _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
     _mock_timer_alarm = new MockAlarm();
 
@@ -1118,7 +1118,7 @@ protected:
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
   MockInfiniteTable* _mock_tag_table;
-  MockScalarTable* _mock_scalar_table;
+  MockInfiniteScalarTable* _mock_scalar_table;
   MockIncrementTable* _mock_increment_table;
   HealthChecker* _health_checker;
   TimerStore* _store;
