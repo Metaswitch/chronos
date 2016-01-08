@@ -702,15 +702,18 @@ void TimerHandler::update_statistics(std::map<std::string, uint32_t> new_tags,
       }
       else
       {
+        // Pull out old_tags[it->first] to save on processing in each check below
+        uint32_t old_tag_count = old_tags[it->first];
+
         // If new_tag count is greater, add difference to tags_to_add
-        if (it->second > old_tags[it->first])
+        if (it->second > old_tag_count)
         {
-          tags_to_add[it->first] = (it->second) - old_tags[it->first];
+          tags_to_add[it->first] = (it->second) - old_tag_count;
         }
         // If new_tag count is smaller, add difference to tags_to_remove
-        else if (it->second < old_tags[it->first])
+        else if (it->second < old_tag_count)
         {
-          tags_to_remove[it->first] = old_tags[it->first] - (it->second);
+          tags_to_remove[it->first] = old_tag_count - (it->second);
         }
         // If the tag counts are equal, do nothing
       }

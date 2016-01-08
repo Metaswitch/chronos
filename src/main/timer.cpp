@@ -691,7 +691,7 @@ Timer* Timer::from_json_obj(TimerID id,
     if ((doc.HasMember("statistics")) &&
         (doc["statistics"].IsObject()))
     {
-      // Parse out the 'statistics' block
+      // Parse out the 'statistics' block.
       rapidjson::Value& statistics = doc["statistics"];
 
       if ((statistics.HasMember("tag-info")) &&
@@ -699,39 +699,47 @@ Timer* Timer::from_json_obj(TimerID id,
       {
         rapidjson::Value& tag_info = statistics["tag-info"];
 
+        // Iterate over tag-info array, pulling out all valid tags and counts.
         for (rapidjson::Value::ValueIterator it = tag_info.Begin();
                                                   it != tag_info.End();
                                                   ++it)
         {
-          // All correctly formed tags get stored in the timer as a map of tag to count.
-          bool add_tags = true;
-
           // Default tag count if no value is found in the JSON object.
           uint32_t count = 1;
 
-          // Check that the tag is a string. If not, set add_tags to false.
+          // Check that we have an object, and it contains a "type".
+          // If not, discard this tag.
           if (((*it).IsObject())       &&
-               (it->HasMember("type")) &&
-               (add_tags = ((*it)["type"]).IsString()))
+               (it->HasMember("type")))
           {
+            // Check that the "type" is a string.
+            // If not, discard this tag, and move to next tag-info object.
+            if (!((*it)["type"]).IsString())
+            {
+              TRC_DEBUG("Tag type badly formed. Discarding some tags.");
+              continue;
+            }
             rapidjson::Value& type = (*it)["type"];
 
-            // If a count is provided, check it is an Int. If not, set add_tags to false.
-            if ((it->HasMember("count")) &&
-                (add_tags = (*it)["count"].IsUint()))
+            // If a count is provided, check it is a uint.
+            // If not, discard this tag, and move to next tag-info object.
+            if (it->HasMember("count"))
             {
+              if (!((*it)["count"].IsUint()))
+              {
+                TRC_DEBUG("Tag \"%s\" has an invalid count value. Discarding some tags.",
+                          type.GetString());
+                continue;
+              }
               count = (*it)["count"].GetUint();
             }
 
-            // If above checks pass, Increment map entry for the tags by count.
-            if (add_tags)
-            {
-              timer->tags[(type.GetString())] += count;
-            }
+            // Add the tag to the timer.
+            timer->tags[(type.GetString())] += count;
           }
           else
           {
-            TRC_DEBUG("Tag type not present or badly formed, or count present but badly formed. Discarding some tags.");
+            TRC_DEBUG("Tag-info object badly formed, or missing type. Discarding some tags.");
           }
         }
       }
