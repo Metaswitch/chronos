@@ -704,25 +704,26 @@ Timer* Timer::from_json_obj(TimerID id,
                                                   it != tag_info.End();
                                                   ++it)
         {
-          // Default tag count if no value is found in the JSON object.
-          uint32_t count = 1;
 
           // Check that we have an object, and it contains a "type".
           // If not, discard this tag.
           if (((*it).IsObject())       &&
                (it->HasMember("type")))
           {
+            rapidjson::Value& type = (*it)["type"];
             // Check that the "type" is a string.
             // If not, discard this tag, and move to next tag-info object.
-            if (!((*it)["type"]).IsString())
+            if (!(type.IsString()))
             {
               TRC_DEBUG("Tag type badly formed. Discarding some tags.");
               continue;
             }
-            rapidjson::Value& type = (*it)["type"];
+
+            // Default tag count if no value is found in the JSON object.
+            uint32_t count = 1;
 
             // If a count is provided, check it is a uint.
-            // If not, discard this tag, and move to next tag-info object.
+            // If not a uint, discard this tag, and move to next tag-info object.
             if (it->HasMember("count"))
             {
               if (!((*it)["count"].IsUint()))
