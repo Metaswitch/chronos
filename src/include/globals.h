@@ -71,6 +71,11 @@ public:
           std::string cluster_config_file);
   ~Globals();
 
+  enum struct TimerIDFormat
+  {
+    WITH_REPLICAS, WITHOUT_REPLICAS
+  };
+
   // Per node configuration
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
@@ -81,6 +86,7 @@ public:
   GLOBAL(max_tokens, int);
   GLOBAL(initial_token_rate, int);
   GLOBAL(min_token_rate, int);
+  GLOBAL(timer_id_format, TimerIDFormat);
 
   // Clustering configuration
   GLOBAL(cluster_local_ip, std::string);
@@ -96,6 +102,7 @@ public:
   void update_config();
   void lock() { pthread_rwlock_wrlock(&_lock); }
   void unlock() { pthread_rwlock_unlock(&_lock); }
+  TimerIDFormat default_id_format() { return TimerIDFormat::WITH_REPLICAS; }
 
 private:
   uint64_t generate_bloom_filter(std::string);
@@ -106,6 +113,10 @@ private:
   pthread_rwlock_t _lock; 
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
+
+  std::map<TimerIDFormat, std::string> _timer_id_format_parser =
+      {{TimerIDFormat::WITH_REPLICAS, "with_replicas"},
+       {TimerIDFormat::WITHOUT_REPLICAS, "without_replicas"}};
 };
 
 extern Globals* __globals;

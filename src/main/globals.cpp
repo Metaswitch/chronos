@@ -73,6 +73,7 @@ Globals::Globals(std::string config_file,
     ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
     ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
+    ("timers.id-format", po::value<std::string>()->default_value(_timer_id_format_parser.at(default_id_format())), "The format of the timer IDs")
 
     // Deprecated option left in for backwards compatibility
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
@@ -159,6 +160,23 @@ void Globals::update_config()
 
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
+
+  std::string timer_id_format_str = conf_map["timers.id-format"].as<std::string>();
+  TimerIDFormat timer_id_format = default_id_format();
+
+  for (std::map<TimerIDFormat, std::string>::iterator it = _timer_id_format_parser.begin();
+                                                      it != _timer_id_format_parser.end();
+                                                      ++it)
+  {
+    if (it->second == timer_id_format_str)
+    {
+      timer_id_format = it->first;
+      break;
+    }
+  }
+
+  TRC_STATUS("%s", _timer_id_format_parser.at(timer_id_format).c_str());
+  set_timer_id_format(timer_id_format);
 
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);

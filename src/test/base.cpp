@@ -68,6 +68,9 @@ void Base::SetUp()
   __globals->set_cluster_view_id(cluster_view_id);
   int bind_port = 9999;
   __globals->set_bind_port(bind_port);
+
+  Globals::TimerIDFormat timer_id_format = __globals->default_id_format();
+  __globals->set_timer_id_format(timer_id_format);
   __globals->unlock();
 }
 

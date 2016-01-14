@@ -89,7 +89,7 @@ public:
   bool is_matching_cluster_view_id(std::string cluster_view_id_to_match);
 
   // Calculate the replicas for this timer.
-  void calculate_replicas();
+  void calculate_replicas(uint64_t replica_hash);
 
   // Class method for calculating replicas, for easy UT.
   static void calculate_replicas(TimerID id,
@@ -102,26 +102,15 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
-////////////////////////////////////////////////////////////////////////////////
-//
-// These functions have been replaced by the calculate_replacs methods above,
-// but they will still be needed for upgrade, to be sorted out at a later date.
-//
-////////////////////////////////////////////////////////////////////////////////
-
-//   // Calculate/Guess at the replicas for this timer (using the replica hash if present)
-//   void calculate_replicas(uint64_t);
-// 
-//   // Class method for calculating replicas, for easy UT.
-//   static void calculate_replicas(TimerID id,
-//                                  uint64_t replica_hash,
-//                                  std::map<std::string, uint64_t> cluster_hashes,
-//                                  std::vector<std::string> cluster,
-//                                  std::vector<uint32_t> cluster_rendezvous_hashes,
-//                                  uint32_t replication_factor,
-//                                  std::vector<std::string>& replicas,
-//                                  std::vector<std::string>& extra_replicas,
-//                                  Hasher* hasher);
+  static void calculate_replicas(TimerID id,
+                                 uint64_t replica_bloom_filter,
+                                 std::map<std::string, uint64_t> cluster_bloom_filters,
+                                 std::vector<std::string> cluster,
+                                 std::vector<uint32_t> cluster_rendezvous_hashes,
+                                 uint32_t replication_factor,
+                                 std::vector<std::string>& replicas,
+                                 std::vector<std::string>& extra_replicas,
+                                 Hasher* hasher);
 
   // Mark which replicas have been informed about the timer
   int update_replica_tracker(int replica_index);
@@ -160,10 +149,16 @@ private:
   // Class functions
 public:
   static TimerID generate_timer_id();
-  static Timer* create_tombstone(TimerID);
-  static Timer* from_json(TimerID, uint32_t, std::string, std::string&, bool&);
+  static Timer* create_tombstone(TimerID, uint64_t);
+  static Timer* from_json(TimerID id,
+                          uint32_t replication_factor,
+                          uint64_t replica_hash,
+                          std::string json,
+                          std::string& error,
+                          bool& replicated);
   static Timer* from_json_obj(TimerID id,
                               uint32_t replication_factor,
+                              uint64_t replica_hash,
                               std::string& error,
                               bool& replicated,
                               rapidjson::Value& doc);

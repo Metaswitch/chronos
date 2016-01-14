@@ -101,6 +101,10 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   test_global->get_old_cluster_hashes(old_cluster_hashes);
   EXPECT_EQ(new_cluster_hashes, old_cluster_hashes);
 
+  Globals::TimerIDFormat timer_id_format;
+  test_global->get_timer_id_format(timer_id_format);
+  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITH_REPLICAS);
+
   delete test_global; test_global = NULL;
 }
 
@@ -164,6 +168,10 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   test_global->get_new_cluster_hashes(new_cluster_hashes);
   test_global->get_old_cluster_hashes(old_cluster_hashes);
   EXPECT_NE(new_cluster_hashes, old_cluster_hashes);
+
+  Globals::TimerIDFormat timer_id_format;
+  test_global->get_timer_id_format(timer_id_format);
+  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITHOUT_REPLICAS);
 
   delete test_global; test_global = NULL;
 }

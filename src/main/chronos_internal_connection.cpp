@@ -273,6 +273,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             bool replicated_timer;
             Timer* timer = Timer::from_json_obj(timer_id,
                                                 0,
+                                                0,
                                                 error_str,
                                                 replicated_timer,
                                                 (rapidjson::Value&)timer_obj);
