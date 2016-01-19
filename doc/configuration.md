@@ -21,6 +21,9 @@ The per-node configuration file has the following format:
     [dns]  
     servers = 127.0.0.1            # DNS servers to use (up to three allowed)
 
+    [timers]
+    id-format = with_replicas      # The format of the timer ID. We recommend that users do not set this configuration option.
+
 A sample configuration is provided [here](https://github.com/Metaswitch/chronos/blob/dev/etc/chronos/chronos.conf.sample). To use this configuration, copy it to `/etc/chronos/chronos.conf`, and change the `bind_address` to the IP of the Chronos node. 
 
 To update the per node configuration, make the desired changes in `etc/chronos/chronos.conf` and restart the Chronos service (e.g. run `service chronos stop` and allow monit to restart Chronos).

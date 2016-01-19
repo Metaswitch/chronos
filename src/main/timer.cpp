@@ -139,27 +139,29 @@ std::string Timer::url(std::string host)
   // We render the timer ID as a 0-padded hex string so we can parse it back out
   // later easily.
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
-  ss << "-" << std::to_string(_replication_factor);
 
-////////////////////////////////////////////////////////////////////////////////
-//
-// The format of the URL has changed to <timer_id>-<replication_factor> (as
-// implemented above). This code is still needed for upgrade, to be sorted out
-// at a later date.
-//
-////////////////////////////////////////////////////////////////////////////////
+  Globals::TimerIDFormat timer_id_format;
+  __globals->get_timer_id_format(timer_id_format);
 
-//   uint64_t hash = 0;
-//   std::map<std::string, uint64_t> cluster_bloom_filters;
-//   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
-// 
-//   for (std::vector<std::string>::iterator it = replicas.begin();
-//                                           it != replicas.end();
-//                                           ++it)
-//   {
-//     hash |= cluster_bloom_filters[*it];
-//   }
-//   ss << std::setfill('0') << std::setw(16) << std::hex << hash;
+  if (timer_id_format == Globals::TimerIDFormat::WITHOUT_REPLICAS)
+  {
+    ss << "-" << std::to_string(_replication_factor);
+  }
+  else
+  {
+    uint64_t hash = 0;
+    std::map<std::string, uint64_t> cluster_bloom_filters;
+    __globals->get_cluster_bloom_filters(cluster_bloom_filters);
+
+    for (std::vector<std::string>::iterator it = replicas.begin();
+                                            it != replicas.end();
+                                            ++it)
+    {
+      hash |= cluster_bloom_filters[*it];
+    }
+
+    ss << std::setfill('0') << std::setw(16) << std::hex << hash;
+  }
 
   return ss.str();
 }
@@ -442,7 +444,73 @@ void Timer::calculate_replicas(TimerID id,
   }
 }
 
-void Timer::calculate_replicas()
+void Timer::calculate_replicas(TimerID id,
+                               uint64_t replica_bloom_filter,
+                               std::map<std::string, uint64_t> cluster_bloom_filters,
+                               std::vector<std::string> cluster,
+                               std::vector<uint32_t> cluster_rendezvous_hashes,
+                               uint32_t replication_factor,
+                               std::vector<std::string>& replicas,
+                               std::vector<std::string>& extra_replicas,
+                               Hasher* hasher)
+{
+  std::vector<std::string> bloom_replicas;
+  if (replica_bloom_filter)
+  {
+    // Compare the hash to all the known replicas looking for matches.
+    for (std::map<std::string, uint64_t>::iterator it = cluster_bloom_filters.begin();
+         it != cluster_bloom_filters.end();
+         ++it)
+    {
+      // Quickly check if this replica might be one of the replicas for the
+      // given timer (i.e. if the replica's individual hash collides with the
+      // bloom filter we calculated when we created the hash (see `url()`).
+      if ((replica_bloom_filter & it->second) == it->second)
+      {
+        // This is probably a replica.
+        bloom_replicas.push_back(it->first);
+      }
+    }
+
+    // Recreate the vector of replicas. Use the replication factor if it's set,
+    // otherwise use the size of the existing replicas.
+    replication_factor = replication_factor > 0 ?
+                         replication_factor : bloom_replicas.size();
+  }
+
+  // Pick replication-factor replicas from the cluster.
+  calculate_rendezvous_hash(cluster,
+                            cluster_rendezvous_hashes,
+                            id,
+                            replication_factor,
+                            replicas,
+                            hasher);
+
+  if (replica_bloom_filter)
+  {
+    // Finally, add any replicas that were in the bloom filter but aren't in
+    // replicas to the extra_replicas vector.
+    for (unsigned int ii = 0;
+         ii < bloom_replicas.size();
+         ++ii)
+    {
+      if (std::find(replicas.begin(), replicas.end(), bloom_replicas[ii]) == replicas.end())
+      {
+        extra_replicas.push_back(bloom_replicas[ii]);
+      }
+    }
+  }
+
+  TRC_DEBUG("Replicas calculated:");
+  for (std::vector<std::string>::iterator it = replicas.begin();
+                                          it != replicas.end();
+                                          ++it)
+  {
+    TRC_DEBUG(" - %s", it->c_str());
+  }
+}
+
+void Timer::calculate_replicas(uint64_t replica_hash)
 {
   std::vector<std::string> new_cluster;
   std::vector<std::string> joining_cluster_addresses;
@@ -466,112 +534,38 @@ void Timer::calculate_replicas()
   std::vector<uint32_t> old_cluster_rendezvous_hashes;
   __globals->get_old_cluster_hashes(old_cluster_rendezvous_hashes);
 
-  calculate_replicas(id,
-                     new_cluster,
-                     new_cluster_rendezvous_hashes,
-                     old_cluster,
-                     old_cluster_rendezvous_hashes,
-                     _replication_factor,
-                     replicas,
-                     extra_replicas,
-                     &hasher);
+  std::map<std::string, uint64_t> cluster_bloom_filters;
+  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
+
+  // How we calculate the replicas depends on the supported Timer ID format
+  Globals::TimerIDFormat timer_id_format;
+  __globals->get_timer_id_format(timer_id_format);
+
+  if (timer_id_format == Globals::TimerIDFormat::WITHOUT_REPLICAS)
+  {
+    calculate_replicas(id,
+                       new_cluster,
+                       new_cluster_rendezvous_hashes,
+                       old_cluster,
+                       old_cluster_rendezvous_hashes,
+                       _replication_factor,
+                       replicas,
+                       extra_replicas,
+                       &hasher);
+  }
+  else
+  {
+    calculate_replicas(id,
+                       replica_hash,
+                       cluster_bloom_filters,
+                       new_cluster,
+                       new_cluster_rendezvous_hashes,
+                       _replication_factor,
+                       replicas,
+                       extra_replicas,
+                       &hasher);
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// These functions have been replaced by the calculate_replacs methods above,
-// but they will still be needed for upgrade, to be sorted out at a later date.
-//
-////////////////////////////////////////////////////////////////////////////////
-
-// void Timer::calculate_replicas(TimerID id,
-//                                uint64_t replica_bloom_filter,
-//                                std::map<std::string, uint64_t> cluster_bloom_filters,
-//                                std::vector<std::string> cluster,
-//                                std::vector<uint32_t> cluster_rendezvous_hashes,
-//                                uint32_t replication_factor,
-//                                std::vector<std::string>& replicas,
-//                                std::vector<std::string>& extra_replicas,
-//                                Hasher* hasher)
-// {
-//   std::vector<std::string> bloom_replicas;
-//   if (replica_bloom_filter)
-//   {
-//     // Compare the hash to all the known replicas looking for matches.
-// 
-//     for (std::map<std::string, uint64_t>::iterator it = cluster_bloom_filters.begin();
-//          it != cluster_bloom_filters.end();
-//          ++it)
-//     {
-//       // Quickly check if this replica might be one of the replicas for the
-//       // given timer (i.e. if the replica's individual hash collides with the
-//       // bloom filter we calculated when we created the hash (see `url()`).
-//       if ((replica_bloom_filter & it->second) == it->second)
-//       {
-//         // This is probably a replica.
-//         bloom_replicas.push_back(it->first);
-//       }
-//     }
-// 
-//     // Recreate the vector of replicas. Use the replication factor if it's set,
-//     // otherwise use the size of the existing replicas.
-//     replication_factor = replication_factor > 0 ?
-//                          replication_factor : bloom_replicas.size();
-//   }
-// 
-//   // Pick replication-factor replicas from the cluster.
-//   calculate_rendezvous_hash(cluster, cluster_rendezvous_hashes, id, replication_factor, replicas, hasher);
-// 
-//   if (replica_bloom_filter)
-//   {
-//     // Finally, add any replicas that were in the bloom filter but aren't in
-//     // replicas to the extra_replicas vector.
-//     for (unsigned int ii = 0;
-//          ii < bloom_replicas.size();
-//          ++ii)
-//     {
-//       if (std::find(replicas.begin(), replicas.end(), bloom_replicas[ii]) == replicas.end())
-//       {
-//         extra_replicas.push_back(bloom_replicas[ii]);
-//       }
-//     }
-//   }
-// 
-//   TRC_DEBUG("Replicas calculated:");
-//   for (std::vector<std::string>::iterator it = replicas.begin();
-//                                           it != replicas.end();
-//                                           ++it)
-//   {
-//     TRC_DEBUG(" - %s", it->c_str());
-//   }
-// }
-// 
-// void Timer::calculate_replicas(uint64_t replica_hash)
-// {
-//   std::map<std::string, uint64_t> cluster_bloom_filters;
-//   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
-// 
-//   std::vector<std::string> cluster;
-//   std::vector<std::string> joining_cluster_addresses;
-//   __globals->get_cluster_staying_addresses(cluster);
-//   __globals->get_cluster_joining_addresses(joining_cluster_addresses);
-//   cluster.insert(cluster.end(),
-//                  joining_cluster_addresses.begin(),
-//                  joining_cluster_addresses.end());
-// 
-//   std::vector<uint32_t> cluster_rendezvous_hashes;
-//   __globals->get_new_cluster_hashes(cluster_rendezvous_hashes);
-// 
-//   Timer::calculate_replicas(id,
-//                             replica_hash,
-//                             cluster_bloom_filters,
-//                             cluster,
-//                             cluster_rendezvous_hashes,
-//                             _replication_factor,
-//                             replicas,
-//                             extra_replicas,
-//                             &hasher);
-// }
 
 uint32_t Timer::deployment_id = 0;
 uint32_t Timer::instance_id = 0;
@@ -592,11 +586,11 @@ TimerID Timer::generate_timer_id()
 // default expires of 10 seconds, if they're found to be
 // deleting an existing tombstone, they'll use that timer's
 // interval as an expiry.
-Timer* Timer::create_tombstone(TimerID id)
+Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 {
   // Create a tombstone record that will last for 10 seconds.
   Timer* tombstone = new Timer(id, 10000, 10000);
-  tombstone->calculate_replicas();
+  tombstone->calculate_replicas(replica_hash);
   return tombstone;
 }
 
@@ -609,6 +603,7 @@ Timer* Timer::create_tombstone(TimerID id)
 // @param replicated - This will be set to true if this is a replica of a timer.
 Timer* Timer::from_json(TimerID id,
                         uint32_t replication_factor,
+                        uint64_t replica_hash,
                         std::string json,
                         std::string& error,
                         bool& replicated)
@@ -623,11 +618,12 @@ Timer* Timer::from_json(TimerID id,
     return NULL;
   }
 
-  return from_json_obj(id, replication_factor, error, replicated, doc);
+  return from_json_obj(id, replication_factor, replica_hash, error, replicated, doc);
 }
 
 Timer* Timer::from_json_obj(TimerID id,
                             uint32_t replication_factor,
+                            uint64_t replica_hash,
                             std::string& error,
                             bool& replicated,
                             rapidjson::Value& doc)
@@ -785,7 +781,7 @@ Timer* Timer::from_json_obj(TimerID id,
       // Replicas not determined above, determine them now.  Note that this implies
       // the request is from a client, not another replica.
       replicated = false;
-      timer->calculate_replicas();
+      timer->calculate_replicas(replica_hash);
     }
     else
     {
@@ -841,7 +837,7 @@ void Timer::update_cluster_information()
 {
   // Update the replica list
   replicas.clear();
-  calculate_replicas();
+  calculate_replicas(0);
 
   // Update the cluster view ID
   std::string global_cluster_view_id;

@@ -102,11 +102,25 @@ protected:
 };
 
 // Tests a valid request to delete an existing timer
-TEST_F(TestHandler, ValidJSONDeleteTimer)
+TEST_F(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
 {
   Timer* added_timer;
 
   controller_request("/timers/1234123412341234-2", htp_method_DELETE, "", "");
+  EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  _task->run();
+
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests a valid request to delete an existing timer
+TEST_F(TestHandler, ValidJSONDeleteTimerWithReplicas)
+{
+  Timer* added_timer;
+
+  controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -290,9 +304,18 @@ TEST_F(TestHandler, InvalidMethodNoTimer)
 
 // Invalid request: Tests that requests to create a timer but the method is
 // wrong get rejected.
-TEST_F(TestHandler, InvalidMethodWithTimer)
+TEST_F(TestHandler, InvalidMethodWithTimerWithoutReplicas)
 {
   controller_request("/timers/1234123412341234-1", htp_method_POST, "", "");
+  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
+  _task->run();
+}
+
+// Invalid request: Tests that requests to create a timer but the method is
+// wrong get rejected.
+TEST_F(TestHandler, InvalidMethodWithTimerWithReplicas)
+{
+  controller_request("/timers/12341234123412341234123412341234", htp_method_POST, "", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
   _task->run();
 }
