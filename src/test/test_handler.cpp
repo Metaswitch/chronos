@@ -102,7 +102,21 @@ protected:
 };
 
 // Tests a valid request to delete an existing timer
-TEST_F(TestHandler, ValidJSONDeleteTimer)
+TEST_F(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
+{
+  Timer* added_timer;
+
+  controller_request("/timers/1234123412341234-2", htp_method_DELETE, "", "");
+  EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  _task->run();
+
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests a valid request to delete an existing timer
+TEST_F(TestHandler, ValidJSONDeleteTimerWithReplicas)
 {
   Timer* added_timer;
 
@@ -123,7 +137,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
   std::vector<std::string> new_cluster_addresses;
   new_cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(new_cluster_addresses);
+  __globals->set_cluster_staying_addresses(new_cluster_addresses);
   __globals->unlock();
 
   Timer* added_timer;
@@ -155,7 +169,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
   std::vector<std::string> new_cluster_addresses;
   new_cluster_addresses.push_back("10.0.0.2:9999");
   __globals->lock();
-  __globals->set_cluster_addresses(new_cluster_addresses);
+  __globals->set_cluster_staying_addresses(new_cluster_addresses);
   __globals->unlock();
 
   Timer* added_timer;
@@ -247,6 +261,29 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
   __globals->unlock();
 }
 
+// Tests that get requests for timer references for a joining node
+// are correctly processed
+TEST_F(TestHandler, ValidTimerGetJoiningNode)
+{
+  // Set joining addresses in globals so that we look there as well.
+  std::vector<std::string> joining_cluster_addresses;
+  joining_cluster_addresses.push_back("10.0.0.4:9999");
+
+  __globals->lock();
+  __globals->set_cluster_joining_addresses(joining_cluster_addresses);
+  __globals->unlock();
+
+  controller_request("/timers?node-for-replicas=10.0.0.4:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id");
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _)).WillOnce(Return(200));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  _task->run();
+
+  joining_cluster_addresses.clear();
+  __globals->lock();
+  __globals->set_cluster_joining_addresses(joining_cluster_addresses);
+  __globals->unlock();
+}
+
 // Invalid request: Tests the case where we attempt to create a new timer,
 // but we can't create the timer from the request
 TEST_F(TestHandler, InvalidNoTimerNoBody)
@@ -267,7 +304,16 @@ TEST_F(TestHandler, InvalidMethodNoTimer)
 
 // Invalid request: Tests that requests to create a timer but the method is
 // wrong get rejected.
-TEST_F(TestHandler, InvalidMethodWithTimer)
+TEST_F(TestHandler, InvalidMethodWithTimerWithoutReplicas)
+{
+  controller_request("/timers/1234123412341234-1", htp_method_POST, "", "");
+  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
+  _task->run();
+}
+
+// Invalid request: Tests that requests to create a timer but the method is
+// wrong get rejected.
+TEST_F(TestHandler, InvalidMethodWithTimerWithReplicas)
 {
   controller_request("/timers/12341234123412341234123412341234", htp_method_POST, "", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 405, _));

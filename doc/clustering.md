@@ -10,16 +10,16 @@ Chronos's cluster settings are controlled by `/etc/chronos/chronos_cluster.conf`
 
 ## Scaling up
 
-Additional nodes are added to the cluster by adding extra `node` lines and sending a SIGHUP (so that Chronos reloads the config):
+Additional nodes are added to the cluster by adding `joining` lines and sending a SIGHUP (so that Chronos reloads the config):
 
     [cluster]
     localhost = 1.2.3.4
     node = 1.2.3.4
-    node = 2.3.4.5
-    node = 3.4.5.6
-    node = 4.5.6.7
+    joining = 2.3.4.5
+    joining = 3.4.5.6
+    joining = 4.5.6.7
 
-To rebalance any existing timers across the Chronos cluster, run `service chronos resync` on each Chronos node. You can find more details about scaling up procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
+To rebalance any existing timers across the Chronos cluster, run `service chronos resync` on each Chronos node. Once this has completed set the new nodes to `node` rather than `joining` in the cluster settings file and send another SIGHUP to force Chronos to reload the config again. You can find more details about scaling up procedures for a Clearwater deployment [here](http://clearwater.readthedocs.org/en/latest/Clearwater_Elastic_Scaling/index.html).
 
 ## Scaling down
 

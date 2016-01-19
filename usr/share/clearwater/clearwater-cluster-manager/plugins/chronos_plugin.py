@@ -43,16 +43,18 @@ import logging
 _log = logging.getLogger("chronos_plugin")
 
 def write_chronos_cluster_settings(filename, cluster_view, current_server):
-    current_or_joining = [constants.JOINING_ACKNOWLEDGED_CHANGE,
-                          constants.JOINING_CONFIG_CHANGED,
-                          constants.NORMAL_ACKNOWLEDGED_CHANGE,
-                          constants.NORMAL_CONFIG_CHANGED,
-                          constants.NORMAL]
+    joining = [constants.JOINING_ACKNOWLEDGED_CHANGE,
+               constants.JOINING_CONFIG_CHANGED],
+    staying = [constants.NORMAL_ACKNOWLEDGED_CHANGE,
+               constants.NORMAL_CONFIG_CHANGED,
+               constants.NORMAL]
     leaving = [constants.LEAVING_ACKNOWLEDGED_CHANGE,
                constants.LEAVING_CONFIG_CHANGED]
 
+    joining_servers = ([k for k, v in cluster_view.iteritems()
+                        if v in joining])
     staying_servers = ([k for k, v in cluster_view.iteritems()
-                        if v in current_or_joining])
+                        if v in staying])
     leaving_servers = ([k for k, v in cluster_view.iteritems()
                         if v in leaving])
 
@@ -62,6 +64,8 @@ def write_chronos_cluster_settings(filename, cluster_view, current_server):
         localhost = {}
         ''').format(WARNING_HEADER, current_server)
 
+    for node in joining_servers:
+        contents += 'joining = {}\n'.format(node)
     for node in staying_servers:
         contents += 'node = {}\n'.format(node)
     for node in leaving_servers:

@@ -59,7 +59,7 @@ void ControllerTask::run()
     }
     else
     {
-      add_or_update_timer(Timer::generate_timer_id(), 0);
+      add_or_update_timer(Timer::generate_timer_id(), 0, 0);
     }
   }
   else if (path == "/timers/references")
@@ -74,6 +74,8 @@ void ControllerTask::run()
       handle_delete();
     }
   }
+  // For a PUT or a DELETE the URL should be of the format
+  // <timer_id>-<replication_factor> or <timer_id><replica_hash>
   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
@@ -85,7 +87,21 @@ void ControllerTask::run()
     {
       TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
       uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
-      add_or_update_timer(timer_id, replica_hash);
+      add_or_update_timer(timer_id, 0, replica_hash);
+    }
+  }
+  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)")))
+  {
+    if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
+    {
+      TRC_DEBUG("Timer present, but the method wasn't PUT or DELETE");
+      send_http_reply(HTTP_BADMETHOD);
+    }
+    else
+    {
+      TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
+      uint32_t replication_factor = std::stoull(matches[2].str(), NULL);
+      add_or_update_timer(timer_id, replication_factor, 0);
     }
   }
   else
@@ -97,7 +113,9 @@ void ControllerTask::run()
   delete this;
 }
 
-void ControllerTask::add_or_update_timer(TimerID timer_id, uint64_t replica_hash)
+void ControllerTask::add_or_update_timer(TimerID timer_id,
+                                         uint32_t replication_factor,
+                                         uint64_t replica_hash)
 {
   Timer* timer = NULL;
   bool replicated_timer;
@@ -114,6 +132,7 @@ void ControllerTask::add_or_update_timer(TimerID timer_id, uint64_t replica_hash
     std::string body = _req.get_rx_body();
     std::string error_str;
     timer = Timer::from_json(timer_id,
+                             replication_factor,
                              replica_hash,
                              body,
                              error_str,
@@ -121,7 +140,8 @@ void ControllerTask::add_or_update_timer(TimerID timer_id, uint64_t replica_hash
 
     if (!timer)
     {
-      TRC_DEBUG("Unable to create timer");
+      TRC_ERROR("Unable to create timer - %s", error_str.c_str());
+      _req.add_content(error_str);
       send_http_reply(HTTP_BAD_REQUEST);
       return;
     }
@@ -290,7 +310,7 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
 {
   // Check the requesting node is a Chronos node
   std::vector<std::string> cluster;
-  __globals->get_cluster_addresses(cluster);
+  __globals->get_cluster_staying_addresses(cluster);
 
   bool node_in_cluster = false;
 
@@ -304,6 +324,25 @@ bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)
                 node_for_replicas.c_str());
       node_in_cluster = true;
       break;
+    }
+  }
+
+  if (!node_in_cluster)
+  {
+    std::vector<std::string> joining;
+    __globals->get_cluster_joining_addresses(joining);
+
+    for (std::vector<std::string>::iterator it = joining.begin();
+                                            it != joining.end();
+                                            ++it)
+    {
+      if (*it == node_for_replicas)
+      {
+        TRC_DEBUG("Found requesting node in joining nodes: %s",
+                  node_for_replicas.c_str());
+        node_in_cluster = true;
+        break;
+      }
     }
   }
 
