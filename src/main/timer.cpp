@@ -121,8 +121,6 @@ std::string Timer::url(std::string host)
 {
   std::stringstream ss;
 
-  // Here (and below) we render the timer ID (and replica hash) as 0-padded
-  // hex strings so we can parse it back out later easily.
   if (host != "")
   {
     std::string address;
@@ -138,18 +136,32 @@ std::string Timer::url(std::string host)
   }
 
   ss << "/timers/";
+  // We render the timer ID as a 0-padded hex string so we can parse it back out
+  // later easily.
   ss << std::setfill('0') << std::setw(16) << std::hex << id;
-  uint64_t hash = 0;
-  std::map<std::string, uint64_t> cluster_bloom_filters;
-  __globals->get_cluster_bloom_filters(cluster_bloom_filters);
 
-  for (std::vector<std::string>::iterator it = replicas.begin();
-                                          it != replicas.end();
-                                          ++it)
+  Globals::TimerIDFormat timer_id_format;
+  __globals->get_timer_id_format(timer_id_format);
+
+  if (timer_id_format == Globals::TimerIDFormat::WITHOUT_REPLICAS)
   {
-    hash |= cluster_bloom_filters[*it];
+    ss << "-" << std::to_string(_replication_factor);
   }
-  ss << std::setfill('0') << std::setw(16) << std::hex << hash;
+  else
+  {
+    uint64_t hash = 0;
+    std::map<std::string, uint64_t> cluster_bloom_filters;
+    __globals->get_cluster_bloom_filters(cluster_bloom_filters);
+
+    for (std::vector<std::string>::iterator it = replicas.begin();
+                                            it != replicas.end();
+                                            ++it)
+    {
+      hash |= cluster_bloom_filters[*it];
+    }
+
+    ss << std::setfill('0') << std::setw(16) << std::hex << hash;
+  }
 
   return ss.str();
 }
@@ -401,6 +413,47 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
 }
 
 void Timer::calculate_replicas(TimerID id,
+                               std::vector<std::string> new_cluster,
+                               std::vector<uint32_t> new_cluster_rendezvous_hashes,
+                               std::vector<std::string> old_cluster,
+                               std::vector<uint32_t> old_cluster_rendezvous_hashes,
+                               uint32_t replication_factor,
+                               std::vector<std::string>& replicas,
+                               std::vector<std::string>& extra_replicas,
+                               Hasher* hasher)
+{
+  std::vector<std::string> old_replicas;
+  replicas.empty();
+
+  // Calculate the replicas for the current cluster.
+  calculate_rendezvous_hash(new_cluster,
+                            new_cluster_rendezvous_hashes,
+                            id,
+                            replication_factor,
+                            replicas,
+                            hasher);
+
+  // Calculate what the replicas would have been in the previous cluster.
+  calculate_rendezvous_hash(old_cluster,
+                            old_cluster_rendezvous_hashes,
+                            id,
+                            replication_factor,
+                            old_replicas,
+                            hasher);
+
+  // Set any nodes that were replicas in the old cluster but aren't in the
+  // current cluster in extra_replicas to ensure that these replicas get
+  // deleted.
+  for (unsigned int ii = 0; ii < old_replicas.size(); ++ii)
+  {
+    if (std::find(replicas.begin(), replicas.end(), old_replicas[ii]) == replicas.end())
+    {
+      extra_replicas.push_back(old_replicas[ii]);
+    }
+  }
+}
+
+void Timer::calculate_replicas(TimerID id,
                                uint64_t replica_bloom_filter,
                                std::map<std::string, uint64_t> cluster_bloom_filters,
                                std::vector<std::string> cluster,
@@ -414,7 +467,6 @@ void Timer::calculate_replicas(TimerID id,
   if (replica_bloom_filter)
   {
     // Compare the hash to all the known replicas looking for matches.
-
     for (std::map<std::string, uint64_t>::iterator it = cluster_bloom_filters.begin();
          it != cluster_bloom_filters.end();
          ++it)
@@ -436,7 +488,12 @@ void Timer::calculate_replicas(TimerID id,
   }
 
   // Pick replication-factor replicas from the cluster.
-  calculate_rendezvous_hash(cluster, cluster_rendezvous_hashes, id, replication_factor, replicas, hasher);
+  calculate_rendezvous_hash(cluster,
+                            cluster_rendezvous_hashes,
+                            id,
+                            replication_factor,
+                            replicas,
+                            hasher);
 
   if (replica_bloom_filter)
   {
@@ -464,24 +521,59 @@ void Timer::calculate_replicas(TimerID id,
 
 void Timer::calculate_replicas(uint64_t replica_hash)
 {
+  std::vector<std::string> new_cluster;
+  std::vector<std::string> joining_cluster_addresses;
+  __globals->get_cluster_staying_addresses(new_cluster);
+  __globals->get_cluster_joining_addresses(joining_cluster_addresses);
+  new_cluster.insert(new_cluster.end(),
+                     joining_cluster_addresses.begin(),
+                     joining_cluster_addresses.end());
+
+  std::vector<std::string> old_cluster;
+  std::vector<std::string> leaving_cluster_addresses;
+  __globals->get_cluster_staying_addresses(old_cluster);
+  __globals->get_cluster_leaving_addresses(leaving_cluster_addresses);
+  old_cluster.insert(old_cluster.end(),
+                     leaving_cluster_addresses.begin(),
+                     leaving_cluster_addresses.end());
+
+  std::vector<uint32_t> new_cluster_rendezvous_hashes;
+  __globals->get_new_cluster_hashes(new_cluster_rendezvous_hashes);
+
+  std::vector<uint32_t> old_cluster_rendezvous_hashes;
+  __globals->get_old_cluster_hashes(old_cluster_rendezvous_hashes);
+
   std::map<std::string, uint64_t> cluster_bloom_filters;
   __globals->get_cluster_bloom_filters(cluster_bloom_filters);
 
-  std::vector<std::string> cluster;
-  __globals->get_cluster_addresses(cluster);
+  // How we calculate the replicas depends on the supported Timer ID format
+  Globals::TimerIDFormat timer_id_format;
+  __globals->get_timer_id_format(timer_id_format);
 
-  std::vector<uint32_t> cluster_rendezvous_hashes;
-  __globals->get_cluster_hashes(cluster_rendezvous_hashes);
-
-  Timer::calculate_replicas(id,
-                            replica_hash,
-                            cluster_bloom_filters,
-                            cluster,
-                            cluster_rendezvous_hashes,
-                            _replication_factor,
-                            replicas,
-                            extra_replicas,
-                            &hasher);
+  if (timer_id_format == Globals::TimerIDFormat::WITHOUT_REPLICAS)
+  {
+    calculate_replicas(id,
+                       new_cluster,
+                       new_cluster_rendezvous_hashes,
+                       old_cluster,
+                       old_cluster_rendezvous_hashes,
+                       _replication_factor,
+                       replicas,
+                       extra_replicas,
+                       &hasher);
+  }
+  else
+  {
+    calculate_replicas(id,
+                       replica_hash,
+                       cluster_bloom_filters,
+                       new_cluster,
+                       new_cluster_rendezvous_hashes,
+                       _replication_factor,
+                       replicas,
+                       extra_replicas,
+                       &hasher);
+  }
 }
 
 uint32_t Timer::deployment_id = 0;
@@ -514,11 +606,12 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 // Create a Timer object from the JSON representation.
 //
 // @param id - The unique identity for the timer (see generate_timer_id() above).
-// @param replica_hash - The replica hash extracted from the timer URL (or 0 for new timer).
+// @param replication_factor - The replication_factor extracted from the timer URL (or 0 for new timer).
 // @param json - The JSON representation of the timer.
 // @param error - This will be populated with a descriptive error string if required.
 // @param replicated - This will be set to true if this is a replica of a timer.
 Timer* Timer::from_json(TimerID id,
+                        uint32_t replication_factor,
                         uint64_t replica_hash,
                         std::string json,
                         std::string& error,
@@ -529,15 +622,16 @@ Timer* Timer::from_json(TimerID id,
 
   if (doc.HasParseError())
   {
-    error = "Failed to parse timer as JSON. Error: " +
-             std::string(rapidjson::GetParseError_En(doc.GetParseError()));
+    error = "Failed to parse timer as JSON. Error: ";
+    error.append(rapidjson::GetParseError_En(doc.GetParseError()));
     return NULL;
   }
 
-  return from_json_obj(id, replica_hash, error, replicated, doc);
+  return from_json_obj(id, replication_factor, replica_hash, error, replicated, doc);
 }
 
 Timer* Timer::from_json_obj(TimerID id,
+                            uint32_t replication_factor,
                             uint64_t replica_hash,
                             std::string& error,
                             bool& replicated,
@@ -573,8 +667,9 @@ Timer* Timer::from_json_obj(TimerID id,
     if ((interval_s.GetInt() == 0) && (repeat_for_int != 0))
     {
       // If the interval time is 0 and the repeat_for_int isn't then reject the timer.
-      error = "Can't have a zero interval time with a non-zero (" +
-               std::to_string(repeat_for_int) + ") repeat-for time";
+      error = "Can't have a zero interval time with a non-zero (";
+      error.append(std::to_string(repeat_for_int));
+      error.append(") repeat-for time");
       return NULL;
     }
 
@@ -658,18 +753,34 @@ Timer* Timer::from_json_obj(TimerID id,
           JSON_GET_INT_MEMBER(reliability,
                               "replication-factor",
                               timer->_replication_factor);
+
+          // If the URL contained a replication factor then this replication
+          // factor must match the replication factor in the JSON body.
+          if ((replication_factor > 0) &&
+              (timer->_replication_factor != replication_factor))
+          {
+            error = "Replication factor on the timer ID (";
+            error.append(std::to_string(replication_factor));
+            error.append(") doesn't match the JSON body (");
+            error.append(std::to_string(timer->_replication_factor));
+            error.append(")");
+            delete timer; timer = NULL;
+            return NULL;
+          }
         }
         else
         {
-          // Default replication factor is 2.
-          timer->_replication_factor = 2;
+          // If the URL contained a replication factor, use that, otherwise
+          // default replication factor is 2.
+          timer->_replication_factor = replication_factor ? replication_factor : 2;
         }
       }
     }
     else
     {
-      // Default to 2 replicas
-      timer->_replication_factor = 2;
+      // If the URL contained a replication factor, use that, otherwise
+      // default replication factor is 2.
+      timer->_replication_factor = replication_factor ? replication_factor : 2;
     }
 
     timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;

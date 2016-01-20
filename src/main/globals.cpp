@@ -61,7 +61,8 @@ Globals::Globals(std::string config_file,
     ("http.bind-address", po::value<std::string>()->default_value("0.0.0.0"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
     ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
-    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster")
+    ("cluster.joining", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are joining")
+    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster that are staying")
     ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
@@ -72,6 +73,7 @@ Globals::Globals(std::string config_file,
     ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
     ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
+    ("timers.id-format", po::value<std::string>()->default_value(_timer_id_format_parser.at(default_id_format())), "The format of the timer IDs")
 
     // Deprecated option left in for backwards compatibility
     ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
@@ -159,25 +161,77 @@ void Globals::update_config()
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
 
+  std::string timer_id_format_str = conf_map["timers.id-format"].as<std::string>();
+  TimerIDFormat timer_id_format = default_id_format();
+
+  for (std::map<TimerIDFormat, std::string>::iterator it = _timer_id_format_parser.begin();
+                                                      it != _timer_id_format_parser.end();
+                                                      ++it)
+  {
+    if (it->second == timer_id_format_str)
+    {
+      timer_id_format = it->first;
+      break;
+    }
+  }
+
+  TRC_STATUS("%s", _timer_id_format_parser.at(timer_id_format).c_str());
+  set_timer_id_format(timer_id_format);
+
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);
   TRC_STATUS("Cluster local address: %s", cluster_local_address.c_str());
 
-  std::vector<std::string> cluster_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
-  set_cluster_addresses(cluster_addresses);
+  std::vector<std::string> cluster_joining_addresses = conf_map["cluster.joining"].as<std::vector<std::string>>();
+  set_cluster_joining_addresses(cluster_joining_addresses);
+
+  std::vector<std::string> cluster_staying_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
+  set_cluster_staying_addresses(cluster_staying_addresses);
+
+  std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
+  set_cluster_leaving_addresses(cluster_leaving_addresses);
+
+  // Figure out the new cluster by combining the nodes that are staying and the
+  // nodes that are joining.
+  std::vector<std::string> new_cluster_addresses = cluster_staying_addresses;
+  new_cluster_addresses.insert(new_cluster_addresses.end(),
+                               cluster_joining_addresses.begin(),
+                               cluster_joining_addresses.end());
+  std::vector<uint32_t> new_cluster_rendezvous_hashes = generate_hashes(new_cluster_addresses);
+  set_new_cluster_hashes(new_cluster_rendezvous_hashes);
   
-  std::vector<uint32_t> cluster_rendezvous_hashes = generate_hashes(cluster_addresses);
-  set_cluster_hashes(cluster_rendezvous_hashes);
+  // Figure out the old cluster by combining the nodes that are staying and the
+  // nodes that are leaving.
+  std::vector<std::string> old_cluster_addresses = cluster_staying_addresses;
+  old_cluster_addresses.insert(old_cluster_addresses.end(),
+                               cluster_leaving_addresses.begin(),
+                               cluster_leaving_addresses.end());
+  std::vector<uint32_t> old_cluster_rendezvous_hashes = generate_hashes(old_cluster_addresses);
+  set_old_cluster_hashes(old_cluster_rendezvous_hashes);
  
   std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 
-  TRC_STATUS("Cluster nodes:");
-  for (std::vector<std::string>::iterator it = cluster_addresses.begin();
-                                          it != cluster_addresses.end();
+  TRC_STATUS("Staying nodes:");
+  for (std::vector<std::string>::iterator it = cluster_staying_addresses.begin();
+                                          it != cluster_staying_addresses.end();
                                           ++it)
   {
     TRC_STATUS(" - %s", it->c_str());
+  }
+
+  TRC_STATUS("Joining nodes:");
+  for (std::vector<std::string>::iterator it = cluster_joining_addresses.begin();
+                                          it != cluster_joining_addresses.end();
+                                          ++it)
+  {
+    TRC_STATUS(" - %s", it->c_str());
+  }
+
+  for (std::vector<std::string>::iterator it = new_cluster_addresses.begin();
+                                          it != new_cluster_addresses.end();
+                                          ++it)
+  {
     uint64_t bloom = generate_bloom_filter(*it);
     cluster_bloom_filters[*it] = bloom;
     cluster_view_id |= bloom;
@@ -189,10 +243,8 @@ void Globals::update_config()
   set_cluster_view_id(cluster_view_id_str);
   TRC_STATUS("Cluster view ID: %s", cluster_view_id_str.c_str());
 
-  std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
-  set_cluster_leaving_addresses(cluster_leaving_addresses);
-
-  CL_CHRONOS_CLUSTER_CFG_READ.log(cluster_addresses.size(),
+  CL_CHRONOS_CLUSTER_CFG_READ.log(cluster_joining_addresses.size(),
+                                  cluster_staying_addresses.size(),
                                   cluster_leaving_addresses.size());
 
   unlock();

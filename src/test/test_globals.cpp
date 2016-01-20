@@ -83,13 +83,27 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   EXPECT_EQ(cluster_local_address, "localhost:7253");
 
   std::vector<std::string> cluster_addresses;
-  test_global->get_cluster_addresses(cluster_addresses);
+  test_global->get_cluster_staying_addresses(cluster_addresses);
   EXPECT_EQ(cluster_addresses.size(), (unsigned)1);
   EXPECT_EQ(cluster_addresses[0], "localhost:7253");
+
+  std::vector<std::string> cluster_joining_addresses;
+  test_global->get_cluster_joining_addresses(cluster_joining_addresses);
+  EXPECT_EQ(cluster_joining_addresses.size(), (unsigned)0);
 
   std::vector<std::string> cluster_leaving_addresses;
   test_global->get_cluster_leaving_addresses(cluster_leaving_addresses);
   EXPECT_EQ(cluster_leaving_addresses.size(), (unsigned)0);
+
+  std::vector<uint32_t> new_cluster_hashes;
+  std::vector<uint32_t> old_cluster_hashes;
+  test_global->get_new_cluster_hashes(new_cluster_hashes);
+  test_global->get_old_cluster_hashes(old_cluster_hashes);
+  EXPECT_EQ(new_cluster_hashes, old_cluster_hashes);
+
+  Globals::TimerIDFormat timer_id_format;
+  test_global->get_timer_id_format(timer_id_format);
+  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITH_REPLICAS);
 
   delete test_global; test_global = NULL;
 }
@@ -132,16 +146,32 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   EXPECT_EQ(cluster_local_address, "1.2.3.4");
 
   std::vector<std::string> cluster_addresses;
-  test_global->get_cluster_addresses(cluster_addresses);
+  test_global->get_cluster_staying_addresses(cluster_addresses);
   EXPECT_EQ(cluster_addresses.size(), (unsigned)2);
   EXPECT_EQ(cluster_addresses[0], "1.2.3.4");
   EXPECT_EQ(cluster_addresses[1], "1.2.3.5");
+
+  std::vector<std::string> cluster_joining_addresses;
+  test_global->get_cluster_joining_addresses(cluster_joining_addresses);
+  EXPECT_EQ(cluster_joining_addresses.size(), (unsigned)2);
+  EXPECT_EQ(cluster_joining_addresses[0], "3.4.5.6");
+  EXPECT_EQ(cluster_joining_addresses[1], "3.4.5.7");
 
   std::vector<std::string> cluster_leaving_addresses;
   test_global->get_cluster_leaving_addresses(cluster_leaving_addresses);
   EXPECT_EQ(cluster_leaving_addresses.size(), (unsigned)2);
   EXPECT_EQ(cluster_leaving_addresses[0], "2.3.4.5");
   EXPECT_EQ(cluster_leaving_addresses[1], "2.3.4.6");
+
+  std::vector<uint32_t> new_cluster_hashes;
+  std::vector<uint32_t> old_cluster_hashes;
+  test_global->get_new_cluster_hashes(new_cluster_hashes);
+  test_global->get_old_cluster_hashes(old_cluster_hashes);
+  EXPECT_NE(new_cluster_hashes, old_cluster_hashes);
+
+  Globals::TimerIDFormat timer_id_format;
+  test_global->get_timer_id_format(timer_id_format);
+  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITHOUT_REPLICAS);
 
   delete test_global; test_global = NULL;
 }

@@ -42,37 +42,34 @@
 /*****************************************************************************/
 /* Test fixture                                                              */
 /*****************************************************************************/
+class WithReplicas {
+  static void set_timer_id_format() {
+    Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITH_REPLICAS;
+    __globals->set_timer_id_format(timer_id_format);
+  }
+};
 
-class TestTimer : public Base
+class WithoutReplicas {
+  static void set_timer_id_format() {
+    Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITHOUT_REPLICAS;
+    __globals->set_timer_id_format(timer_id_format);
+  }
+};
+
+template <class T>
+class TestTimerIDFormats : public Base
 {
 protected:
   virtual void SetUp()
   {
     Base::SetUp();
-
-    std::vector<std::string> replicas;
-    replicas.push_back("10.0.0.1:9999");
-    replicas.push_back("10.0.0.2:9999");
-    std::map<std::string, uint32_t> tags;
-    tags["TAG1"]++;
-    tags["TAG2"]++;
-    TimerID id = (TimerID)UINT_MAX + 10;
-    uint32_t interval_ms = 100;
-    uint32_t repeat_for = 200;
-
-    t1 = new Timer(id, interval_ms, repeat_for);
-    t1->start_time_mono_ms = 1000000;
-    t1->sequence_number = 0;
-    t1->replicas = replicas;
-    t1->tags = tags;
-    t1->callback_url = "http://localhost:80/callback";
-    t1->callback_body = "stuff stuff stuff";
-    t1->cluster_view_id = "cluster-view-id";
+    T::set_timer_id_format();
   }
 
   virtual void TearDown()
   {
-    delete t1;
+    Globals::TimerIDFormat timer_id_format = __globals->default_id_format();
+    __globals->set_timer_id_format(timer_id_format);
     Base::TearDown();
   }
 
@@ -81,15 +78,16 @@ protected:
   {
     return t->_replication_factor;
   }
-
-  Timer* t1;
 };
 
 /*****************************************************************************/
 /* Class functions                                                           */
 /*****************************************************************************/
 
-TEST_F(TestTimer, FromJSONTests)
+typedef ::testing::Types<WithReplicas, WithoutReplicas> TimerIDFormatTypes;
+TYPED_TEST_CASE(TestTimerIDFormats, TimerIDFormatTypes);
+
+TYPED_TEST(TestTimerIDFormats, FromJSONTests)
 {
   // The following tests depend on the current time, so install the shim
   cwtest_completely_control_time();
@@ -156,7 +154,7 @@ TEST_F(TestTimer, FromJSONTests)
   std::string specific_replicas = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"cluster-view-id\": \"cluster-view-id\", \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}";
 
   // You can skip the `repeat-for` to set up a one-shot timer.
-  std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 3 }}";
+  std::string no_repeat_for = "{\"timing\": { \"interval\": 100 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 2 }}";
 
   // You can (should) specify start time by relative delta, not absolute
   // timestamp, the relative number should be preferred.
@@ -173,75 +171,83 @@ TEST_F(TestTimer, FromJSONTests)
        ++it)
   {
     std::string err; bool replicated;
-    EXPECT_EQ((void*)NULL, Timer::from_json(1, 0, *it, err, replicated)) << *it;
+    EXPECT_EQ((void*)NULL, Timer::from_json(1, 0, 0, *it, err, replicated)) << *it;
     EXPECT_NE("", err);
   }
 
   std::string err; bool replicated; Timer* timer;
 
   // If you don't specify a replication-factor, use 2.
-  timer = Timer::from_json(1, 0, default_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 0, 0, default_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(2, get_replication_factor(timer));
+  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
   EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
 
-  timer = Timer::from_json(1, 0, default_repl_factor2, err, replicated);
+  timer = Timer::from_json(1, 0, 0, default_repl_factor2, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(2, get_replication_factor(timer));
+  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
   EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
 
   // If you do specify a replication-factor, use that.
-  timer = Timer::from_json(1, 0, custom_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 0, 0, custom_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer); EXPECT_EQ("", err); EXPECT_FALSE(replicated);
-  EXPECT_EQ(3, get_replication_factor(timer)); EXPECT_EQ(3u,
-                                                         timer->replicas.size());
+  EXPECT_EQ(3, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(3u, timer->replicas.size());
   delete timer;
 
   // Get the replicas from the bloom filter if given
-  timer = Timer::from_json(1, 0x11011100011101, default_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, default_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(2, get_replication_factor(timer));
+  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
   delete timer;
 
-  timer = Timer::from_json(1, 0x11011100011101, custom_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 3, 0x11011100011101, custom_repl_factor, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(3, get_replication_factor(timer));
+  EXPECT_EQ(3, TestFixture::get_replication_factor(timer));
+  delete timer;
+
+  // If the replication factor on the URL (in this case 2) doesn't match the
+  // replication factor in the JSON body, reject the JSON.
+  timer = Timer::from_json(1, 2, 0x11011100011101, custom_repl_factor, err, replicated);
+  EXPECT_EQ((void*)NULL, timer);
+  EXPECT_NE("", err);
+  err = "";
   delete timer;
 
   // If specific replicas are specified, use them (regardless of presence of
   // bloom hash).
-  timer = Timer::from_json(1, 0x11011100011101, specific_replicas, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, specific_replicas, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_TRUE(replicated);
-  EXPECT_EQ(2, get_replication_factor(timer));
+  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
   delete timer;
 
   // If no repeat for was specifed, use the interval
-  timer = Timer::from_json(1, 0x11011100011101, no_repeat_for, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, no_repeat_for, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(timer->interval_ms, timer->repeat_for);
   delete timer;
 
   // If delta-start-time was provided, use that
-  timer = Timer::from_json(1, 0x11011100011101, delta_start_time, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, delta_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, timer->start_time_mono_ms);
   delete timer;
 
   // If absolute start time was proved (and no delta-time), use that.
-  timer = Timer::from_json(1, 0x11011100011101, absolute_start_time, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, absolute_start_time, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
 
@@ -253,6 +259,53 @@ TEST_F(TestTimer, FromJSONTests)
   // Restore real time
   cwtest_reset_time();
 }
+
+/*****************************************************************************/
+/* Test fixture                                                              */
+/*****************************************************************************/
+
+class TestTimer : public Base
+{
+protected:
+  virtual void SetUp()
+  {
+    Base::SetUp();
+
+    std::vector<std::string> replicas;
+    replicas.push_back("10.0.0.1:9999");
+    replicas.push_back("10.0.0.2:9999");
+    std::map<std::string, uint32_t> tags;
+    tags["TAG1"]++;
+    tags["TAG2"]++;
+    TimerID id = (TimerID)UINT_MAX + 10;
+    uint32_t interval_ms = 100;
+    uint32_t repeat_for = 200;
+
+    t1 = new Timer(id, interval_ms, repeat_for);
+    t1->start_time_mono_ms = 1000000;
+    t1->sequence_number = 0;
+    t1->replicas = replicas;
+    t1->_replication_factor = 2;
+    t1->tags = tags;
+    t1->callback_url = "http://localhost:80/callback";
+    t1->callback_body = "stuff stuff stuff";
+    t1->cluster_view_id = "cluster-view-id";
+  }
+
+  virtual void TearDown()
+  {
+    delete t1;
+    Base::TearDown();
+  }
+
+  // Helper function to access timer private variables
+  int get_replication_factor(Timer* t)
+  {
+    return t->_replication_factor;
+  }
+
+  Timer* t1;
+};
 
 // Tests that for a JSON body with a badly formed "statistics" object,
 // all tag data is rejected, creating a timer with an empty tags map.
@@ -266,7 +319,7 @@ TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
   std::string bad_statistics_object = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\":[]}";
 
   // If bad statistics object, no error, but no tags.
-  timer = Timer::from_json(1, 0, bad_statistics_object, err, replicated);
+  timer = Timer::from_json(1, 0, 0, bad_statistics_object, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(empty_tags, timer->tags);
@@ -285,7 +338,7 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
   std::string bad_tag_info_array = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": {\"type\": \"TAG1\", \"count\":1}}}";
 
   // If bad tag-info array, no error, but no tags.
-  timer = Timer::from_json(1, 0, bad_tag_info_array, err, replicated);
+  timer = Timer::from_json(1, 0, 0, bad_tag_info_array, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(empty_tags, timer->tags);
@@ -307,7 +360,7 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
   std::string bad_tag_info_object = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": [{\"nottype\": \"TAG1\", \"count\":1}, {\"type\": \"TAG2\", \"count\":-1}, {\"type\": \"TAG3\", \"count\":\"one\"}, {\"type\": 4, \"count\":3}, {\"type\": \"TAG5\", \"count\": 3}]}}";
 
   // If bad tag-info object, no error, but no bad tags.
-  timer = Timer::from_json(1, 0, bad_tag_info_object, err, replicated);
+  timer = Timer::from_json(1, 0, 0, bad_tag_info_object, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(expected_tags, timer->tags);
@@ -329,7 +382,7 @@ TEST_F(TestTimer, FromJSONTestsStatisticsMultipleTags)
   // We should also correctly parse large numbers for count.
   std::string multiple_tags = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": [{\"type\": \"TAG1\", \"count\":1}, {\"type\": \"TAG2\", \"count\":5}, {\"type\": \"TAG2\", \"count\":3}, {\"type\": \"TAG3\", \"count\": 1234567890}]}}";
 
-  timer = Timer::from_json(1, 0, multiple_tags, err, replicated);
+  timer = Timer::from_json(1, 0, 0, multiple_tags, err, replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(expected_tags, timer->tags);
@@ -391,10 +444,28 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 /* Instance Functions                                                        */
 /*****************************************************************************/
 
-TEST_F(TestTimer, URL)
+TEST_F(TestTimer, URLWithoutReplicas)
 {
+  Globals::TimerIDFormat stored_timer_id;
+  Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITHOUT_REPLICAS;
+  __globals->get_timer_id_format(stored_timer_id);
+
+  __globals->set_timer_id_format(new_timer_id);
+  EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname:9999"));
+  EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname"));
+  __globals->set_timer_id_format(stored_timer_id);
+}
+
+TEST_F(TestTimer, URLWithReplicas)
+{
+  Globals::TimerIDFormat stored_timer_id;
+  Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITH_REPLICAS;
+  __globals->get_timer_id_format(stored_timer_id);
+
+  __globals->set_timer_id_format(new_timer_id);
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
+  __globals->set_timer_id_format(stored_timer_id);
 }
 
 TEST_F(TestTimer, ToJSON)
@@ -429,7 +500,7 @@ TEST_F(TestTimer, ToJSON)
 
   std::string err;
   bool replicated;
-  Timer* t3 = Timer::from_json(2, 0, json, err, replicated);
+  Timer* t3 = Timer::from_json(2, 0, 0, json, err, replicated);
   EXPECT_EQ(err, "");
   EXPECT_TRUE(replicated);
   ASSERT_NE((void*)NULL, t2);

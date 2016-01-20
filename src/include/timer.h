@@ -88,13 +88,23 @@ public:
   // Check if the timer has a matching cluster view ID
   bool is_matching_cluster_view_id(std::string cluster_view_id_to_match);
 
-  // Calculate/Guess at the replicas for this timer (using the replica hash if present)
-  void calculate_replicas(uint64_t);
+  // Calculate the replicas for this timer.
+  void calculate_replicas(uint64_t replica_hash);
 
   // Class method for calculating replicas, for easy UT.
   static void calculate_replicas(TimerID id,
-                                 uint64_t replica_hash,
-                                 std::map<std::string, uint64_t> cluster_hashes,
+                                 std::vector<std::string> new_cluster,
+                                 std::vector<uint32_t> new_cluster_rendezvous_hashes,
+                                 std::vector<std::string> old_cluster,
+                                 std::vector<uint32_t> old_cluster_rendezvous_hashes,
+                                 uint32_t replication_factor,
+                                 std::vector<std::string>& replicas,
+                                 std::vector<std::string>& extra_replicas,
+                                 Hasher* hasher);
+
+  static void calculate_replicas(TimerID id,
+                                 uint64_t replica_bloom_filter,
+                                 std::map<std::string, uint64_t> cluster_bloom_filters,
                                  std::vector<std::string> cluster,
                                  std::vector<uint32_t> cluster_rendezvous_hashes,
                                  uint32_t replication_factor,
@@ -140,8 +150,14 @@ private:
 public:
   static TimerID generate_timer_id();
   static Timer* create_tombstone(TimerID, uint64_t);
-  static Timer* from_json(TimerID, uint64_t, std::string, std::string&, bool&);
+  static Timer* from_json(TimerID id,
+                          uint32_t replication_factor,
+                          uint64_t replica_hash,
+                          std::string json,
+                          std::string& error,
+                          bool& replicated);
   static Timer* from_json_obj(TimerID id,
+                              uint32_t replication_factor,
                               uint64_t replica_hash,
                               std::string& error,
                               bool& replicated,

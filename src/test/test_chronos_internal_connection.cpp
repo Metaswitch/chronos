@@ -82,7 +82,7 @@ protected:
                                              &_fake_scalar,
                                              _fake_counter_table,
                                              _fake_counter_table);
-    __globals->get_cluster_addresses(_cluster_addresses);
+    __globals->get_cluster_staying_addresses(_cluster_addresses);
     __globals->get_cluster_local_ip(_local_ip);
 
     fakecurl_responses.clear();

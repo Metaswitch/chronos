@@ -83,7 +83,7 @@ The disadvantage of larger replication factors are:
 * Larger number of duplicated pops in the case of a net-split (you may see up to `n` duplicates each pop).
 * Longer delays between the requested interval and the time of the actual pop (up to `2 sec * (n - 1)` in some failure cases).
 
-The default value for the replication factor (if unspecified) is `2`.
+The default value for the replication factor (if unspecified) is `2`. The replication factor cannot be changed once the timer has been created.
 
 #### Request (DELETE)
 

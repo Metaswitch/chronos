@@ -37,10 +37,17 @@ This accesses the repository over SSH on Github, and will not work unless you ha
     git config --global url."https://github.com/".insteadOf git@github.com:
     git clone --recursive git@github.com:Metaswitch/chronos.git
 
+## Building Dependencies
+
+To build Chronos's 3rd party dependencies, change to the top-level `chronos`
+directory and issue `make submodules`.  You will want to re-run this command
+after changing any submodule or pulling a newer release of Chronos that
+updates the submodule references (after running `git submodule update`).
+
 ## Building Binaries
 
-To build Chronos and all its dependencies, change to the top-level `chronos`
-directory and issue `make`.  
+To build Chronos, change to the top-level `chronos` directory and issue `make`.
+You must have built the dependencies first (see above).
 
 On completion,
 
@@ -50,7 +57,8 @@ On completion,
 ## Building Debian Packages
 
 To build Debian packages, run `make deb`.  On completion, Debian packages
-are in the parent of the top-level `chronos` directory.
+are in the parent of the top-level `chronos` directory.  You must have built
+the dependencies first (see above).
 
 `make deb` can push the resulting binaries to a Debian
 repository server.  To push to a repository server on the build machine, set
