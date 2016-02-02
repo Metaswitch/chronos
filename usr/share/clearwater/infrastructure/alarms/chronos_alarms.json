@@ -8,12 +8,18 @@
                 {
                     "severity": "CLEARED",
                     "details": "The Chronos process has been restored to normal operation.",
-                    "description": "Chronos: Process failure cleared"
+                    "description": "Chronos: Process failure cleared",
+                    "cause": "The Chronos process has been restored to normal operation.  The previously issued alarm has been cleared.",
+                    "effect": "Fully redundant timer operation has been restored for the Sprout I-CSCF and S-CSCF or Ralf interim billing records capability depending on which node issues the alarm.",
+                    "action": "No action."
                 },
                 {
                     "severity": "MAJOR",
                     "details": "Monit has detected that the Chronos process has failed. A restart will automatically be attempted. If this alarm does not clear, the Chronos process may have been stopped or an unrecoverable failure may have occurred.",
-                    "description": "Chronos: Process failure"
+                    "description": "Chronos: Process failure",
+                    "cause": "The system has detected that the Chronos process has failed.",
+                    "effect": "The Sprout I-CSCF and S-CSCF or Ralf CTF (depending on which node issued the alarm) have lost some redundancy of timer operations but can still operate normally. This alarm is not service affecting.",
+                    "action": "Monitor for this alarm to clear. If this alarm does not clear then call Metaswitch Support."
                 }
             ]
         },
@@ -25,12 +31,18 @@
                 {
                     "severity": "CLEARED",
                     "details": "Chronos local timer delivery restored to normal operation.",
-                    "description": "Chronos: Timer pop error cleared"
+                    "description": "Chronos: Timer pop error cleared",
+                    "cause": "Chronos local timer delivery restored to normal operation. The previously issued alarm has been cleared.",
+                    "effect": "Normal timer operations for Sprout or Ralf (depending on which node issued the original alarm) has been restored.",
+                    "action": "No action."
                 },
                 {
                     "severity": "MAJOR",
                     "details": "Chronos was unable to pop a timer on the last replica due to a local delivery error. If this alarm does not clear, the local Chronos client cannot be contacted and may have failed.",
-                    "description": "Chronos: Timer pop error"
+                    "description": "Chronos: Timer pop error",
+                    "cause": "Chronos was unable to pop a timer on the last replica due to a local delivery error.",
+                    "effect": "A timed operation was not handled because Chronos could not deliver the timeout indication to Sprout or Ralf (depending on which node issued the alarm). If the alarm came from Sprout then registration and subscription timeouts are not communicated. If the alarm came from Ralf then Interim messages are not transmitted to the CDF.",
+                    "action": "Ensure that the Sprout or Ralf process is running. If not then restart the Sprout or Ralf process on the node that issued the Chronos alarm unless it already restarted itself. You may observe that other Sprout or Ralf processes also restarted around the same time."
                 }
             ]
         },
@@ -42,12 +54,18 @@
                 {
                     "severity": "CLEARED",
                     "details": "The local Chronos process is synchronized with the rest of the cluster. Chronos resynchronization is no longer blocking a scale-up or scale-down operation (a different type of resynchronization operation may still be in progress though.",
-                    "description": "Chronos: Chronos timers are synchronized"
+                    "description": "Chronos: Chronos timers are synchronized",
+                    "cause": "The local Chronos process is synchronized with the rest of the cluster. Chronos resynchronization is no longer blocking a scale-up or scale-down operation (other databases may still be re-synchronizing). This alarm is caused by the clearing of a previously issued alarm for adding nodes to deployment.",
+                    "effect": "The Clearwater node being added has completed the Chronos clustering and is now operational once all clustering and shared config alarms have cleared and the node has been added to DNS.",
+                    "action": "No action. The user can continue with any scaling operations (e.g. add the node to DNS or turn it down)."
                 },
                 {
                     "severity": "MINOR",
                     "details": "The local Chronos process is resynchronizing with the rest of the cluster. Service should be unaffected. If a scale-up or scale-down operation is in progress, wait for resynchronization to finish before completing the operation.",
-                    "description": "Chronos: Chronos database resynchronization in progress"
+                    "description": "Chronos: Chronos database resynchronization in progress",
+                    "cause": "The local Chronos process is resynchronizing with the rest of the cluster. This alarm is caused by adding or removing nodes to a deployment.",
+                    "effect": "Service is unaffected.",
+                    "action": "If a scale-up or scale-down operation is in progress, wait for resynchronization to finish before completing the operation."
                 }
             ]
         }
