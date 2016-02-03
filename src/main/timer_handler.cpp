@@ -293,29 +293,9 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   pthread_mutex_unlock(&_mutex);
 }
 
-void TimerHandler::return_timer(Timer* timer, bool callback_successful)
+void TimerHandler::return_timer(Timer* timer)
 {
-  if (!callback_successful)
-  {
-    // The HTTP Callback failed, so we should set the alarm
-    // We also wipe all the tags this timer had from our count, as the timer
-    // will be destroyed
-    update_statistics(std::map<std::string, uint32_t>(), timer->tags);
-
-    if ((_timer_pop_alarm) && (timer->is_last_replica()))
-    {
-      _timer_pop_alarm->set();
-    }
-
-    // Decrement global timer count on deleting timer
-    TRC_DEBUG("Callback failed");
-    _all_timers_table->decrement(1);
-
-    delete timer;
-    return;
-  }
-
-  // We succeeded but may need to tombstone the timer
+  // We may need to tombstone the timer
   if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
   {
     // This timer won't pop again, so tombstone it and update statistics
@@ -327,12 +307,66 @@ void TimerHandler::return_timer(Timer* timer, bool callback_successful)
     _all_timers_table->decrement(1);
   }
 
-  // Replicate and add the timer back to store
-  _replicator->replicate(timer);
-
   // Timer will be re-added, but stats should not be updated, as
   // no stats were altered on it popping
   add_timer(timer, false);
+}
+
+void TimerHandler::handle_successful_callback(TimerID timer_id)
+{
+  // Fetch the timer from the store and replicate it.
+  pthread_mutex_lock(&_mutex);
+  TimerPair timer_pair;
+  bool timer_found = _store->fetch(timer_id, timer_pair);
+
+  if (timer_found)
+  {
+    Timer* timer;
+    timer = timer_pair.active_timer;
+    _replicator->replicate(timer);
+
+    std::vector<std::string> cluster_view_id_vector;
+    cluster_view_id_vector.push_back(timer->cluster_view_id);
+    if (timer_pair.information_timer)
+    {
+      cluster_view_id_vector.push_back(timer_pair.information_timer->cluster_view_id);
+    }
+    _store->insert(timer_pair, timer_id, timer->next_pop_time(), cluster_view_id_vector);
+    timer = NULL;
+    timer_pair.information_timer = NULL;
+  }
+
+  pthread_mutex_unlock(&_mutex);
+}
+
+void TimerHandler::handle_failed_callback(TimerID timer_id)
+{
+  // Fetch the timer from the store and delete it.
+  pthread_mutex_lock(&_mutex);
+  TimerPair failed_pair;
+  bool timer_found = _store->fetch(timer_id, failed_pair);
+  pthread_mutex_unlock(&_mutex);
+
+  if (timer_found)
+  {
+    Timer* timer;
+    timer = failed_pair.active_timer;
+
+    // If the timer is the last replica, we should set the alarm.
+    if ((_timer_pop_alarm) && (timer->is_last_replica()))
+    {
+      _timer_pop_alarm->set();
+    }
+
+    // If the timer is not a tombstone we also update statistics.
+    if (!timer->is_tombstone())
+    {
+      update_statistics(std::map<std::string, uint32_t>(), timer->tags);
+      _all_timers_table->decrement(1);
+    }
+  }
+  delete failed_pair.active_timer; failed_pair.active_timer = NULL;
+  delete failed_pair.information_timer; failed_pair.information_timer = NULL;
 }
 
 void TimerHandler::update_replica_tracker_for_timer(TimerID id,
