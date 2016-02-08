@@ -140,7 +140,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopOneTimer)
 
   _th = new TimerHandler(_store, _callback, _replicator, _mock_timer_alarm, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
-  delete timer;
+  delete timer; timer = NULL;
 }
 
 TEST_F(TestTimerHandlerFetchAndPop, PopRepeatedTimer)
@@ -437,7 +437,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTimer)
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer it's passed through to
+  // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
 
@@ -886,21 +886,20 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   delete insert_pair.active_timer;
 }
 
-// Return a timer to the handler as if it has been passed back from HTTPCallback
-TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerSuccessful)
+// Return a timer to the handler as if it has been passed back from HTTPCallback and will pop again.
+TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWillPopAgain)
 {
   Timer* timer = default_timer(1);
   TimerPair insert_pair;
 
   // The timer is being returned from a callback. This shouldn't change any
   // counts/tags
-  EXPECT_CALL(*_replicator, replicate(timer));
   EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
                        WillOnce(SaveArg<0>(&insert_pair));
-  _th->return_timer(timer, true);
+  _th->return_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer (as the pop would have
+  // The timer is successfully added. As it's a new timer (as the pop would have
   // removed it from the store) it's passed through to the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
 
@@ -909,47 +908,113 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerSuccessful)
   delete insert_pair.active_timer;
 }
 
-// Return a timer to the handler as if it has been passed back from HTTPCallback
-// but has been dropped (by failing to send it)
-TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerFailure)
+// Return a timer to the handler as if it has been passed back from HTTPCallback and wont pop again.
+// The timer should be tombstoned before being put mack into the store.
+TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
 {
   Timer* timer = default_timer(1);
+  // Set timer up so that it wouldn't pop again.
+  timer->sequence_number = 1;
+  timer->interval_ms = 100;
+  timer->repeat_for = 100;
+
   TimerPair insert_pair;
 
-  // The timer failed its callback. This decrement the counts/tags and set an
-  // alarm. It won't be added back to the store
-  EXPECT_CALL(*_mock_timer_alarm, set());
+  // The timer is being returned from a callback, and won't pop again.
+  // This should update statistics, and be returned to the store as a tombstone.
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
-  _th->return_timer(timer, false);
-}
-
-// Return a timer to the handler, but make it the last repeat (so it gets
-// converted to a tombstone)
-TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerToTombstone)
-{
-  Timer* timer = default_timer(1);
-  timer->repeat_for = (timer->sequence_number + 1) * timer->interval_ms - 100;
-  TimerPair insert_pair;
-
-  // The timer is converted to a tombstone (decrementing counts/tags) and added
-  // to the store
-  EXPECT_CALL(*_replicator, replicate(timer));
   EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
   EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
                        WillOnce(SaveArg<0>(&insert_pair));
-  EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
-  _th->return_timer(timer, true);
+  _th->return_timer(timer);
 
+  // The timer is successfully added. As it's a new timer (as the pop would have
+  // removed it from the store) it's passed through to the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
   EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
   delete insert_pair.active_timer;
+}
+
+// Test that the handle_callback_success function fetches the timer specified,
+// replicates it, and re-inserts it into the store
+TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
+{
+  // Add a timer. This is a new timer, so should cause the stats to
+  // increment (counts and tags)
+  Timer* timer = default_timer(1);
+  Timer* info_timer = default_timer(1);
+  TimerPair insert_pair;
+  TimerID id = timer->id;
+  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
+                              WillOnce(SaveArg<0>(&insert_pair));
+  _th->add_timer(timer);
+
+  // The timer is successfully added. As it's a new timer it's passed through to
+  // the store unchanged.
+  EXPECT_EQ(insert_pair.active_timer, timer);
+
+  timer = NULL;
+
+  // Add an info timer to the pair, to check that the cluster view id vector can be built correctly.
+  insert_pair.information_timer = info_timer;
+
+  // Now call handle_successful_callback as if called from http_callback
+  EXPECT_CALL(*_store, fetch(id, _)).Times(1).
+              WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  EXPECT_CALL(*_replicator, replicate(insert_pair.active_timer));
+  EXPECT_CALL(*_store, insert(_, insert_pair.active_timer->id, insert_pair.active_timer->next_pop_time(), _)).
+                              WillOnce(SaveArg<0>(&insert_pair));
+  _th->handle_successful_callback(id);
+
+  delete insert_pair.active_timer;
+  delete insert_pair.information_timer;
+}
+
+// Test that the handle_failed_callback function correctly handles setting the
+// alarm, and updating statistics, and then does not put it back into the store.
+TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
+{
+  // Add a timer. This is a new timer, so should cause the stats to
+  // increment (counts and tags)
+  Timer* timer = default_timer(1);
+  TimerPair insert_pair;
+  TimerID id = timer->id;
+  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
+                              WillOnce(SaveArg<0>(&insert_pair));
+  _th->add_timer(timer);
+
+  // The timer is successfully added. As it's a new timer it's passed through to
+  // the store unchanged.
+  EXPECT_EQ(insert_pair.active_timer, timer);
+
+  // Delete the timer (this is normally done by the insert call, but this
+  // is mocked out)
+  timer = NULL;
+
+  // Now call handle_failed_callback as if called from http_callback
+  EXPECT_CALL(*_store, fetch(id, _)).Times(1).
+              WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  EXPECT_CALL(*_mock_timer_alarm, set());
+  EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_store, insert(_, id, _, _)).Times(0);
+
+  _th->handle_failed_callback(id);
+  // Do not delete timer as this is already done in the function
 }
 
 // Test that marking some of the replicas as being informed

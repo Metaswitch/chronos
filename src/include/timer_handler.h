@@ -63,7 +63,9 @@ public:
                SNMP::InfiniteScalarTable*);
   virtual ~TimerHandler();
   virtual void add_timer(Timer*, bool=true);
-  virtual void return_timer(Timer*, bool);
+  virtual void return_timer(Timer*);
+  virtual void handle_successful_callback(TimerID id);
+  virtual void handle_failed_callback(TimerID id);
   virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
