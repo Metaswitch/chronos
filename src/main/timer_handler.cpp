@@ -364,6 +364,7 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
       _all_timers_table->decrement(1);
     }
   }
+
   delete failed_pair.active_timer; failed_pair.active_timer = NULL;
   delete failed_pair.information_timer; failed_pair.information_timer = NULL;
 }
