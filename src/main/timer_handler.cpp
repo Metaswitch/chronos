@@ -331,9 +331,8 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
     {
       cluster_view_id_vector.push_back(timer_pair.information_timer->cluster_view_id);
     }
+    // Pass the timer pair back to the store, relinquishing responsibility for it.
     _store->insert(timer_pair, timer_id, timer->next_pop_time(), cluster_view_id_vector);
-    timer = NULL;
-    timer_pair.information_timer = NULL;
   }
 
   pthread_mutex_unlock(&_mutex);

@@ -126,7 +126,9 @@ void HTTPCallback::worker_thread_entry_point()
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     // Return the timer to the store. This avoids the error case where the client
-    // attempts to update the timer based on the pop, but finds nothing in the store.
+    // attempts to update the timer based on the pop, finds nothing in the store,
+    // inserts a new timer, rather than updating the timer that popped, leading to
+    // leaking of statistics.
     _handler->return_timer(timer);
     timer = NULL; // We relinquish control of the timer when we give it back to the store.
 
@@ -134,7 +136,7 @@ void HTTPCallback::worker_thread_entry_point()
     CURLcode curl_rc = curl_easy_perform(curl);
     if (curl_rc == CURLE_OK)
     {
-      TRC_DEBUG("callback was successful");
+      TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
       _handler->handle_successful_callback(timer_id);
     }
     else
@@ -147,8 +149,8 @@ void HTTPCallback::worker_thread_entry_point()
       }
 
       TRC_DEBUG("Failed to process callback for %lu: URL %s, curl error was: %s", timer_id,
-                  callback_url.c_str(),
-                  curl_easy_strerror(curl_rc));
+                callback_url.c_str(),
+                curl_easy_strerror(curl_rc));
       _handler->handle_failed_callback(timer_id);
     }
 

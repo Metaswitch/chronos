@@ -437,7 +437,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTimer)
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer it's passed through to
+  // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
 
@@ -899,7 +899,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWillPopAgain)
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->return_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer (as the pop would have
+  // The timer is successfully added. As it's a new timer (as the pop would have
   // removed it from the store) it's passed through to the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
 
@@ -930,7 +930,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->return_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer (as the pop would have
+  // The timer is successfully added. As it's a new timer (as the pop would have
   // removed it from the store) it's passed through to the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
   EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
@@ -958,12 +958,10 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
                               WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer it's passed through to
+  // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
 
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
   timer = NULL;
 
   // Add an info timer to the pair, to check that the cluster view id vector can be built correctly.
@@ -998,7 +996,7 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
                               WillOnce(SaveArg<0>(&insert_pair));
   _th->add_timer(timer);
 
-  // The timer is succesfully added. As it's a new timer it's passed through to
+  // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
   EXPECT_EQ(insert_pair.active_timer, timer);
 
@@ -1089,7 +1087,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimer)
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_,timer->id, timer->next_pop_time(), _)).
                        WillOnce(SaveArg<0>(&insert_pair));
-    _th->update_replica_tracker_for_timer(1u, 0);
+  _th->update_replica_tracker_for_timer(1u, 0);
 
   ASSERT_EQ(0u, insert_pair.active_timer->_replica_tracker);
   ASSERT_EQ("different-id", insert_pair.active_timer->cluster_view_id);
