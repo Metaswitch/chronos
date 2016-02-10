@@ -63,7 +63,9 @@ public:
                SNMP::InfiniteScalarTable*);
   virtual ~TimerHandler();
   virtual void add_timer(Timer*, bool=true);
-  virtual void return_timer(Timer*, bool);
+  virtual void return_timer(Timer*);
+  virtual void handle_successful_callback(TimerID id);
+  virtual void handle_failed_callback(TimerID id);
   virtual void update_replica_tracker_for_timer(TimerID id,
                                                 int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
@@ -98,9 +100,9 @@ private:
   // as the previous timer
   void save_tombstone_information(Timer* timer, Timer* existing);
 
-  // Report a statistics changed - called with empty vectors if a timer has only
+  // Report a statistics changed - called with empty maps if a timer has only
   // just been introduced, or is being permanently deleted/tombstoned
-  void update_statistics(std::vector<std::string> new_tags, std::vector<std::string> old_tags);
+  void update_statistics(std::map<std::string, uint32_t> new_tags, std::map<std::string, uint32_t> old_tags);
 
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);
