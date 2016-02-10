@@ -37,16 +37,9 @@ The body of the request should be a JSON block in the following format:
       },
       "reliability": {
         "replication-factor": <n>
-      },
-      "statistics": {
-        "tag-info": [
-          {"type": <"TAG NAME">, "count": <n>},
-          {"type": <"TAG 2">, "count": <n>}
-        ]
       }
     }
 
-  
 ##### Timing
 
 The `"timing"` section of the request defines how often the timer should pop (in seconds), and how long to recur the timer for (also in seconds).
@@ -91,26 +84,6 @@ The disadvantage of larger replication factors are:
 * Longer delays between the requested interval and the time of the actual pop (up to `2 sec * (n - 1)` in some failure cases).
 
 The default value for the replication factor (if unspecified) is `2`. The replication factor cannot be changed once the timer has been created.
-
-##### Statistics
-
-The statistics object is an optional parameter that may be used to provide tags holding information on what a timer represents. These tags are then used to generate stateful statistics in Chronos. The "count" value is also optional, defaulting to 1, but if present it must be a positive integer.
-
-For any tag provided, the following statistics can be queried over SNMP:
-
-* Average
-* HWM
-* LWM
-* Variance
-
-These values can be queried for the following time periods:
-
-* Previous five seconds
-* Current five minutes
-* Previous five minutes
-
-Further information on querying these statistics can be found at 
-
 
 #### Request (DELETE)
 
