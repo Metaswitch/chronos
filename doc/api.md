@@ -40,7 +40,7 @@ The body of the request should be a JSON block in the following format:
       },
       "statistics": {
         "tag-info": [
-          {"type": <"TAG NAME">, "count": <n>},
+          {"type": <"TAG 1">, "count": <n>},
           {"type": <"TAG 2">, "count": <n>}
         ]
       }
@@ -94,8 +94,10 @@ The default value for the replication factor (if unspecified) is `2`. The replic
 
 ##### Statistics
 
-The statistics object is an optional parameter that may be used to provide tags holding information on what a timer represents. These tags are then used to generate stateful statistics in Chronos. The "count" value is also optional, defaulting to 1, but if present it must be a positive integer.
+The `"statistics"` object is an optional parameter that may be used to provide tags holding information on what a timer represents. These tags are then used to generate stateful statistics in Chronos. The `"count"` value is also optional, defaulting to 1, but if present it must be a positive integer.
 
+Further information on querying these statistics can be found at:  
+////
 For any tag provided, the following statistics can be queried over SNMP:
 
 * Average
@@ -108,8 +110,7 @@ These values can be queried for the following time periods:
 * Previous five seconds
 * Current five minutes
 * Previous five minutes
-
-Further information on querying these statistics can be found at 
+////
 
 
 #### Request (DELETE)
