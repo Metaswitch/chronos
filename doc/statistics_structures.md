@@ -27,11 +27,11 @@ Both of the above tables inherit their complex functionality from the `InfiniteB
 
 This is done by registering each table to a root OID (e.g. .1.2.826.0.1.1578918.999), and having the table class pass the OID of any requests under this table to internal parsing functions. The functions attempt to parse the OID of a request for the information needed to find the statistics requested by considering requests as the following format:
 
-> <root OID>.<Tag Length>.<Tag as . separated ASCII code>.<snmp table column>.<snmp table row>
+> `<root OID>.<Tag Length>.<Tag as . separated ASCII code>.<snmp table column>.<snmp table row>`
 
 For example, the request for column 2, row 1 of the table for tag "TAG" would look as follows:
 
-> <root OID>.3.84.65.71.2.1
+> `<root OID>.3.84.65.71.2.1`
 
 The internal functions can then work along this OID, from left to right, parsing each section as it goes, resulting in a basic logic as follows:
 
@@ -54,14 +54,17 @@ If the request is an SNMP GETNEXT, the table functions will first attempt to fin
 This logic is performed as a series of loops, with the possibility to break out at any of the stages. 
 
 * Tag length
+
 ** If the tag length was not provided or is 0, we skip the table and return the OID after incrementing its last digit.
 ** If the tag length was greater than our maximum value, we skip the table and return the OID after incrementing its last digit.
 
 * Tag characters
+
 ** If any character is found to be greater than 'Z', we increment the character before it. If the character is the first in the tag, we increment the tag length. At this point we also discard all tag characters after the character just incremented. We then return to the top of the loop.
 ** If any character is found to be less than 'A', we set it, and all characters following it for the given length of the tag, to be 'A'. The row and column and row values are set to point to the first cell of the table under this new tag, and we break out of the whole loop.
 
 * Column and Row
+
 ** If we have not broken out of the loop already, we check the column and row values.
 ** If no value was provided for the column, we assume the first non-index column, and set the two values to point to the first valid cell, before breaking out of the loop.
 ** If the column value is too large, we increment the last character of the tag, and return to the top of the loop.
