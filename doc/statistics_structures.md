@@ -111,3 +111,5 @@ This logic is performed within an infinite, with the possibility to break out at
   * If both a column and row value are provided, and they are not too large, we can safely increment the row number and break out of the loop.
 
 Once we have broken out of the loop, we are left with the next valid OID after the OID provided.
+
+Through the above logic, the infinite table is able to handle any SNMP query that is passed to it. Even if the tag has never been seen before the table is still able to parse it, check the underlying data structure to see if any values exist for the specified tag, and return 0 or any value found. 
