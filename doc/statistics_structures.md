@@ -22,6 +22,8 @@ Chronos also allows users to query the instantaneous count of any tag.
 
 Querying statistics associated with a tag that has never been seen by Chronos will simply return `0` as the result, as through the infinite table Chronos is able to handle any tag (within specified length limits) without needing prior knowledge of its existence, enabling dynamic creation of statistics.
 
+Detail on what statistics are exposed in Project Clearwater, and how to access them, can be found [here,](https://clearwater.readthedocs.org/en/stable/Clearwater_SNMP_Statistics/index.html) with specific information on these stateful statistics [here.](https://clearwater.readthedocs.org/en/stable/Clearwater_Stateful_Statistics/index.html)
+
 ## Chronos interactions
 
 As detailed in the [API documentation](api.md), Chronos timer requests can be sent with a `"statistics"` object in the JSON body, specifying tags to be used in reporting statistics. These tags are parsed from the JSON, and stored as a map of `type` to `count`. The tags are then passed through to the statistics tables by the update_statistics function in the timer handler.
