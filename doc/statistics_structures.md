@@ -42,5 +42,31 @@ The internal functions can then work along this OID, from left to right, parsing
 5. Set up a default return value of 0, and then attempt to get a new value from the data structure for the parsed tag.
 6. Return the value to net_snmp.
 
-//how we handle rollover and rollback.
-//why you shouldn't walk the table
+
+If the request is an SNMP GETNEXT, the table functions will first attempt to find the next valid OID. The key logic of this process is as follows:
+
+1. Check that the tag length has been provided, and is not 0 or greater than the maximum allowed tag length.
+2. Check the tag for any characters greater than 'Z'.
+3. Check the tag for any characters less than 'A'.
+4. Ensure that the number of tag characters matches the expected tag length.
+5. Check for provided column and row values, ensure they are valid, and increment accordingly.
+
+This logic is performed as a series of loops, with the possibility to break out at any of the stages. 
+
+* Tag length
+** If the tag length was not provided or is 0, we skip the table and return the OID after incrementing its last digit.
+** If the tag length was greater than our maximum value, we skip the table and return the OID after incrementing its last digit.
+
+* Tag characters
+** If any character is found to be greater than 'Z', we increment the character before it. If the character is the first in the tag, we increment the tag length. At this point we also discard all tag characters after the character just incremented. We then return to the top of the loop.
+** If any character is found to be less than 'A', we set it, and all characters following it for the given length of the tag, to be 'A'. The row and column and row values are set to point to the first cell of the table under this new tag, and we break out of the whole loop.
+
+* Column and Row
+** If we have not broken out of the loop already, we check the column and row values.
+** If no value was provided for the column, we assume the first non-index column, and set the two values to point to the first valid cell, before breaking out of the loop.
+** If the column value is too large, we increment the last character of the tag, and return to the top of the loop.
+** If no value was provided for the row, we assume the first row, set the correct value, and break out of the loop.
+** If the row value is too large, we increment the column value, and return to the top of the loop.
+** If both a column and row value are provided, and they are not too large, we can safely increment the row number and break out of the loop.
+
+Once we have broken out of the loop, we are left with the next valid OID after the OID provided.
