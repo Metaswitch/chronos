@@ -46,7 +46,6 @@ The body of the request should be a JSON block in the following format:
       }
     }
 
-  
 ##### Timing
 
 The `"timing"` section of the request defines how often the timer should pop (in seconds), and how long to recur the timer for (also in seconds).

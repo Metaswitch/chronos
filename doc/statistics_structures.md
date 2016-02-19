@@ -32,11 +32,11 @@ As detailed in the [API documentation](api.md), Chronos timer requests can be se
 
 The tags are stored as part of the timer object so that comparisons can be made on timer updates to see how the statistics have been altered. This also ensures that tag information is maintained as timers replicate across nodes.
 
-### Tables 
+### Tables
 
 Currently we maintain two statistical views of the tags passed in as part of timers: an instantaneous count, and a time averaged set of statistics. These statistics are held in the infinite tables discussed further below. One instance of both the `infinite_scalar_table` and the `infinite_timer_count_table` are instantiated at start up. When Chronos receives a timer, we perform logic in the `update_statistics` function to determine if any statistics should be updated.
 
-### Update Statistics 
+### Update Statistics
 
 When Chronos receives a timer to add, it first attempts to find any version of the timer within the store. If Chronos decides that it should insert the new timer into the store, either overwriting an existing timer or simply creating a new entry, the timer handler passes and tags found in both the new timer, and in any old timer, to the `update_statistics` function. N.b. If the new timer being added is to be a tombstone overwriting an existing timer, no new tags are passed in, as tombstones should not count towards our statistics.
 
