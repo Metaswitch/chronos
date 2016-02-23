@@ -48,10 +48,12 @@ check process chronos_process with pidfile /var/run/chronos.pid
   # it restarts the process
   if memory > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 3000.4; /etc/init.d/chronos abort'"
 
-  # Clear any alarms if the process has been running for 30 seconds
-  if uptime < 30 seconds
-     then exec "/bin/true"
-     else if succeeded then exec "/usr/share/clearwater/bin/issue_alarm.py monit 3000.1"
+# Clear any alarms if the process has been running long enough.
+check program chronos_uptime with path "/usr/share/clearwater/bin/check-uptime /var/run/chronos.pid"
+  group chronos
+  depends on chronos_process
+  every 3 cycles
+  if status = 0 then exec "/usr/share/clearwater/bin/issue_alarm.py monit 3000.1"
 
 # Check the HTTP interface. This depends on the Chronos process (and so won't run
 # unless the Chronos process is running)
