@@ -62,7 +62,8 @@ chronos_test_SOURCES := ${COMMON_SOURCES} \
                         pthread_cond_var_helper.cpp \
                         mock_increment_table.cpp \
                         mock_infinite_table.cpp \
-                        mock_infinite_scalar_table.cpp
+                        mock_infinite_scalar_table.cpp \
+                        curl_interposer.cpp
 
 COMMON_CPPFLAGS := -I../include \
                    -I../modules/cpp-common/include \
