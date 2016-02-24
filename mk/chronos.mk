@@ -1,7 +1,6 @@
 # included mk file for chronos
 
 CHRONOS_DIR := ${ROOT}/src
-CHRONOS_TEST_DIR := ${ROOT}/tests
 
 chronos:
 	${MAKE} -C ${CHRONOS_DIR}

@@ -8,11 +8,6 @@
 # here temporarily
 src/http_callback.cpp
 src/replicator.cpp
-src/timer_store.h
-
-# Uninteresting header files
-src/http_callback.h
-src/replicator.h
 
 # Murmur hash not covered by UTs
 src/murmur/MurmurHash3.cpp
