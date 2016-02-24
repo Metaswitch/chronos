@@ -79,8 +79,6 @@ COMMON_LDFLAGS := -L../usr/lib -lrt -lpthread -lcurl -levent -lboost_program_opt
 chronos_LDFLAGS := ${COMMON_LDFLAGS} -lsas -lz
 chronos_test_LDFLAGS := ${COMMON_LDFLAGS} -ldl
 
-chronos_test_VALGRIND_ARGS := --suppressions=ut/chronos_test.supp
-
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
 VPATH := ../modules/cpp-common/src ../modules/cpp-common/test_utils ut murmur
 
