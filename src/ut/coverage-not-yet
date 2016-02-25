@@ -6,8 +6,8 @@
 
 # Currently untested Chronos files. These should only be in
 # here temporarily
-src/http_callback.cpp
-src/replicator.cpp
+http_callback.cpp
+replicator.cpp
 
 # Murmur hash not covered by UTs
-src/murmur/MurmurHash3.cpp
+murmur/MurmurHash3.cpp
