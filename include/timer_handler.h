@@ -57,7 +57,9 @@
 class TimerHandler
 {
 public:
-  TimerHandler(TimerStore*, Callback*, Replicator*, Alarm*,
+  TimerHandler(TimerStore*,
+               Callback*,
+               Replicator*,
                SNMP::ContinuousIncrementTable*,
                SNMP::InfiniteTimerCountTable*,
                SNMP::InfiniteScalarTable*);
@@ -111,7 +113,6 @@ private:
   TimerStore* _store;
   Callback* _callback;
   Replicator* _replicator;
-  Alarm* _timer_pop_alarm;
   SNMP::ContinuousIncrementTable* _all_timers_table;
   SNMP::InfiniteTimerCountTable* _tagged_timers_table;
   SNMP::InfiniteScalarTable* _scalar_timers_table;
