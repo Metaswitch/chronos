@@ -53,14 +53,12 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
 TimerHandler::TimerHandler(TimerStore* store,
                            Callback* callback,
                            Replicator* replicator,
-                           Alarm* timer_pop_alarm,
                            SNMP::ContinuousIncrementTable* all_timers_table,
                            SNMP::InfiniteTimerCountTable* tagged_timers_table,
                            SNMP::InfiniteScalarTable* scalar_timers_table) :
                            _store(store),
                            _callback(callback),
                            _replicator(replicator),
-                           _timer_pop_alarm(timer_pop_alarm),
                            _all_timers_table(all_timers_table),
                            _tagged_timers_table(tagged_timers_table),
                            _scalar_timers_table(scalar_timers_table),
@@ -350,12 +348,6 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
   {
     Timer* timer;
     timer = failed_pair.active_timer;
-
-    // If the timer is the last replica, we should set the alarm.
-    if ((_timer_pop_alarm) && (timer->is_last_replica()))
-    {
-      _timer_pop_alarm->set();
-    }
 
     // If the timer is not a tombstone we also update statistics.
     if (!timer->is_tombstone())

@@ -215,7 +215,6 @@ int main(int argc, char** argv)
     }
   }
 
-  Alarm* timer_pop_alarm = NULL;
   Alarm* scale_operation_alarm = NULL;
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
@@ -246,8 +245,6 @@ int main(int argc, char** argv)
 
   // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
   // in the alarm definition JSON file exactly.
-  timer_pop_alarm = new Alarm("chronos", AlarmDef::CHRONOS_TIMER_POP_ERROR,
-                                          AlarmDef::MAJOR);
   scale_operation_alarm = new Alarm("chronos", AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
                                                AlarmDef::MINOR);
 
@@ -274,7 +271,6 @@ int main(int argc, char** argv)
   HTTPCallback* callback = new HTTPCallback();
   TimerHandler* handler = new TimerHandler(store, callback,
                                            handler_rep,
-                                           timer_pop_alarm,
                                            all_timers_table,
                                            total_timers_table,
                                            scalar_timers_table);
@@ -392,8 +388,7 @@ int main(int argc, char** argv)
   // Stop the alarm request agent
   AlarmReqAgent::get_instance().stop();
 
-  // Delete Chronos's alarm objects
-  delete timer_pop_alarm;
+  // Delete Chronos's alarm object
   delete scale_operation_alarm;
 
   sem_destroy(&term_sem);
