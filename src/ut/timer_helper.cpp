@@ -1,13 +1,8 @@
 /**
- * @file fakesnmp.hpp Fake SNMP infrastructure for UT.
+ * @file timer_helper.cpp
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2015  Metaswitch Networks Ltd
- *
- * Parts of this module were derived from GPL licensed PJSIP sample code
- * with the following copyrights.
- *   Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
- *   Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
+ * Copyright (C) 2013  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,40 +34,25 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef FAKE_SNMP_H
-#define FAKE_SNMP_H
+#include "timer_helper.h"
 
-#include "snmp_row.h"
-#include "snmp_infinite_timer_count_table.h"
-#include "snmp_counter_table.h"
-#include "snmp_scalar.h"
-#include "snmp_continuous_increment_table.h"
-
-namespace SNMP
+Timer* default_timer(TimerID id)
 {
+  // Start the timer right now.
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
 
-class FakeInfiniteTimerCountTable: public InfiniteTimerCountTable
-{
-public:
-  FakeInfiniteTimerCountTable() {};
-  void increment(std::string) {};
-  void decrement(std::string) {};
-};
+  // Add a single timer to the store
+  Timer* timer = new Timer(id, 100000, 100000);
+  timer->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
+  timer->sequence_number = 0;
+  timer->replicas = std::vector<std::string>(1, "10.0.0.1:9999");
+  timer->tags = std::map<std::string, uint32_t> {{"TAG" + std::to_string(id), 1}};
+  timer->callback_url = "localhost:80/callback" + std::to_string(id);
+  timer->callback_body = "stuff stuff stuff";
+  timer->_replica_tracker = 1;
+  timer->_replication_factor = 1;
+  timer->cluster_view_id = "cluster-view-id";
 
-class FakeCounterTable: public CounterTable
-{
-public:
-  FakeCounterTable() {};
-  void increment() {};
-};
-
-class FakeContinuousIncrementTable: public ContinuousIncrementTable
-{
-public:
-  FakeContinuousIncrementTable() {};
-  void increment(uint32_t) {};
-  void decrement(uint32_t) {};
-};
+  return timer;
 }
-
-#endif

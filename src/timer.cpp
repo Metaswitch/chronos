@@ -77,7 +77,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
-  tags(std::vector<std::string>()),
+  tags(std::map<std::string, uint32_t>()),
   callback_url(""),
   callback_body(""),
   _replication_factor(0),
@@ -189,8 +189,10 @@ std::string Timer::url(std::string host)
 //         ]
 //     }
 //     "statistics": {
-//         "tags": [
-//             <comma separated "string"s>
+//         "tag-info": [ {"type": <TAG>,
+//                        "count": <uint>},
+//                       {"type": <TAG2>,
+//                        "count": <uint2>}
 //         ]
 //     }
 // }
@@ -266,14 +268,21 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     writer->String("statistics");
     writer->StartObject();
     {
-      writer->String("tags");
+      writer->String("tag-info");
       writer->StartArray();
       {
-        for (std::vector<std::string>::iterator it = tags.begin();
-                                                it != tags.end();
-                                                ++it)
+        for (std::map<std::string, uint32_t>::iterator it = tags.begin();
+                                                       it != tags.end();
+                                                       ++it)
         {
-          writer->String((*it).c_str());
+          writer->StartObject();
+          {
+            writer->String("type");
+            writer->String(it->first.c_str());
+            writer->String("count");
+            writer->Int(it->second);
+          }
+          writer->EndObject();
         }
       }
       writer->EndArray();
@@ -790,26 +799,70 @@ Timer* Timer::from_json_obj(TimerID id,
       replicated = true;
     }
 
-    if (doc.HasMember("statistics"))
+    if ((doc.HasMember("statistics")) &&
+        (doc["statistics"].IsObject()))
     {
-      // Parse out the 'statistics' block
+      // Parse out the 'statistics' block.
       rapidjson::Value& statistics = doc["statistics"];
-      JSON_ASSERT_OBJECT(statistics);
 
-      if (statistics.HasMember("tags"))
+      if ((statistics.HasMember("tag-info")) &&
+          (statistics["tag-info"].IsArray()))
       {
-        rapidjson::Value& tags = statistics["tags"];
-        JSON_ASSERT_ARRAY(tags);
+        rapidjson::Value& tag_info = statistics["tag-info"];
 
-        for (rapidjson::Value::ConstValueIterator it = tags.Begin();
-                                                  it != tags.End();
+        // Iterate over tag-info array, pulling out all valid tags and counts.
+        for (rapidjson::Value::ValueIterator it = tag_info.Begin();
+                                                  it != tag_info.End();
                                                   ++it)
         {
-          // All tags get store within the timer as a vector
-          JSON_ASSERT_STRING(*it);
-          timer->tags.push_back(std::string(it->GetString(), it->GetStringLength()));
+
+          // Check that we have an object, and it contains a "type".
+          // If not, discard this tag.
+          if (((*it).IsObject())       &&
+               (it->HasMember("type")))
+          {
+            rapidjson::Value& type = (*it)["type"];
+            // Check that the "type" is a string.
+            // If not, discard this tag, and move to next tag-info object.
+            if (!(type.IsString()))
+            {
+              TRC_DEBUG("Tag type badly formed. Discarding some tags.");
+              continue;
+            }
+
+            // Default tag count if no value is found in the JSON object.
+            uint32_t count = 1;
+
+            // If a count is provided, check it is a uint.
+            // If not a uint, discard this tag, and move to next tag-info object.
+            if (it->HasMember("count"))
+            {
+              if (!((*it)["count"].IsUint()))
+              {
+                TRC_DEBUG("Tag \"%s\" has an invalid count value. Discarding some tags.",
+                          type.GetString());
+                continue;
+              }
+              count = (*it)["count"].GetUint();
+            }
+
+            // Add the tag to the timer.
+            timer->tags[(type.GetString())] += count;
+          }
+          else
+          {
+            TRC_DEBUG("Tag-info object badly formed, or missing type. Discarding some tags.");
+          }
         }
       }
+      else
+      {
+        TRC_DEBUG("Tag-info array not present, or badly formed. Discarding all tags.");
+      }
+    }
+    else
+    {
+      TRC_DEBUG("Statistics object not present, or badly formed. Discarding all tags.");
     }
   }
   catch (JsonFormatError err)

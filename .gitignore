@@ -1,5 +1,6 @@
 *~
 /build/
+/usr/
 /gcov/
 *.swp
 tags

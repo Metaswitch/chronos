@@ -274,9 +274,9 @@ protected:
     std::vector<std::string> replicas;
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
-    std::vector<std::string> tags;
-    tags.push_back("TAG1");
-    tags.push_back("TAG2");
+    std::map<std::string, uint32_t> tags;
+    tags["TAG1"]++;
+    tags["TAG2"]++;
     TimerID id = (TimerID)UINT_MAX + 10;
     uint32_t interval_ms = 100;
     uint32_t repeat_for = 200;
@@ -306,6 +306,88 @@ protected:
 
   Timer* t1;
 };
+
+// Tests that for a JSON body with a badly formed "statistics" object,
+// all tag data is rejected, creating a timer with an empty tags map.
+TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
+{
+  std::string err; bool replicated; Timer* timer;
+  std::map<std::string, uint32_t> empty_tags;
+
+  // If the "statistics" block is present, but badly formed, no tags should be parsed.
+  // Passing it in as an array, not an object.
+  std::string bad_statistics_object = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\":[]}";
+
+  // If bad statistics object, no error, but no tags.
+  timer = Timer::from_json(1, 0, 0, bad_statistics_object, err, replicated);
+  EXPECT_NE((void*)NULL, timer);
+  EXPECT_EQ("", err);
+  EXPECT_EQ(empty_tags, timer->tags);
+  delete timer;
+}
+
+// Tests that for a JSON body with a badly formed "tag-info" array,
+// all tag data is rejected, creating a timer with an empty tags map.
+TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
+{
+  std::string err; bool replicated; Timer* timer;
+  std::map<std::string, uint32_t> empty_tags;
+
+  // If the "tag-info" block is present, but badly formed, no tags should be parsed.
+  // Passing it in as an object, rather than an array.
+  std::string bad_tag_info_array = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": {\"type\": \"TAG1\", \"count\":1}}}";
+
+  // If bad tag-info array, no error, but no tags.
+  timer = Timer::from_json(1, 0, 0, bad_tag_info_array, err, replicated);
+  EXPECT_NE((void*)NULL, timer);
+  EXPECT_EQ("", err);
+  EXPECT_EQ(empty_tags, timer->tags);
+  delete timer;
+}
+
+// Tests that for a JSON body with individual badly formed "tag-info" objects,
+// bad tags are not stored, but correctly formed objects are parsed,
+// creating a timer with only well-formed tag-info objects in the tags map.
+TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
+{
+  std::string err; bool replicated; Timer* timer;
+  std::map<std::string, uint32_t> expected_tags;
+  expected_tags["TAG5"] = 3;
+
+  // If the tag-info objects are badly formed, that tag should not be parsed.
+  // Passing in a 'nontype', a non-uint count, a string count, a non-string type
+  // and a well formed object. Only the well formed tag-info object should be parsed.
+  std::string bad_tag_info_object = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": [{\"nottype\": \"TAG1\", \"count\":1}, {\"type\": \"TAG2\", \"count\":-1}, {\"type\": \"TAG3\", \"count\":\"one\"}, {\"type\": 4, \"count\":3}, {\"type\": \"TAG5\", \"count\": 3}]}}";
+
+  // If bad tag-info object, no error, but no bad tags.
+  timer = Timer::from_json(1, 0, 0, bad_tag_info_object, err, replicated);
+  EXPECT_NE((void*)NULL, timer);
+  EXPECT_EQ("", err);
+  EXPECT_EQ(expected_tags, timer->tags);
+  delete timer;
+}
+
+// Tests that for a JSON body with multiple "tag-info" objects of the same type,
+// and for "tag-info" objects with large counts, tags are correctly parsed
+// and added to the tags map.
+TEST_F(TestTimer, FromJSONTestsStatisticsMultipleTags)
+{
+  std::string err; bool replicated; Timer* timer;
+  std::map<std::string, uint32_t> expected_tags;
+  expected_tags["TAG1"] = 1;
+  expected_tags["TAG2"] = 8;
+  expected_tags["TAG3"] = 1234567890;
+
+  // We should support multiple tag-info objects of the same type.
+  // We should also correctly parse large numbers for count.
+  std::string multiple_tags = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": [{\"type\": \"TAG1\", \"count\":1}, {\"type\": \"TAG2\", \"count\":5}, {\"type\": \"TAG2\", \"count\":3}, {\"type\": \"TAG3\", \"count\": 1234567890}]}}";
+
+  timer = Timer::from_json(1, 0, 0, multiple_tags, err, replicated);
+  EXPECT_NE((void*)NULL, timer);
+  EXPECT_EQ("", err);
+  EXPECT_EQ(expected_tags, timer->tags);
+  delete timer;
+}
 
 // Utility thread function to test thread-safeness of the unique generation
 // algorithm.
