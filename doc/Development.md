@@ -37,17 +37,9 @@ This accesses the repository over SSH on Github, and will not work unless you ha
     git config --global url."https://github.com/".insteadOf git@github.com:
     git clone --recursive git@github.com:Metaswitch/chronos.git
 
-## Building Dependencies
-
-To build Chronos's 3rd party dependencies, change to the top-level `chronos`
-directory and issue `make submodules`.  You will want to re-run this command
-after changing any submodule or pulling a newer release of Chronos that
-updates the submodule references (after running `git submodule update`).
-
 ## Building Binaries
 
 To build Chronos, change to the top-level `chronos` directory and issue `make`.
-You must have built the dependencies first (see above).
 
 On completion,
 
@@ -57,8 +49,7 @@ On completion,
 ## Building Debian Packages
 
 To build Debian packages, run `make deb`.  On completion, Debian packages
-are in the parent of the top-level `chronos` directory.  You must have built
-the dependencies first (see above).
+are in the parent of the top-level `chronos` directory.
 
 `make deb` can push the resulting binaries to a Debian
 repository server.  To push to a repository server on the build machine, set
@@ -96,12 +87,9 @@ framework, so the output from the test run looks something like this.
     [==========] 46 tests from 4 test cases ran. (86766 ms total)
     [  PASSED  ] 46 tests.
 
-The chronos makefile offers the following additional options and targets.
+To additionally run code coverage checks, and use [Valgrind](http://valgrind.org/) to test for memory leaks, run `make full_test`.
 
-*   `make coverage` runs code coverage checks.
-*   `make valgrind` runs the tests checking for memory leaks (using [Valgrind](http://valgrind.org/)).
-*   Passing `NOISY=T` enables verbose logging during the tests; you can add
-    a logging level (e.g., `NOISY=T:99`) to control which logs you see.
+Passing `NOISY=T` enables verbose logging during the tests; you can add a logging level (e.g., `NOISY=T:99`) to control which logs you see.
 
 ## Running Functional Tests
 

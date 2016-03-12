@@ -1,0 +1,50 @@
+{
+    "alarms": [
+        {
+            "index": 3000,
+            "cause": "SOFTWARE_ERROR",
+            "name": "CHRONOS_PROCESS_FAIL",
+            "levels": [
+                {
+                    "severity": "CLEARED",
+                    "details": "The Chronos process has been restored to normal operation.",
+                    "description": "Chronos: Process failure cleared",
+                    "cause": "The Chronos process has been restored to normal operation.  The previously issued alarm has been cleared.",
+                    "effect": "Fully redundant timer operation has been restored.",
+                    "action": "No action."
+                },
+                {
+                    "severity": "MAJOR",
+                    "details": "Monit has detected that the Chronos process has failed. A restart will automatically be attempted. If this alarm does not clear, the Chronos process may have been stopped or an unrecoverable failure may have occurred.",
+                    "description": "Chronos: Process failure",
+                    "cause": "The system has detected that the Chronos process has failed.",
+                    "effect": "The Chronos cluster has lost some redundancy of timer operations but can still operate normally. This alarm is not service affecting.",
+                    "action": "Monitor for this alarm to clear. If this alarm does not clear then call Metaswitch Support."
+                }
+            ]
+        },
+        {
+            "index": 3002,
+            "cause": "DATABASE_INCONSISTENCY",
+            "name": "CHRONOS_SCALE_IN_PROGRESS",
+            "levels": [
+                {
+                    "severity": "CLEARED",
+                    "details": "The local Chronos process is synchronized with the rest of the cluster. Chronos resynchronization is no longer blocking a scale-up or scale-down operation (a different type of resynchronization operation may still be in progress though.",
+                    "description": "Chronos: Chronos timers are synchronized",
+                    "cause": "The local Chronos process is synchronized with the rest of the cluster. Chronos resynchronization is no longer blocking a scale-up or scale-down operation (other databases may still be re-synchronizing). This alarm is caused by the clearing of a previously issued alarm for adding nodes to deployment.",
+                    "effect": "The Chronos node being added has completed clustering and will be operational once all clustering and shared config alarms have cleared and the node has been added to DNS.",
+                    "action": "No action. The user can continue with any scaling operations (e.g. add the node to DNS or turn it down)."
+                },
+                {
+                    "severity": "MINOR",
+                    "details": "The local Chronos process is resynchronizing with the rest of the cluster. Service should be unaffected. If a scale-up or scale-down operation is in progress, wait for resynchronization to finish before completing the operation.",
+                    "description": "Chronos: Chronos database resynchronization in progress",
+                    "cause": "The local Chronos process is resynchronizing with the rest of the cluster. This alarm is caused by adding or removing nodes to a deployment.",
+                    "effect": "Service is unaffected.",
+                    "action": "If a scale-up or scale-down operation is in progress, wait for resynchronization to finish before completing the operation."
+                }
+            ]
+        }
+    ]
+}

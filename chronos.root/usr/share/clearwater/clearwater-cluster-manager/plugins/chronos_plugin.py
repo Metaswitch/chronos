@@ -35,7 +35,7 @@
 from textwrap import dedent
 from metaswitch.clearwater.cluster_manager.plugin_base import SynchroniserPluginBase
 from metaswitch.clearwater.cluster_manager.plugin_utils import WARNING_HEADER
-from metaswitch.clearwater.cluster_manager.alarms import issue_alarm
+from metaswitch.common.alarms import alarm_manager
 from metaswitch.clearwater.cluster_manager import pdlogs, alarm_constants, constants
 from metaswitch.clearwater.etcd_shared.plugin_utils import run_command, safely_write
 import logging
@@ -77,7 +77,10 @@ class ChronosPlugin(SynchroniserPluginBase):
     def __init__(self, params):
         self.local_server = params.ip
         self._key = "/{}/{}/{}/clustering/chronos".format(params.etcd_key, params.local_site, params.etcd_cluster_key)
-        issue_alarm(alarm_constants.CHRONOS_NOT_YET_CLUSTERED_MAJOR)
+        self._alarm = alarm_manager.get_alarm(
+            'cluster-manager',
+            alarm_constants.CHRONOS_NOT_YET_CLUSTERED)
+        self._alarm.set()
         pdlogs.NOT_YET_CLUSTERED_ALARM.log(cluster_desc=self.cluster_description())
 
     def key(self):
@@ -104,7 +107,7 @@ class ChronosPlugin(SynchroniserPluginBase):
 
     def on_stable_cluster(self, cluster_view):
         self.on_cluster_changing(cluster_view)
-        issue_alarm(alarm_constants.CHRONOS_NOT_YET_CLUSTERED_CLEARED)
+        self._alarm.clear()
 
     def on_leaving_cluster(self, cluster_view):
         pass
