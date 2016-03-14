@@ -250,7 +250,8 @@ int main(int argc, char** argv)
 
   // Start the alarm request agent
   AlarmReqAgent::get_instance().start();
-  AlarmState::clear_all("chronos");
+  // Explicitly clear scale operation alarm
+  scale_operation_alarm->clear();
 
   // Now create the Chronos components
   HealthChecker* hc = new HealthChecker();
