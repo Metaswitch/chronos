@@ -80,7 +80,6 @@ class ChronosPlugin(SynchroniserPluginBase):
         self._alarm = alarm_manager.get_alarm(
             'cluster-manager',
             alarm_constants.CHRONOS_NOT_YET_CLUSTERED)
-        self._alarm.set()
         pdlogs.NOT_YET_CLUSTERED_ALARM.log(cluster_desc=self.cluster_description())
 
     def key(self):
@@ -93,15 +92,18 @@ class ChronosPlugin(SynchroniserPluginBase):
         return "local Chronos cluster"
 
     def on_cluster_changing(self, cluster_view):
+        self._alarm.set()
         write_chronos_cluster_settings("/etc/chronos/chronos_cluster.conf",
                                        cluster_view,
                                        self.local_server)
         run_command("service chronos reload")
 
     def on_joining_cluster(self, cluster_view):
+        self._alarm.set()
         self.on_cluster_changing(cluster_view)
 
     def on_new_cluster_config_ready(self, cluster_view):
+        self._alarm.set()
         run_command("service chronos resync")
         run_command("service chronos wait-sync")
 
