@@ -250,7 +250,8 @@ int main(int argc, char** argv)
 
   // Start the alarm request agent
   AlarmReqAgent::get_instance().start();
-  // Explicitly clear scale operation alarm
+  // Explicitly clear scaling alarm in case we died while the alarm was still active,
+  // to ensure that the alarm is not then stuck in a set state.
   scale_operation_alarm->clear();
 
   // Now create the Chronos components
