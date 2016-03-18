@@ -93,14 +93,11 @@ class ChronosPlugin(SynchroniserPluginBase):
 
     def on_cluster_changing(self, cluster_view):
         self._alarm.set()
-        write_chronos_cluster_settings("/etc/chronos/chronos_cluster.conf",
-                                       cluster_view,
-                                       self.local_server)
-        run_command("service chronos reload")
+        self.write_cluster_settings(cluster_view)
 
     def on_joining_cluster(self, cluster_view):
         self._alarm.set()
-        self.on_cluster_changing(cluster_view)
+        self.write_cluster_settings(cluster_view)
 
     def on_new_cluster_config_ready(self, cluster_view):
         self._alarm.set()
@@ -108,11 +105,17 @@ class ChronosPlugin(SynchroniserPluginBase):
         run_command("service chronos wait-sync")
 
     def on_stable_cluster(self, cluster_view):
-        self.on_cluster_changing(cluster_view)
+        self.write_cluster_settings(cluster_view)
         self._alarm.clear()
 
     def on_leaving_cluster(self, cluster_view):
         pass
+
+    def write_cluster_settings(self, cluster_view):
+        write_chronos_cluster_settings("/etc/chronos/chronos_cluster.conf",
+                                       cluster_view,
+                                       self.local_server)
+        run_command("service chronos reload")
 
 def load_as_plugin(params):
     _log.info("Loading the Chronos plugin")
