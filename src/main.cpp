@@ -160,7 +160,6 @@ void signal_handler(int sig)
   exception_handler->handle_exception();
 
   CL_CHRONOS_CRASHED.log(strsignal(sig));
-  closelog();
 
   // Dump a core.
   abort();
@@ -344,7 +343,6 @@ int main(int argc, char** argv)
   catch (HttpStack::Exception& e)
   {
     CL_CHRONOS_HTTP_INTERFACE_FAIL.log(e._func, e._rc);
-    closelog();
     std::cerr << "Caught HttpStack::Exception" << std::endl;
     return 1;
   }
@@ -394,7 +392,6 @@ int main(int argc, char** argv)
   // After this point nothing will use __globals so it's safe to delete
   // it here.
   CL_CHRONOS_ENDED.log();
-  closelog();
   delete __globals; __globals = NULL;
   curl_global_cleanup();
 
