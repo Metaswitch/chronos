@@ -42,7 +42,7 @@ import logging
 
 _log = logging.getLogger("chronos_plugin")
 
-def write_chronos_cluster_settings(filename, cluster_view, current_server):
+def write_chronos_cluster_settings(filename, cluster_view, current_server, instance_id, deployment_id):
     joining = [constants.JOINING_ACKNOWLEDGED_CHANGE,
                constants.JOINING_CONFIG_CHANGED],
     staying = [constants.NORMAL_ACKNOWLEDGED_CHANGE,
@@ -60,9 +60,13 @@ def write_chronos_cluster_settings(filename, cluster_view, current_server):
 
     contents = dedent('''\
         {}
+        [identity]
+        instance_id = {}
+        deployment_id = {}
+
         [cluster]
         localhost = {}
-        ''').format(WARNING_HEADER, current_server)
+        ''').format(WARNING_HEADER, instance_id, deployment_id, current_server)
 
     for node in joining_servers:
         contents += 'joining = {}\n'.format(node)
@@ -76,6 +80,14 @@ def write_chronos_cluster_settings(filename, cluster_view, current_server):
 class ChronosPlugin(SynchroniserPluginBase):
     def __init__(self, params):
         self.local_server = params.ip
+        uuid_bytes = params.uuid.bytes
+
+        # Extract a 7-bit instance ID and a three-bit deployment ID from the
+        # UUID.
+        self.instance_id = ord(uuid_bytes[0]) & 0b0111111
+        self.deployment_id = ord(uuid_bytes[1]) & 0b00000111
+        if self.instance_id > 127 or self.deployment_id > 7:
+            _log.error("instance_id/deployment_id are out of expected range - %d and %d (max should be 127 and 7)", self.instance_id, self.deployment_id)
         self._key = "/{}/{}/{}/clustering/chronos".format(params.etcd_key, params.local_site, params.etcd_cluster_key)
         self._alarm = alarm_manager.get_alarm(
             'cluster-manager',
@@ -114,7 +126,9 @@ class ChronosPlugin(SynchroniserPluginBase):
     def write_cluster_settings(self, cluster_view):
         write_chronos_cluster_settings("/etc/chronos/chronos_cluster.conf",
                                        cluster_view,
-                                       self.local_server)
+                                       self.local_server,
+                                       self.instance_id,
+                                       self.deployment_id)
         run_command("service chronos reload")
 
 def load_as_plugin(params):

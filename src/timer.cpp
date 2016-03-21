@@ -576,9 +576,6 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   }
 }
 
-uint32_t Timer::deployment_id = 0;
-uint32_t Timer::instance_id = 0;
-
 // Generate a timer that should be unique across the (possibly geo-redundant) cluster.
 // The idea is to use a combination of deployment id, instance id, timestamp and
 // an incrementing sequence number.
@@ -587,8 +584,14 @@ uint32_t Timer::instance_id = 0;
 // list of replicas, but this doesn't add much uniqueness.
 TimerID Timer::generate_timer_id()
 {
-  return (TimerID)Utils::generate_unique_integer(Timer::deployment_id,
-                                                 Timer::instance_id);
+  uint32_t instance_id = 0;
+  uint32_t deployment_id = 0;
+
+  __globals->get_instance_id(instance_id);
+  __globals->get_deployment_id(deployment_id);
+
+  return (TimerID)Utils::generate_unique_integer(deployment_id,
+                                                 instance_id);
 }
 
 // Created tombstones from delete operations are given
