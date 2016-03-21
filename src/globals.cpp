@@ -64,6 +64,8 @@ Globals::Globals(std::string config_file,
     ("cluster.joining", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are joining")
     ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster that are staying")
     ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
+    ("identity.instance_id", po::value<uint32_t>()->default_value(0), "A number between 0 and 127. The combination of instance ID and deployment ID should uniquely identify this node in the cluster, to remove the risk of timer collisions.")
+    ("identity.deployment_id", po::value<uint32_t>()->default_value(0), "A number between 0 and 7. The combination of instance ID and deployment ID should uniquely identify this node in the cluster, to remove the risk of timer collisions.")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
@@ -177,6 +179,14 @@ void Globals::update_config()
 
   TRC_STATUS("%s", _timer_id_format_parser.at(timer_id_format).c_str());
   set_timer_id_format(timer_id_format);
+
+  uint32_t instance_id = conf_map["identity.instance_id"].as<uint32_t>();
+  uint32_t deployment_id = conf_map["identity.deployment_id"].as<uint32_t>();
+  
+  set_instance_id(instance_id);
+  set_deployment_id(deployment_id);
+
+  TRC_STATUS("Instance ID is %d, deployment ID is %d", instance_id, deployment_id);
 
   std::string cluster_local_address = conf_map["cluster.localhost"].as<std::string>();
   set_cluster_local_ip(cluster_local_address);

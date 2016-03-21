@@ -162,10 +162,6 @@ public:
                               std::string& error,
                               bool& replicated,
                               rapidjson::Value& doc);
-
-  // Class variables
-  static uint32_t deployment_id;
-  static uint32_t instance_id;
 };
 
 #endif

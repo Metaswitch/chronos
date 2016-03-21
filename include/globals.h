@@ -98,6 +98,8 @@ public:
   GLOBAL(cluster_bloom_filters, std::map<std::string, uint64_t>);
   GLOBAL(cluster_view_id, std::string);
 
+  GLOBAL(instance_id, uint32_t);
+  GLOBAL(deployment_id, uint32_t);
 public:
   void update_config();
   void lock() { pthread_rwlock_wrlock(&_lock); }
