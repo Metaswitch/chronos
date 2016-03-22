@@ -142,7 +142,15 @@ public:
   // Constants controlling the size of the short wheel buckets (this needs to
   // be public so that the timer handler can work out how long it should
   // wait for a tick)
+#ifndef UNIT_TEST
   static const int SHORT_WHEEL_RESOLUTION_MS = 8;
+#else
+  // Use fewer, larger buckets in UT, so we do less work when iterating over
+  // timers, and run at an acceptable speed under Valgrind. The timer wheel
+  // algorithms are independent of particular bucket sizes, so this doesn't
+  // reduce the quality of our testing.
+  static const int SHORT_WHEEL_RESOLUTION_MS = 256;
+#endif
 
   class TSIterator
   {
@@ -227,12 +235,21 @@ private:
   HealthChecker* _health_checker;
 
   // Constants controlling the size and resolution of the timer wheels.
+#ifndef UNIT_TEST
   static const int SHORT_WHEEL_NUM_BUCKETS = 128;
+  static const int LONG_WHEEL_NUM_BUCKETS = 4096;
+#else
+  // Use fewer, larger buckets in UT, so we do less work when iterating over
+  // timers, and run at an acceptable speed under Valgrind. The timer wheel
+  // algorithms are independent of particular bucket sizes, so this doesn't
+  // reduce the quality of our testing.
+  static const int SHORT_WHEEL_NUM_BUCKETS = 4;
+  static const int LONG_WHEEL_NUM_BUCKETS = 2048;
+#endif
   static const int SHORT_WHEEL_PERIOD_MS =
                                  (SHORT_WHEEL_RESOLUTION_MS * SHORT_WHEEL_NUM_BUCKETS);
 
   static const int LONG_WHEEL_RESOLUTION_MS = SHORT_WHEEL_PERIOD_MS;
-  static const int LONG_WHEEL_NUM_BUCKETS = 4096;
   static const int LONG_WHEEL_PERIOD_MS =
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
 

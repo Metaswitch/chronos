@@ -59,10 +59,10 @@ static uint32_t get_time_ms()
 }
 
 
-// The timer store has a granularity of 10ms. This means that timers may pop up
-// to 10ms late. As a result the timer store tests often add this granularity
-// when advancing time to guarantee that a timer has popped.
-const int TIMER_GRANULARITY_MS = 8;
+// The timer store has a granularity of , for example, 10ms. This means that
+// timers may pop up to 10ms late. As a result the timer store tests often add
+// this granularity when advancing time to guarantee that a timer has popped.
+const int TIMER_GRANULARITY_MS = TimerStore::SHORT_WHEEL_RESOLUTION_MS;
 
 class Overflow2h {
   static void set_time() {
@@ -293,7 +293,8 @@ TYPED_TEST(TestTimerStore, ClashingMultiMidGetNextTimersTest)
 {
   // Lengthen timer one to be in the same second bucket as timer two but different ms
   // buckets.
-  TestFixture::timers[0]->interval_ms = 10000 + 100;
+  TestFixture::timers[0]->interval_ms = 10000;
+  TestFixture::timers[1]->interval_ms = 10000 + (TIMER_GRANULARITY_MS * 3);
 
   TestFixture::ts_insert_helper(TestFixture::timers[0]);
   TestFixture::ts_insert_helper(TestFixture::timers[1]);
@@ -347,8 +348,9 @@ TYPED_TEST(TestTimerStore, SeparateMultiMidGetNextTimersTest)
 TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
 {
   // Lengthen timer one and two to be in the extra heap.
-  TestFixture::timers[0]->interval_ms = (3600 * 1000) + 100;
-  TestFixture::timers[1]->interval_ms = (3600 * 1000) + 200;
+  TestFixture::timers[0]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 2);
+  TestFixture::timers[1]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 4);
+  TestFixture::timers[2]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 6);
 
   TestFixture::ts_insert_helper(TestFixture::timers[0]);
   TestFixture::ts_insert_helper(TestFixture::timers[1]);
