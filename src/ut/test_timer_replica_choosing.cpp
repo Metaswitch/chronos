@@ -49,7 +49,7 @@ using testing::Types;
 /*****************************************************************************/
 
 static uint32_t REPLICATION_FACTOR = 2u;
-static int MAX_TIMERS = 4096;
+static int MAX_TIMERS = 768;
 static Hasher normal_hasher;
 
 class WithReplicas {
@@ -208,8 +208,8 @@ TYPED_TEST(TestTimerReplicaChoosing, MinimumTimersMovePrimary)
   }
 
   // To balance the cluster when we moved from N replicas to N+1, approximately
-  // 1/N+1th of existing timers should have moved. Allow a 5% difference to account for randomness.
-  EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / TestFixture::new_cluster.size()) * 1.05));
+  // 1/N+1th of existing timers should have moved. Allow a 10% difference to account for randomness.
+  EXPECT_THAT(different, ::testing::Lt((MAX_TIMERS / TestFixture::new_cluster.size()) * 1.1));
 }
 
 // Same logic as previous test, but checking backup instead of primary.
