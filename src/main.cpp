@@ -194,11 +194,9 @@ int main(int argc, char** argv)
   __globals = new Globals(options.config_file,
                           options.cluster_config_file);
 
-  boost::filesystem::path p = argv[0];
-  // Copy the filename to a string so that we can be sure of its lifespan -
-  // the value passed to openlog must be valid for the duration of the program.
-  std::string filename = p.filename().c_str();
-  openlog(filename.c_str(), PDLOG_PID, PDLOG_LOCAL7);
+  // Initialise ENT logging before making "Started" log
+  PDLogStatic::init(argv[0]);
+
   CL_CHRONOS_STARTED.log();
 
   // Log the PID, this is useful for debugging if monit restarts chronos.
