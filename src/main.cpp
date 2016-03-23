@@ -160,7 +160,6 @@ void signal_handler(int sig)
   exception_handler->handle_exception();
 
   CL_CHRONOS_CRASHED.log(strsignal(sig));
-  closelog();
 
   // Dump a core.
   abort();
@@ -194,11 +193,9 @@ int main(int argc, char** argv)
   __globals = new Globals(options.config_file,
                           options.cluster_config_file);
 
-  boost::filesystem::path p = argv[0];
-  // Copy the filename to a string so that we can be sure of its lifespan -
-  // the value passed to openlog must be valid for the duration of the program.
-  std::string filename = p.filename().c_str();
-  openlog(filename.c_str(), PDLOG_PID, PDLOG_LOCAL6);
+  // Initialise ENT logging before making "Started" log
+  PDLogStatic::init(argv[0]);
+
   CL_CHRONOS_STARTED.log();
 
   // Log the PID, this is useful for debugging if monit restarts chronos.
@@ -348,7 +345,6 @@ int main(int argc, char** argv)
   catch (HttpStack::Exception& e)
   {
     CL_CHRONOS_HTTP_INTERFACE_FAIL.log(e._func, e._rc);
-    closelog();
     std::cerr << "Caught HttpStack::Exception" << std::endl;
     return 1;
   }
@@ -398,7 +394,6 @@ int main(int argc, char** argv)
   // After this point nothing will use __globals so it's safe to delete
   // it here.
   CL_CHRONOS_ENDED.log();
-  closelog();
   delete __globals; __globals = NULL;
   curl_global_cleanup();
 

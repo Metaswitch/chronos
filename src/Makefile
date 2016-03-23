@@ -10,6 +10,7 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   timer.cpp \
                   timer_store.cpp \
                   log.cpp \
+                  pdlog.cpp \
                   logger.cpp \
                   unique.cpp \
                   signalhandler.cpp \
