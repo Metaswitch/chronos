@@ -392,7 +392,7 @@ static void calculate_rendezvous_hash(std::vector<std::string> cluster,
   // Pick the lowest hash value as the primary replica.
   for (std::map<uint32_t, size_t>::iterator ii = hash_to_idx.begin();
        ii != hash_to_idx.end();
-       ii++)
+       ++ii)
   {
     ordered_cluster.push_back(cluster[ii->second]);
   }
@@ -423,7 +423,7 @@ void Timer::calculate_replicas(TimerID id,
                                Hasher* hasher)
 {
   std::vector<std::string> old_replicas;
-  replicas.empty();
+  replicas.clear();
 
   // Calculate the replicas for the current cluster.
   calculate_rendezvous_hash(new_cluster,
@@ -868,7 +868,7 @@ Timer* Timer::from_json_obj(TimerID id,
       TRC_DEBUG("Statistics object not present, or badly formed. Discarding all tags.");
     }
   }
-  catch (JsonFormatError err)
+  catch (JsonFormatError& err)
   {
     error = "Badly formed Timer entry - hit error on line " + std::to_string(err._line);
     delete timer; timer = NULL;

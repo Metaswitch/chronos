@@ -224,14 +224,14 @@ void ControllerTask::handle_delete()
         _cfg->_handler->update_replica_tracker_for_timer(timer_id,
                                                          replica_index);
       }
-      catch (JsonFormatError err)
+      catch (JsonFormatError& err)
       {
         TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
                   err._file, err._line);
       }
     }
   }
-  catch (JsonFormatError err)
+  catch (JsonFormatError& err)
   {
     TRC_INFO("JSON body didn't contain the IDs array");
     send_http_reply(HTTP_BAD_REQUEST);
