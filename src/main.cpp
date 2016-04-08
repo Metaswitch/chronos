@@ -70,6 +70,7 @@ struct options
   std::string config_file;
   std::string cluster_config_file;
   std::string pidfile;
+  bool daemon;
 };
 
 // Enum for option types not assigned short-forms
@@ -78,6 +79,7 @@ enum OptionTypes
   CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
   CLUSTER_CONFIG_FILE,
   PIDFILE,
+  DAEMON,
   HELP
 };
 
@@ -86,6 +88,7 @@ const static struct option long_opt[] =
   {"config-file", required_argument, NULL, CONFIG_FILE},
   {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
   {"pidfile", required_argument, NULL, PIDFILE},
+  {"daemon", no_argument, NULL, DAEMON},
   {"help", no_argument, NULL, HELP},
   {NULL, 0, NULL, 0},
 };
@@ -94,10 +97,11 @@ void usage(void)
 {
   puts("Options:\n"
        "\n"
-       " --config-file <filename> Specify the per node configuration file\n"
+       " --config-file <filename>         Specify the per node configuration file\n"
        " --cluster-config-file <filename> Specify the cluster configuration file\n"
-       " --pidfile <filename> Specify the pidfile\n"
-       " --help Show this help screen\n");
+       " --pidfile <filename>             Specify the pidfile\n"
+       " --daemon                         Run in the background as a daemon\n"
+       " --help                           Show this help screen\n");
 }
 
 int init_options(int argc, char**argv, struct options& options)
@@ -119,6 +123,10 @@ int init_options(int argc, char**argv, struct options& options)
 
     case PIDFILE:
       options.pidfile = std::string(optarg);
+      break;
+
+    case DAEMON:
+      options.daemon = true;
       break;
 
     case HELP:
@@ -197,6 +205,18 @@ int main(int argc, char** argv)
   PDLogStatic::init(argv[0]);
 
   CL_CHRONOS_STARTED.log();
+
+  if (options.daemon)
+  {
+    // Options parsed and validated, time to demonize before writing out our
+    // pidfile or spwaning threads.
+    int errnum = Utils::daemonize();
+    if (errnum != 0)
+    {
+      TRC_ERROR("Failed to convert to daemon, %d (%s)", errnum, strerror(errnum));
+      exit(0);
+    }
+  }
 
   // Log the PID, this is useful for debugging if monit restarts chronos.
   TRC_STATUS("Starting with PID %d", getpid());
