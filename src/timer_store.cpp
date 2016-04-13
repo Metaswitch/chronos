@@ -479,10 +479,10 @@ TimerStore::TSIterator::TSIterator(TimerStore* ts) :
 
 TimerStore::TSIterator& TimerStore::TSIterator::operator++()
 {
-  inner_iterator++;
+  ++inner_iterator;
   if (inner_iterator == outer_iterator->second.end())
   {
-    outer_iterator++;
+    ++outer_iterator;
     inner_next();
   }
   return *this;
@@ -515,7 +515,7 @@ void TimerStore::TSIterator::inner_next()
   while (outer_iterator != _ts->_timer_view_id_table.end() &&
          outer_iterator->first == _cluster_view_id)
   {
-    outer_iterator++;
+    ++outer_iterator;
   }
 
   if (outer_iterator != _ts->_timer_view_id_table.end())

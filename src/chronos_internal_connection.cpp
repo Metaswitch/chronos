@@ -187,7 +187,7 @@ void ChronosInternalConnection::resynchronize()
 }
 
 HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
-                             const std::string server_to_sync,
+                             const std::string& server_to_sync,
                              std::vector<std::string> cluster_nodes,
                              std::string localhost)
 {
@@ -400,7 +400,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             }
 
           }
-          catch (JsonFormatError err)
+          catch (JsonFormatError& err)
           {
             // A single entry is badly formatted. This is unexpected but we'll try
             // to keep going and process the rest of the timers.
@@ -424,7 +424,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
           rc = HTTP_BAD_REQUEST;
         }
       }
-      catch (JsonFormatError err)
+      catch (JsonFormatError& err)
       {
         // We've failed to find the Timers array. This suggests that
         // there's something seriously wrong with the node we're trying
@@ -434,7 +434,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
       }
 
       // Send a DELETE to all the nodes to update their timer references
-      if (delete_map.size() > 0)
+      if (!delete_map.empty())
       {
         std::string delete_body = create_delete_body(delete_map);
         for (std::vector<std::string>::iterator it = cluster_nodes.begin();
@@ -471,17 +471,17 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
   return rc;
 }
 
-HTTPCode ChronosInternalConnection::send_delete(const std::string server,
-                                                const std::string body)
+HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
+                                                const std::string& body)
 {
   std::string path = "/timers/references";
   HTTPCode rc = _http->send_delete(path, 0, body, server);
   return rc;
 }
 
-HTTPCode ChronosInternalConnection::send_get(const std::string server,
-                                             const std::string node_for_replicas_param,
-                                             const std::string sync_mode_param,
+HTTPCode ChronosInternalConnection::send_get(const std::string& server,
+                                             const std::string& node_for_replicas_param,
+                                             const std::string& sync_mode_param,
                                              std::string cluster_view_id_param,
                                              int max_timers,
                                              std::string& response)

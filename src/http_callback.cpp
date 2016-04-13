@@ -41,7 +41,8 @@
 
 HTTPCallback::HTTPCallback() :
   _q(),
-  _running(false)
+  _running(false),
+  _handler(NULL)
 {
 }
 
@@ -94,7 +95,7 @@ void HTTPCallback::perform(Timer* timer)
 
 void* HTTPCallback::worker_thread_entry_point(void* arg)
 {
-  HTTPCallback* callback = (HTTPCallback*)arg;
+  HTTPCallback* callback = static_cast<HTTPCallback*>(arg);
   callback->worker_thread_entry_point();
   return NULL;
 }

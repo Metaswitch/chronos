@@ -46,7 +46,7 @@
 
 void* TimerHandler::timer_handler_entry_func(void* arg)
 {
-  ((TimerHandler*)arg)->run();
+  static_cast<TimerHandler*>(arg)->run();
   return NULL;
 }
 
@@ -106,7 +106,6 @@ TimerHandler::~TimerHandler()
 void TimerHandler::add_timer(Timer* timer, bool update_stats)
 {
   pthread_mutex_lock(&_mutex);
-  bool will_add_timer = true;
 
   // Convert the new timer to a timer pair
   TimerPair new_tp;
@@ -119,6 +118,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   // We've found a timer.
   if (timer_found)
   {
+    bool will_add_timer = true;
     std::string cluster_view_id;
     __globals->get_cluster_view_id(cluster_view_id);
 
@@ -434,7 +434,6 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            std::string& get_response)
 {
   pthread_mutex_lock(&_mutex);
-  std::unordered_set<TimerPair> timers;
 
   // Create the JSON doc for the Timer information
   rapidjson::StringBuffer sb;
@@ -572,7 +571,6 @@ bool TimerHandler::timer_is_on_node(std::string request_node,
 // pop, check the timer store to make sure we're holding the nearest timers.
 void TimerHandler::run() {
   std::unordered_set<TimerPair> next_timers;
-  std::unordered_set<Timer*>::iterator sample_timer;
 
   pthread_mutex_lock(&_mutex);
 
@@ -674,6 +672,7 @@ void TimerHandler::pop(Timer* timer)
   timer->update_cluster_information();
 
   // The callback borrows of the timer at this point.
+  // cppcheck-suppress uselessAssignmentPtrArg
   _callback->perform(timer); timer = NULL;
 }
 

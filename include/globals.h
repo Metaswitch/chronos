@@ -70,6 +70,7 @@ public:
   Globals(std::string config_file,
           std::string cluster_config_file);
   ~Globals();
+  Globals(const Globals& copy) = delete;
 
   enum struct TimerIDFormat
   {

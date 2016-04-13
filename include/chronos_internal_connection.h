@@ -92,13 +92,13 @@ private:
                          std::vector<std::string> replicas);
 
   // Sends a delete request
-  virtual HTTPCode send_delete(const std::string server,
-                               const std::string body);
+  virtual HTTPCode send_delete(const std::string& server,
+                               const std::string& body);
 
   // Sends a get request
-  virtual HTTPCode send_get(const std::string server,
-                            const std::string requesting_node,
-                            const std::string sync_mode,
+  virtual HTTPCode send_get(const std::string& server,
+                            const std::string& requesting_node,
+                            const std::string& sync_mode,
                             std::string cluster_view_id,
                             int max_timers,
                             std::string& response);
@@ -106,7 +106,7 @@ private:
   // Resynchronises with a single Chronos node (used in scale
   // operations).
   virtual HTTPCode resynchronise_with_single_node(
-                            const std::string server_to_sync,
+                            const std::string& server_to_sync,
                             std::vector<std::string> cluster_nodes,
                             std::string localhost);
 };

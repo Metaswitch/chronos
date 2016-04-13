@@ -83,7 +83,7 @@ Replicator::~Replicator()
 
 void* Replicator::worker_thread_entry_point(void* arg)
 {
-  Replicator* rep = (Replicator*)arg;
+  Replicator* rep = static_cast<Replicator*>(arg);
   rep->worker_thread_entry_point();
   return NULL;
 }
