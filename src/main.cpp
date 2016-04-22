@@ -196,11 +196,6 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  // Initialize the global configuration. Creating the __globals object
-  // updates the global configuration
-  __globals = new Globals(options.config_file,
-                          options.cluster_config_file);
-
   // Initialise ENT logging before making "Started" log
   PDLogStatic::init(argv[0]);
 
@@ -231,6 +226,12 @@ int main(int argc, char** argv)
       return 2;
     }
   }
+
+  // Initialize the global configuration. Creating the __globals object
+  // updates the global configuration. It also creates an updater thread,
+  // so this mustn't be created until after the process has daemonised.
+  __globals = new Globals(options.config_file,
+                          options.cluster_config_file);
 
   Alarm* scale_operation_alarm = NULL;
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
