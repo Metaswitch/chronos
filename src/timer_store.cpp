@@ -70,18 +70,8 @@ TimerStore::TimerStore(HealthChecker* hc) :
   _tick_timestamp = to_short_wheel_resolution(timestamp_ms());
 }
 
-TimerStore::~TimerStore()
+void TimerStore::clear()
 {
-  // Delete the timers in the lookup table as they will never pop now.
-  for (std::map<TimerID, TimerPair>::iterator it =
-                                                _timer_lookup_id_table.begin();
-                                                it != _timer_lookup_id_table.end();
-                                                ++it)
-  {
-    delete it->second.active_timer;
-    delete it->second.information_timer;
-  }
-
   _timer_lookup_id_table.clear();
   _timer_view_id_table.clear();
 
@@ -96,6 +86,21 @@ TimerStore::~TimerStore()
   }
 
   _extra_heap.clear();
+}
+
+TimerStore::~TimerStore()
+{
+  // Delete the timers in the lookup table as they will never pop now.
+  for (std::map<TimerID, TimerPair>::iterator it =
+                                                _timer_lookup_id_table.begin();
+                                                it != _timer_lookup_id_table.end();
+                                                ++it)
+  {
+    delete it->second.active_timer;
+    delete it->second.information_timer;
+  }
+
+  clear();
 }
 
 void TimerStore::insert(TimerPair tp,
@@ -314,6 +319,11 @@ void TimerStore::refill_long_wheel()
   {
     std::pop_heap(_extra_heap.begin(), _extra_heap.end());
     TimerPair timer = _extra_heap.back();
+
+    if (timer.active_timer != NULL)
+    {
+      TRC_DEBUG("Timer at top of heap is has ID %lu", timer.active_timer->id);
+    }
 
     while ((timer.active_timer != NULL) &&
            (Utils::overflow_less_than(timer.active_timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))

@@ -134,6 +134,9 @@ public:
   // Fetch the next buckets of timers to pop and remove from store
   virtual void fetch_next_timers(std::unordered_set<TimerPair>& set);
 
+  // Removes all timers from the wheels and heap, without deleting them. Useful for cleanup in UT.
+  void clear();
+
   // A table of all known timers indexed by ID. The TimerPair is in the
   // timer wheel - any other timers are stored for use when
   // resynchronising between Chronos's.
