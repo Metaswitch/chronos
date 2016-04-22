@@ -77,7 +77,7 @@ do_start()
 {
   setup_environment
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
-  $start_prefix start-stop-daemon --start --quiet --background --pidfile $PIDFILE --exec $DAEMON -- --daemon --pidfile=$PIDFILE || return 2
+  $start_prefix start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- --daemon --pidfile=$PIDFILE || return 2
 }
 
 do_stop()

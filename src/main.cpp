@@ -227,6 +227,8 @@ int main(int argc, char** argv)
     }
   }
 
+  Utils::start_signal_handlers();
+
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,
   // so this mustn't be created until after the process has daemonised.
