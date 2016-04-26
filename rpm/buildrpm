@@ -1,0 +1,8 @@
+# This script must be run from the current directory. 
+
+# We must override the _topdir macro - otherwise rpmbuild will assume we should
+# run in the directory ~/rpmbuild, in which case we won't be able to find the files
+# we need to package. 
+#
+# QA_RPATHS is used to silence warning baout rpaths being wrong. Is this safe?
+QA_RPATHS=0x0002 rpmbuild -ba chronos.spec --define "_topdir $(pwd)"
