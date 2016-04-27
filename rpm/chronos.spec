@@ -1,5 +1,5 @@
 Name:           chronos
-Version:        1.0
+Version:        1.2
 Release:        1
 Summary:        Clearwater distributed timer store
 
@@ -37,13 +37,35 @@ Clearwater distributed timer store
 #cp %{_projectroot}/usr/lib/*.so.* %{buildroot}/usr/share/chronos/lib
 #cp -r %{_projectroot}/chronos.root/* %{buildroot}/
 
+%{_copy_to_buildroot debian/chronos.postinst /usr/share/clearwater/bin/}
+%{_copy_to_buildroot debian/chronos.prerm /usr/share/clearwater/bin/}
+
+mkdir %{buildroot}/etc/init.d/
+cp %{_projectroot}/debian/chronos.init.d %{buildroot}/etc/init.d/chronos
+
+%post
+/usr/share/clearwater/bin/chronos.postinst "configure"
+
+%preun
+case "$1" in
+  0)
+    # This is an un-installation.
+    /usr/share/clearwater/bin/chronos.prerm "remove"
+  ;;
+  1)
+    # This is an upgrade.
+    /usr/share/clearwater/bin/chronos.prerm "upgrade"
+  ;;
+esac
+
 %files
 # Specify the files to package. 
 #
 # Another option is to use `%files -f <listfile>` where the contents of listfile is
 # injected into the %files section
-/etc/chronos/chronos.conf.sample
-/etc/cron.hourly/chronos-log-cleanup
+%config(noreplace) /etc/chronos/chronos.conf.sample
+%config(noreplace) /etc/cron.hourly/chronos-log-cleanup
+
 /usr/bin/chronos
 /usr/share/chronos/chronos.monit
 /usr/share/chronos/lib/libcares.so
@@ -63,3 +85,7 @@ Clearwater distributed timer store
 /usr/share/clearwater/infrastructure/alarms/chronos_alarms.json
 /usr/share/clearwater/infrastructure/scripts/check-chronos-uptime
 /usr/share/clearwater/infrastructure/scripts/chronos
+
+%attr(755, root, root) /usr/share/clearwater/bin/chronos.postinst
+%attr(755, root, root) /usr/share/clearwater/bin/chronos.prerm
+%attr(755, root, root) /etc/init.d/chronos
