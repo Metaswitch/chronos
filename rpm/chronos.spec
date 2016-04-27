@@ -11,7 +11,7 @@ Clearwater distributed timer store
 
 %install
 %define _projectroot %(realpath %{_topdir}/..)
-%define _copy_to_buildroot() mkdir -p %{buildroot}/%2; cp -r %{_projectroot}/%1 %{buildroot}/%2
+%define _copy_to_buildroot() mkdir -p %{buildroot}%2; cp -r %{_projectroot}/%1 %{buildroot}%2
 
 # Copy the necessary files to the buildroot. 
 #
@@ -22,10 +22,10 @@ Clearwater distributed timer store
 #
 # Here is an example of doing this with macros. 
 %{_copy_to_buildroot build/bin/chronos /usr/bin/}
-%{_copy_to_buildroot /modules/cpp-common/scripts/stats-c/cw_stat usr/share/clearwater/chronos/bin/}
-%{_copy_to_buildroot usr/lib/*.so usr/share/chronos/lib/}
-%{_copy_to_buildroot usr/lib/*.so.* usr/share/chronos/lib}
-%{_copy_to_buildroot chronos.root/* ./}
+%{_copy_to_buildroot modules/cpp-common/scripts/stats-c/cw_stat /usr/share/clearwater/chronos/bin/}
+%{_copy_to_buildroot usr/lib/*.so /usr/share/chronos/lib/}
+%{_copy_to_buildroot usr/lib/*.so.* /usr/share/chronos/lib}
+%{_copy_to_buildroot chronos.root/* /}
 
 # Equivilent shell commands. 
 #mkdir -p %{buildroot}/usr/bin
