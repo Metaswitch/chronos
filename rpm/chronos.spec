@@ -13,16 +13,21 @@ Clearwater distributed timer store
 %define _projectroot %(realpath %{_topdir}/..)
 %define _copy_to_buildroot() mkdir -p %{buildroot}/%2; cp -r %{_projectroot}/%1 %{buildroot}/%2
 
-# Copy all of chronos's files to the build root. We can either do this with 
-# some spec-file macros...
+# Copy the necessary files to the buildroot. 
+#
+# There are lots of ways to do this:
+# - Manually write the necessary mkdir/cp commands
+# - Use macros to make writing these commands easier
+# - Call a helper script to populate the buildroot (e.g. by parsing debian/*.install)
+#
+# Here is an example of doing this with macros. 
 %{_copy_to_buildroot build/bin/chronos /usr/bin/}
 %{_copy_to_buildroot /modules/cpp-common/scripts/stats-c/cw_stat usr/share/clearwater/chronos/bin/}
 %{_copy_to_buildroot usr/lib/*.so usr/share/chronos/lib/}
 %{_copy_to_buildroot usr/lib/*.so.* usr/share/chronos/lib}
 %{_copy_to_buildroot chronos.root/* ./}
 
-# ... or copy manually write the shell commands we need. 
-
+# Equivilent shell commands. 
 #mkdir -p %{buildroot}/usr/bin
 #cp %{_projectroot}/build/bin/chronos %{buildroot}/usr/bin/
 #mkdir -p %{buildroot}/usr/share/clearwater/chronos/bin
@@ -33,6 +38,10 @@ Clearwater distributed timer store
 #cp -r %{_projectroot}/chronos.root/* %{buildroot}/
 
 %files
+# Specify the files to package. 
+#
+# Another option is to use `%files -f <listfile>` where the contents of listfile is
+# injected into the %files section
 /etc/chronos/chronos.conf.sample
 /etc/cron.hourly/chronos-log-cleanup
 /usr/bin/chronos
