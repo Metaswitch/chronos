@@ -10,7 +10,7 @@
                     "details": "The Chronos process has been restored to normal operation.",
                     "description": "Chronos: Process failure cleared",
                     "cause": "The Chronos process has been restored to normal operation. The previously issued alarm has been cleared.",
-                    "effect": "This Chronos process is providing full service again. If all other alarms are clear then fully redundant timer operation has been restored.",
+                    "effect": "This Chronos process is providing full service again. If this alarm is clear on all nodes running Chronos then fully redundant timer operation has been restored.",
                     "action": "No action."
                 },
                 {
