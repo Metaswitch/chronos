@@ -43,6 +43,8 @@ Clearwater distributed timer store
 mkdir %{buildroot}/etc/init.d/
 cp %{_projectroot}/debian/chronos.init.d %{buildroot}/etc/init.d/chronos
 
+%debug_package
+
 %post
 /usr/share/clearwater/bin/chronos.postinst "configure"
 
