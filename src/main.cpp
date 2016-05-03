@@ -227,7 +227,7 @@ int main(int argc, char** argv)
     }
   }
 
-  Utils::start_signal_handlers();
+  start_signal_handlers();
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,
