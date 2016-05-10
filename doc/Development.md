@@ -75,7 +75,10 @@ environment variable to the user and server name.
 
 ## Building RPMs
 
-To build an RPM, run `rpmbuild -ba rpm/chronos.spec --define "_topdir \`pwd\`"`.
+To build an RPM, run
+
+    rpmbuild -ba rpm/chronos.spec --define "_topdir `pwd`".
+
 On completion, the rpms are available in the `<top level chronos directory>/RPMS/x86_64`
 folder.
 
