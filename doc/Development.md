@@ -14,19 +14,19 @@ included as git submodules, but the rest must be installed separately.
 
 On CentOS 7,
 
-1. Install the required packages
+1.  Install the required packages
 
-	sudo yum install libtool gcc-c++ cmake libevent-devel zlib-devel boost-devel net-snmp-devel valgrind python-flask python-requests
+        sudo yum install libtool gcc-c++ cmake libevent-devel zlib-devel boost-devel net-snmp-devel valgrind python-flask python-requests
 
-2. Build and install the libzmq package
+2.  Build and install the libzmq package
 
-	git clone --recursive git@github.com:zeromq/libzmq.git
-	cd libzmq
-	./autogen.sh
-	./configure
-	make
-	sudo make install
-	cp /usr/local/lib/libzmq.so.5 /var/lib/jenkins/workspace/chronos-centos/usr/lib
+        git clone --recursive git@github.com:zeromq/libzmq.git
+        cd libzmq
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+        cp /usr/local/lib/libzmq.so.5 /var/lib/jenkins/workspace/chronos-centos/usr/lib
 
 On Ubuntu 14.04,
 
