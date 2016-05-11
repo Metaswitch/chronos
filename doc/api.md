@@ -95,7 +95,7 @@ The default value for the replication factor (if unspecified) is `2`. The replic
 
 The `"statistics"` object is an optional parameter that may be used to provide tags holding information on what a timer represents. These tags are then used to generate stateful statistics in Chronos. The `"count"` value is also optional, defaulting to 1, but if present it must be a positive integer.
 
-Further information on querying these statistics can be found [here.](https://clearwater.readthedocs.org/en/latest/Clearwater_Stateful_Statistics/index.html)
+Further information on stateful statistics, and how to query them can be found [here.](https://clearwater.readthedocs.io/en/stable/Clearwater_Stateful_Statistics/index.html)
 Information on the statistics structures that enable these statistics can be found [here.](statistics_structures.md)
 
 #### Request (DELETE)
