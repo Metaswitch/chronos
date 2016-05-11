@@ -37,6 +37,12 @@ The body of the request should be a JSON block in the following format:
       },
       "reliability": {
         "replication-factor": <n>
+      },
+      "statistics": {
+        "tag-info": [
+          {"type": <"TAG 1">, "count": <n>},
+          {"type": <"TAG 2">, "count": <n>}
+        ]
       }
     }
 
@@ -84,6 +90,13 @@ The disadvantage of larger replication factors are:
 * Longer delays between the requested interval and the time of the actual pop (up to `2 sec * (n - 1)` in some failure cases).
 
 The default value for the replication factor (if unspecified) is `2`. The replication factor cannot be changed once the timer has been created.
+
+##### Statistics
+
+The `"statistics"` object is an optional parameter that may be used to provide tags holding information on what a timer represents. These tags are then used to generate stateful statistics in Chronos. The `"count"` value is also optional, defaulting to 1, but if present it must be a positive integer.
+
+Further information on stateful statistics, and how to query them can be found [here.](https://clearwater.readthedocs.io/en/stable/Clearwater_Stateful_Statistics/index.html)
+Information on the statistics structures that enable these statistics can be found [here.](statistics_structures.md)
 
 #### Request (DELETE)
 
