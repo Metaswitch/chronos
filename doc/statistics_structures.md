@@ -55,7 +55,7 @@ If the request is an SNMP GETNEXT, the table functions will first attempt to fin
 * Ensure that the number of tag characters matches the expected tag length.
 * Check for provided column and row values, ensure they are valid, and increment accordingly.
 
-This logic is performed within an infinite, with the possibility to break out at any of the stages. This enables us to alter a value within the OID, and then return to the beginning of the logic processing until we are satisfied that the processing is complete.
+This logic is performed within an infinite loop, with the possibility to break out at any of the stages. This enables us to alter a value within the OID, and then return to the beginning of the logic processing until we are satisfied that the processing is complete.
 
 * Tag length
   * If the tag length was not provided or is 0, we skip the table and return the OID after incrementing its last digit.
