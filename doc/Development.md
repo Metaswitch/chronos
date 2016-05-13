@@ -2,8 +2,8 @@
 
 This document describes how to build and test Chronos
 
-Chronos development is ongoing on Ubuntu 14.04, so the processes described
-below are targetted for (and tested on) this platform.  The code has been
+Chronos development is ongoing on Ubuntu 14.04/CentOS 7, so the processes described
+below are targetted for (and tested on) these platforms.  The code has been
 written to be portable, though, and should compile on other platforms once the
 required dependencies are installed.
 
@@ -11,6 +11,22 @@ required dependencies are installed.
 
 Chronos depend on a number of tools and libraries.  Some of these are
 included as git submodules, but the rest must be installed separately.
+
+On CentOS 7,
+
+1.  Install the required packages
+
+        sudo yum install libtool gcc-c++ cmake libevent-devel zlib-devel boost-devel net-snmp-devel valgrind python-flask python-requests git rpm-build
+
+2.  Build and install the libzmq package
+
+        git clone --recursive git@github.com:zeromq/libzmq.git
+        cd libzmq
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+        cp /usr/local/lib/libzmq.so.5 /var/lib/jenkins/workspace/chronos-centos/usr/lib
 
 On Ubuntu 14.04,
 
@@ -56,6 +72,15 @@ repository server.  To push to a repository server on the build machine, set
 the `REPO_DIR` environment variable to the appropriate path.  To push (via
 scp) to a repository server on a remote machine, also set the `REPO_SERVER`
 environment variable to the user and server name.
+
+## Building RPMs
+
+To build an RPM, run
+
+    rpmbuild -ba rpm/chronos.spec --define "_topdir `pwd`"
+
+On completion, the rpms are available in the `<top level chronos directory>/RPMS/x86_64`
+folder.
 
 ## Running Unit Tests
 

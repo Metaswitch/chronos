@@ -10,8 +10,7 @@ URL:            http://github.com/Metaswitch/chronos
 Clearwater distributed timer store
 
 %install
-%define _projectroot %(realpath %{_topdir}/..)
-%define _copy_to_buildroot() mkdir -p %{buildroot}%2; cp -r %{_projectroot}/%1 %{buildroot}%2
+%define _copy_to_buildroot() mkdir -p %{buildroot}%2; cp -r %{_topdir}/%1 %{buildroot}%2
 
 # Copy the necessary files to the buildroot. 
 #
@@ -29,19 +28,19 @@ Clearwater distributed timer store
 
 # Equivilent shell commands. 
 #mkdir -p %{buildroot}/usr/bin
-#cp %{_projectroot}/build/bin/chronos %{buildroot}/usr/bin/
+#cp %{_topdir}/build/bin/chronos %{buildroot}/usr/bin/
 #mkdir -p %{buildroot}/usr/share/clearwater/chronos/bin
-#cp %{_projectroot}/modules/cpp-common/scripts/stats-c/cw_stat %{buildroot}/usr/share/clearwater/chronos/bin
+#cp %{_topdir}/modules/cpp-common/scripts/stats-c/cw_stat %{buildroot}/usr/share/clearwater/chronos/bin
 #mkdir -p %{buildroot}/usr/share/chronos/lib
-#cp %{_projectroot}/usr/lib/*.so %{buildroot}/usr/share/chronos/lib
-#cp %{_projectroot}/usr/lib/*.so.* %{buildroot}/usr/share/chronos/lib
-#cp -r %{_projectroot}/chronos.root/* %{buildroot}/
+#cp %{_topdir}/usr/lib/*.so %{buildroot}/usr/share/chronos/lib
+#cp %{_topdir}/usr/lib/*.so.* %{buildroot}/usr/share/chronos/lib
+#cp -r %{_topdir}/chronos.root/* %{buildroot}/
 
 %{_copy_to_buildroot debian/chronos.postinst /usr/share/clearwater/bin/}
 %{_copy_to_buildroot debian/chronos.prerm /usr/share/clearwater/bin/}
 
 mkdir %{buildroot}/etc/init.d/
-cp %{_projectroot}/debian/chronos.init.d %{buildroot}/etc/init.d/chronos
+cp %{_topdir}/debian/chronos.init.d %{buildroot}/etc/init.d/chronos
 
 %debug_package
 
@@ -76,6 +75,7 @@ esac
 /usr/share/chronos/lib/libcurl.so
 /usr/share/chronos/lib/libcurl.so.4
 /usr/share/chronos/lib/libcurl.so.4.3.0
+/usr/share/chronos/lib/libzmq.so.5
 /usr/share/chronos/write_monit_restart_diags
 /usr/share/clearwater/bin/chronos_configuration_split.py
 /usr/share/clearwater/bin/poll_chronos.sh
