@@ -2,8 +2,8 @@
 
 This document describes how to build and test Chronos
 
-Chronos development is ongoing on Ubuntu 14.04, so the processes described
-below are targetted for (and tested on) this platform.  The code has been
+Chronos development is ongoing on Ubuntu 14.04/CentOS 7, so the processes described
+below are targetted for (and tested on) these platforms.  The code has been
 written to be portable, though, and should compile on other platforms once the
 required dependencies are installed.
 
@@ -16,7 +16,7 @@ On CentOS 7,
 
 1.  Install the required packages
 
-        sudo yum install libtool gcc-c++ cmake libevent-devel zlib-devel boost-devel net-snmp-devel valgrind python-flask python-requests
+        sudo yum install libtool gcc-c++ cmake libevent-devel zlib-devel boost-devel net-snmp-devel valgrind python-flask python-requests git rpm-build
 
 2.  Build and install the libzmq package
 
