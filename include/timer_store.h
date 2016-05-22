@@ -38,6 +38,7 @@
 #define TIMER_STORE_H__
 
 #include "timer.h"
+#include "timer_heap.h"
 #include "health_checker.h"
 #include "httpconnection.h"
 
@@ -269,7 +270,7 @@ private:
   Bucket _long_wheel[LONG_WHEEL_NUM_BUCKETS];
 
   // Heap of longer-lived timers (> 1hr)
-  std::vector<Timer*> _extra_heap;
+  TimerHeap _extra_heap;
 
   // We store Timer*s in the heap (as the TimerHeap interface requires
   // heap-allocated pointers and the TimerPair is always stack-allocated), so

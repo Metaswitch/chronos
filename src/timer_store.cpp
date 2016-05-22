@@ -151,8 +151,7 @@ void TimerStore::insert(TimerPair tp,
     // the extra heap.
     TRC_WARNING("Adding timer to extra heap, consider re-building with a larger "
                 "LONG_WHEEL_NUM_BUCKETS constant");
-    _extra_heap.push_back(tp.active_timer);
-    std::push_heap(_extra_heap.begin(), _extra_heap.end());
+    _extra_heap.insert(tp.active_timer);
   }
 
   // Add to the view specific mapping for easy retrieval on resync
@@ -313,8 +312,7 @@ void TimerStore::maybe_refill_wheels()
 
 TimerPair TimerStore::pop_from_heap()
 {
-  std::pop_heap(_extra_heap.begin(), _extra_heap.end());
-  Timer* t = _extra_heap.back();
+  Timer* t = static_cast<Timer*>(_extra_heap.get_next_timer());
   return _timer_lookup_id_table[t->id];
 }
 
@@ -335,7 +333,7 @@ void TimerStore::refill_long_wheel()
            (Utils::overflow_less_than(timer.active_timer->next_pop_time(), _tick_timestamp + LONG_WHEEL_PERIOD_MS)))
     {
       // Remove timer from heap
-      _extra_heap.pop_back();
+      _extra_heap.remove(timer.active_timer);
       Bucket* bucket = long_wheel_bucket(timer);
       bucket->insert(timer);
 
@@ -347,12 +345,6 @@ void TimerStore::refill_long_wheel()
       {
         timer.active_timer = NULL;
       }
-    }
-
-    // Push the timer back into the heap.
-    if (!_extra_heap.empty())
-    {
-      std::push_heap(_extra_heap.begin(), _extra_heap.end());
     }
   }
 }
@@ -397,16 +389,9 @@ void TimerStore::remove_timer_from_timer_wheel(TimerPair timer)
 
       if (num_erased == 0)
       {
-        std::vector<Timer*>::iterator heap_it;
-        heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer.active_timer);
-
-        if (heap_it != _extra_heap.end())
-        {
-          // Timer is in heap, remove it.
-          _extra_heap.erase(heap_it, heap_it + 1);
-          std::make_heap(_extra_heap.begin(), _extra_heap.end());
-        }
-        else
+        bool success = _extra_heap.remove(timer.active_timer);
+        
+        if (!success)
         {
           // We failed to remove the timer from any data structure.  Try and
           // purge the timer from all the timer wheels (we're already sure
