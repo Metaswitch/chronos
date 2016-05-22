@@ -151,7 +151,7 @@ void TimerStore::insert(TimerPair tp,
     // the extra heap.
     TRC_WARNING("Adding timer to extra heap, consider re-building with a larger "
                 "LONG_WHEEL_NUM_BUCKETS constant");
-    _extra_heap.push_back(tp);
+    _extra_heap.push_back(tp.active_timer);
     std::push_heap(_extra_heap.begin(), _extra_heap.end());
   }
 
@@ -311,14 +311,20 @@ void TimerStore::maybe_refill_wheels()
   }
 }
 
+TimerPair TimerStore::pop_from_heap()
+{
+  std::pop_heap(_extra_heap.begin(), _extra_heap.end());
+  Timer* t = _extra_heap.back();
+  return _timer_lookup_id_table[t->id];
+}
+
 // Refill the long timer wheel by taking all timers from the heap that are due
 // to pop in < long wheel timer total.
 void TimerStore::refill_long_wheel()
 {
   if (!_extra_heap.empty())
   {
-    std::pop_heap(_extra_heap.begin(), _extra_heap.end());
-    TimerPair timer = _extra_heap.back();
+    TimerPair timer = pop_from_heap();
 
     if (timer.active_timer != NULL)
     {
@@ -335,8 +341,7 @@ void TimerStore::refill_long_wheel()
 
       if (!_extra_heap.empty())
       {
-        std::pop_heap(_extra_heap.begin(), _extra_heap.end());
-        timer = _extra_heap.back();
+        timer = pop_from_heap();
       }
       else
       {
@@ -392,8 +397,8 @@ void TimerStore::remove_timer_from_timer_wheel(TimerPair timer)
 
       if (num_erased == 0)
       {
-        std::vector<TimerPair>::iterator heap_it;
-        heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer);
+        std::vector<Timer*>::iterator heap_it;
+        heap_it = std::find(_extra_heap.begin(), _extra_heap.end(), timer.active_timer);
 
         if (heap_it != _extra_heap.end())
         {

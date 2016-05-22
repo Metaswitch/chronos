@@ -269,7 +269,12 @@ private:
   Bucket _long_wheel[LONG_WHEEL_NUM_BUCKETS];
 
   // Heap of longer-lived timers (> 1hr)
-  std::vector<TimerPair> _extra_heap;
+  std::vector<Timer*> _extra_heap;
+
+  // We store Timer*s in the heap (as the TimerHeap interface requires
+  // heap-allocated pointers and the TimerPair is always stack-allocated), so
+  // this utility method looks up the timer ID to get back to a TimerPair.
+  TimerPair pop_from_heap();
 
   // Timestamp of the next tick to process. This is stored in ms, and is always
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.
