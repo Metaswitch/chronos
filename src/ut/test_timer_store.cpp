@@ -395,13 +395,8 @@ TYPED_TEST(TestTimerStore, HeapPropertyTest)
   //  - the timer with ID 1 is the last one to pop
   //
   //  This avoids bugs where the timers are ordered by ID instead of pop time.
-  //
-  //  Make sure all of these are >2 hours - otherwise the Overflow2h case wraps
-  //  one of them and causes unexpected behaviour. (This is probably the case
-  //  for all tests, but this uses three long timers so it's most noticeable
-  //  here.)
   TestFixture::timers[0]->interval_ms = (3600 * 1000 * 10) + (TIMER_GRANULARITY_MS * 2);
-  TestFixture::timers[1]->interval_ms = (3600 * 1000 * 3) + (TIMER_GRANULARITY_MS * 4);
+  TestFixture::timers[1]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 4);
   TestFixture::timers[2]->interval_ms = (3600 * 1000 * 5) + (TIMER_GRANULARITY_MS * 6);
 
   TestFixture::ts_insert_helper(TestFixture::timers[0]);
