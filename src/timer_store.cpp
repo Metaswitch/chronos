@@ -149,8 +149,7 @@ void TimerStore::insert(TimerPair tp,
   {
     // Timer is too far in the future to be handled by the wheels, put it in
     // the extra heap.
-    TRC_WARNING("Adding timer to extra heap, consider re-building with a larger "
-                "LONG_WHEEL_NUM_BUCKETS constant");
+    TRC_DEBUG("Adding timer to extra heap");
     _extra_heap.insert(tp.active_timer);
   }
 
