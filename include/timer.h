@@ -55,7 +55,7 @@ public:
   virtual uint32_t do_hash(TimerID data, uint32_t seed);
 };
 
-class Timer : public TimerHeap::Timer
+class Timer : public HeapableTimer
 {
 public:
   Timer(TimerID, uint32_t interval_ms, uint32_t repeat_for);
@@ -65,10 +65,10 @@ public:
   friend class TestTimer;
 
   // Returns the next time to pop in ms after epoch
-  uint32_t next_pop_time();
+  uint32_t next_pop_time() const;
   
-  // Required method for TimerHeap::Timer
-  uint64_t get_pop_time() { return next_pop_time(); }
+  // Required method for use in a heap
+  uint64_t get_pop_time() const { return next_pop_time(); }
 
   // Construct the URL for this timer given a hostname
   std::string url(std::string host = "");
