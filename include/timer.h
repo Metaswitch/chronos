@@ -68,7 +68,7 @@ public:
   uint32_t next_pop_time() const;
   
   // Required method for use in a heap
-  uint64_t get_pop_time() const { return next_pop_time(); }
+  uint64_t get_pop_time() const;
 
   // Construct the URL for this timer given a hostname
   std::string url(std::string host = "");
