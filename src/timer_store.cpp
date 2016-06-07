@@ -309,7 +309,7 @@ void TimerStore::maybe_refill_wheels()
   }
 }
 
-TimerPair TimerStore::pop_from_heap()
+TimerPair TimerStore::get_top_of_heap()
 {
   Timer* t = static_cast<Timer*>(_extra_heap.get_next_timer());
   return _timer_lookup_id_table[t->id];
@@ -321,7 +321,7 @@ void TimerStore::refill_long_wheel()
 {
   if (!_extra_heap.empty())
   {
-    TimerPair timer = pop_from_heap();
+    TimerPair timer = get_top_of_heap();
 
     if (timer.active_timer != NULL)
     {
@@ -338,7 +338,7 @@ void TimerStore::refill_long_wheel()
 
       if (!_extra_heap.empty())
       {
-        timer = pop_from_heap();
+        timer = get_top_of_heap();
       }
       else
       {

@@ -135,7 +135,8 @@ public:
   // Fetch the next buckets of timers to pop and remove from store
   virtual void fetch_next_timers(std::unordered_set<TimerPair>& set);
 
-  // Removes all timers from the wheels and heap, without deleting them. Useful for cleanup in UT.
+  // Removes all timers from the wheels and heap, without deleting them. Useful
+  // for cleanup in UT.
   void clear();
 
   // A table of all known timers indexed by ID. The TimerPair is in the
@@ -275,7 +276,7 @@ private:
   // We store Timer*s in the heap (as the TimerHeap interface requires
   // heap-allocated pointers and the TimerPair is always stack-allocated), so
   // this utility method looks up the timer ID to get back to a TimerPair.
-  TimerPair pop_from_heap();
+  TimerPair get_top_of_heap();
 
   // Timestamp of the next tick to process. This is stored in ms, and is always
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.

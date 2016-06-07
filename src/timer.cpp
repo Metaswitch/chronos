@@ -104,8 +104,8 @@ uint32_t Timer::next_pop_time() const
   __globals->get_cluster_local_ip(localhost);
 
   for (std::vector<std::string>::const_iterator it = replicas.begin();
-                                          it != replicas.end();
-                                          ++it, ++replica_index)
+       it != replicas.end();
+       ++it, ++replica_index)
   {
     if (*it == localhost)
     {

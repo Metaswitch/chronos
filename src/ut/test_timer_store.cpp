@@ -414,6 +414,15 @@ TYPED_TEST(TestTimerStore, HeapPropertyTest)
   EXPECT_EQ(2u, t->id);
 }
 
+TYPED_TEST(TestTimerStore, RemoveNonexistentTimer)
+{
+  // Don't insert any timers into the store, but try and remove one. This won't
+  // do anything - this test just checks it doesn't crash.
+  TimerPair tp;
+  tp.active_timer = TestFixture::timers[2];
+  TestFixture::ts->remove_timer_from_timer_wheel(tp);
+}
+
 
 TYPED_TEST(TestTimerStore, ReallyLongTimer)
 {
