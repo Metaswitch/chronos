@@ -97,15 +97,15 @@ Timer::~Timer()
 }
 
 // Returns the next pop time in ms.
-uint32_t Timer::next_pop_time()
+uint32_t Timer::next_pop_time() const
 {
   std::string localhost;
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
 
-  for (std::vector<std::string>::iterator it = replicas.begin();
-                                          it != replicas.end();
-                                          ++it, ++replica_index)
+  for (std::vector<std::string>::const_iterator it = replicas.begin();
+       it != replicas.end();
+       ++it, ++replica_index)
   {
     if (*it == localhost)
     {
@@ -114,6 +114,20 @@ uint32_t Timer::next_pop_time()
   }
 
   return start_time_mono_ms + ((sequence_number + 1) * interval_ms) + (replica_index * 2 * 1000);
+}
+
+uint64_t Timer::get_pop_time() const
+{
+  // The timer heap operates on 64-bit numbers, and expects times to overflow
+  // at the 64-bit overflow point, whereas Chronos uses 32-bit numbers. If we
+  // just provide 32-bit numbers to the heap, they will wrap at the wrong point
+  // and our overflow tests will fail. To avoid that, we shift the pop time 32
+  // bits to the left when providing it to the heap, so that times are still in
+  // the same order but they wrap at the 64-bit overflow point.
+  //
+  // This time is only used for heap ordering - when we get this out of the
+  // heap, we'll use next_pop_time() which returns the right time.
+  return (uint64_t)next_pop_time() << 32;
 }
 
 // Create the timer's URL from a given hostname

@@ -154,6 +154,8 @@ protected:
     delete timers[2]; timers[2] = NULL;
     delete tombstone; tombstone = NULL;
 
+    // Clearing the timer store before deleting it prevents double-deletion of timers
+    ts->clear();
     delete ts; ts = NULL;
     delete hc; hc = NULL;
     cwtest_reset_time();
@@ -380,6 +382,47 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
   TestFixture::timers[2] = (*next_timers.begin()).active_timer;
   EXPECT_EQ(3u, TestFixture::timers[2]->id);
 }
+
+TYPED_TEST(TestTimerStore, HeapPropertyTest)
+{
+  // This test ensures that the heap is working properly - i.e. that the timer
+  // which is next to pop is at the top of the heap.
+  std::unordered_set<TimerPair> next_timers;
+
+  // Set the timers (with IDs 1, 2 and 3) up so that:
+  //  - the timer with ID 2 is the first one to pop
+  //  - the timer with ID 3 is the next one to pop
+  //  - the timer with ID 1 is the last one to pop
+  //
+  //  This avoids bugs where the timers are ordered by ID instead of pop time.
+  TestFixture::timers[0]->interval_ms = (3600 * 1000 * 10) + (TIMER_GRANULARITY_MS * 2);
+  TestFixture::timers[1]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 4);
+  TestFixture::timers[2]->interval_ms = (3600 * 1000 * 5) + (TIMER_GRANULARITY_MS * 6);
+
+  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+
+  // Advance time to when the timer with ID 2 should pop, and ask for the next
+  // timer to pop. We should get one and it should be the timer with ID 2.
+
+  cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms + TIMER_GRANULARITY_MS);
+  TestFixture::ts->fetch_next_timers(next_timers);
+  
+  ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
+  const Timer* t = (*next_timers.begin()).active_timer;
+  EXPECT_EQ(2u, t->id);
+}
+
+TYPED_TEST(TestTimerStore, RemoveNonexistentTimer)
+{
+  // Don't insert any timers into the store, but try and remove one. This won't
+  // do anything - this test just checks it doesn't crash.
+  TimerPair tp;
+  tp.active_timer = TestFixture::timers[2];
+  TestFixture::ts->remove_timer_from_timer_wheel(tp);
+}
+
 
 TYPED_TEST(TestTimerStore, ReallyLongTimer)
 {

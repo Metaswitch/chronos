@@ -38,6 +38,7 @@
 #define TIMER_STORE_H__
 
 #include "timer.h"
+#include "timer_heap.h"
 #include "health_checker.h"
 #include "httpconnection.h"
 
@@ -133,6 +134,10 @@ public:
 
   // Fetch the next buckets of timers to pop and remove from store
   virtual void fetch_next_timers(std::unordered_set<TimerPair>& set);
+
+  // Removes all timers from the wheels and heap, without deleting them. Useful
+  // for cleanup in UT.
+  void clear();
 
   // A table of all known timers indexed by ID. The TimerPair is in the
   // timer wheel - any other timers are stored for use when
@@ -266,7 +271,12 @@ private:
   Bucket _long_wheel[LONG_WHEEL_NUM_BUCKETS];
 
   // Heap of longer-lived timers (> 1hr)
-  std::vector<TimerPair> _extra_heap;
+  TimerHeap _extra_heap;
+
+  // We store Timer*s in the heap (as the TimerHeap interface requires
+  // heap-allocated pointers and the TimerPair is always stack-allocated), so
+  // this utility method looks up the timer ID to get back to a TimerPair.
+  TimerPair get_top_of_heap();
 
   // Timestamp of the next tick to process. This is stored in ms, and is always
   // a multiple of SHORT_WHEEL_RESOLUTION_MS.

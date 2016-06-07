@@ -9,6 +9,7 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   http_callback.cpp \
                   timer.cpp \
                   timer_store.cpp \
+                  timer_heap.cpp \
                   log.cpp \
                   pdlog.cpp \
                   logger.cpp \

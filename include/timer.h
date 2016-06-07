@@ -42,6 +42,7 @@
 #include <string>
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
+#include "timer_heap.h"
 
 typedef uint64_t TimerID;
 
@@ -54,7 +55,7 @@ public:
   virtual uint32_t do_hash(TimerID data, uint32_t seed);
 };
 
-class Timer
+class Timer : public HeapableTimer
 {
 public:
   Timer(TimerID, uint32_t interval_ms, uint32_t repeat_for);
@@ -64,7 +65,10 @@ public:
   friend class TestTimer;
 
   // Returns the next time to pop in ms after epoch
-  uint32_t next_pop_time();
+  uint32_t next_pop_time() const;
+  
+  // Required method for use in a heap
+  uint64_t get_pop_time() const;
 
   // Construct the URL for this timer given a hostname
   std::string url(std::string host = "");
