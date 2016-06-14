@@ -235,6 +235,7 @@ int main(int argc, char** argv)
   __globals = new Globals(options.config_file,
                           options.cluster_config_file);
 
+  AlarmManager* alarm_manager = NULL;
   Alarm* scale_operation_alarm = NULL;
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
@@ -265,11 +266,12 @@ int main(int argc, char** argv)
 
   // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
   // in the alarm definition JSON file exactly.
-  scale_operation_alarm = new Alarm("chronos", AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
-                                               AlarmDef::MINOR);
+  alarm_manager = new AlarmManager();
+  scale_operation_alarm = new Alarm(alarm_manager,
+                                    "chronos",
+                                    AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
+                                    AlarmDef::MINOR);
 
-  // Start the alarm request agent
-  AlarmReqAgent::get_instance().start();
   // Explicitly clear scaling alarm in case we died while the alarm was still active,
   // to ensure that the alarm is not then stuck in a set state.
   scale_operation_alarm->clear();
@@ -406,11 +408,9 @@ int main(int argc, char** argv)
   delete hc; hc = NULL;
   delete exception_handler; exception_handler = NULL;
 
-  // Stop the alarm request agent
-  AlarmReqAgent::get_instance().stop();
-
   // Delete Chronos's alarm object
   delete scale_operation_alarm;
+  delete alarm_manager;
 
   sem_destroy(&term_sem);
 
