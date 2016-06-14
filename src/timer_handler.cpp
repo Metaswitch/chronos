@@ -595,11 +595,15 @@ void TimerHandler::run() {
       // secs/nsecs appropriately).
       if (next_pop.tv_nsec < (1000 - _store->SHORT_WHEEL_RESOLUTION_MS) * 1000 * 1000)
       {
+        // LCOV_EXCL_START - We can't guarantee which of these two paths we go
+        // through in UT
         next_pop.tv_nsec += _store->SHORT_WHEEL_RESOLUTION_MS * 1000 * 1000;
+        // LCOV_EXCL_STOP
       }
       else
       {
-        // LCOV_EXCL_START
+        // LCOV_EXCL_START - We can't guarantee which of these two paths we go
+        // through in UT
         next_pop.tv_nsec -= (1000 - _store->SHORT_WHEEL_RESOLUTION_MS) * 1000 * 1000;
         next_pop.tv_sec += 1;
         // LCOV_EXCL_STOP
