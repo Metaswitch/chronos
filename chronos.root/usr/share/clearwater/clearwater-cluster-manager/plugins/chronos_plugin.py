@@ -44,7 +44,7 @@ _log = logging.getLogger("chronos_plugin")
 
 def write_chronos_cluster_settings(filename, cluster_view, current_server, instance_id, deployment_id):
     joining = [constants.JOINING_ACKNOWLEDGED_CHANGE,
-               constants.JOINING_CONFIG_CHANGED],
+               constants.JOINING_CONFIG_CHANGED]
     staying = [constants.NORMAL_ACKNOWLEDGED_CHANGE,
                constants.NORMAL_CONFIG_CHANGED,
                constants.NORMAL]
