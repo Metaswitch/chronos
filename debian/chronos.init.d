@@ -137,7 +137,7 @@ do_wait_sync() {
   do
     # Retrieve the statistics.
     # Temporarily uses -c clearwater community string
-    nodes=`snmpget -Oqv -v2c -c clearwater-internal localhost .1.2.826.0.1.1578918.9.10.1`
+    nodes=`snmpget -Oqv -v2c -c clearwater-internal localhost .1.2.826.0.1.1578918.9.10.1.0`
 
     # If the nodes left to query is 0 or unset, we're finished
     if [ "$nodes" = "0" ]
