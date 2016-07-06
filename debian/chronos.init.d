@@ -75,14 +75,17 @@ setup_environment()
 
 do_start()
 {
+  # Allow us to write to the pidfile directory
+  install -m 755 -o $NAME -g root -d /var/run && chown -R $NAME /var/run
+
   setup_environment
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
-  $start_prefix start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- --daemon --pidfile=$PIDFILE || return 2
+  $start_prefix start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid $NAME -- --daemon --pidfile=$PIDFILE || return 2
 }
 
 do_stop()
 {
-  start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $EXECNAME
+  start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --user $NAME --pidfile $PIDFILE --name $EXECNAME
   RETVAL="$?"
   [ "$RETVAL" = 2 ] && return 2
   return $RETVAL
@@ -90,8 +93,11 @@ do_stop()
 
 do_run()
 {
+  # Allow us to write to the pidfile directory
+  install -m 755 -o $NAME -g root -d /var/run && chown -R $NAME /var/run
+
   setup_environment
-  $start_prefix start-stop-daemon --start --quiet --exec $DAEMON || return 2
+  $start_prefix start-stop-daemon --start --quiet --exec $DAEMON --chuid $NAME || return 2
 }
 
 do_reload()
@@ -108,7 +114,7 @@ do_reload()
 #
 do_abort()
 {
-  start-stop-daemon --stop --quiet --retry=ABRT/60/KILL/5 --pidfile $PIDFILE --name $EXECNAME
+  start-stop-daemon --stop --quiet --retry=ABRT/60/KILL/5 --user $NAME --pidfile $PIDFILE --name $EXECNAME
   RETVAL="$?"
   [ "$RETVAL" = 2 ] && return 2
   return $RETVAL
