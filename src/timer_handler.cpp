@@ -294,7 +294,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
 void TimerHandler::return_timer(Timer* timer)
 {
   // We may need to tombstone the timer
-  if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
+  if (((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for) || (timer->interval_ms == 0 && timer->repeat_for == 0))
   {
     // This timer won't pop again, so tombstone it and update statistics
     timer->become_tombstone();
