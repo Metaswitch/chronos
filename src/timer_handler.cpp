@@ -294,7 +294,12 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
 void TimerHandler::return_timer(Timer* timer)
 {
   // We may need to tombstone the timer
-  if ((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for)
+  // We also need to check for timers with a zero interval and repeat_for value.
+  // This would be for when a customer wants some information back from Chronos
+  // immediately and only once, hence we should tombstone the timer after use.
+  if (((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for) ||
+      ((timer->interval_ms == 0) && 
+       (timer->repeat_for == 0)))
   {
     // This timer won't pop again, so tombstone it and update statistics
     timer->become_tombstone();

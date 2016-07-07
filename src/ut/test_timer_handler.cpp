@@ -902,7 +902,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWillPopAgain)
 }
 
 // Return a timer to the handler as if it has been passed back from HTTPCallback and wont pop again.
-// The timer should be tombstoned before being put mack into the store.
+// The timer should be tombstoned before being put back into the store.
 TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
 {
   Timer* timer = default_timer(1);
@@ -910,6 +910,40 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
   timer->sequence_number = 1;
   timer->interval_ms = 100;
   timer->repeat_for = 100;
+
+  TimerPair insert_pair;
+
+  // The timer is being returned from a callback, and won't pop again.
+  // This should update statistics, and be returned to the store as a tombstone.
+  EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
+  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
+                       WillOnce(SaveArg<0>(&insert_pair));
+  _th->return_timer(timer);
+
+  // The timer is successfully added. As it's a new timer (as the pop would have
+  // removed it from the store) it's passed through to the store unchanged.
+  EXPECT_EQ(insert_pair.active_timer, timer);
+  EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
+
+  // Delete the timer (this is normally done by the insert call, but this
+  // is mocked out)
+  delete insert_pair.active_timer;
+}
+
+// Return a timer to the handler as if it has been passed back from
+// HTTPCallback and wont pop again. Give the timer an interval and
+// repeat_for value of 0. The timer should be tombstoned before
+// being put back into the store. 
+TEST_F(TestTimerHandlerAddAndReturn, TombstoneZeroIntervalAndRepeatForTimer)
+{
+  Timer* timer = default_timer(1);
+  // Set timer up so that it wouldn't pop again.
+  timer->sequence_number = 1;
+  timer->interval_ms = 0;
+  timer->repeat_for = 0;
 
   TimerPair insert_pair;
 
