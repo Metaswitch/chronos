@@ -50,14 +50,15 @@ set -e
 NAME=chronos
 
 case "$1" in
-    install|upgrade)
-        # We might have moved Chronos PID file from /var/run/chronos.pid to
-        # /var/log/chronos/chronos.pid so we need to stop Chronos here otherwise
-        # Monit will lose track of it.
+    upgrade)
+        # At some point we move the Chronos PID file from /var/run/chronos.pid
+        # to /var/log/chronos/chronos.pid.  If this upgrade is moving from
+        # pre-change to post-change, then we need to stop Chronos here
+        # otherwise Monit will lose track the process.
         service $NAME stop || /bin/true
     ;;
 
-    abort-upgrade)
+    install|abort-upgrade)
     ;;
 
     *)
