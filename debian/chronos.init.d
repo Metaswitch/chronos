@@ -49,7 +49,7 @@ PATH=/sbin:/usr/sbin:/usr/bin:/bin
 DESC="Chronos network timer service"
 NAME=chronos
 EXECNAME=chronos
-PIDFILE=/var/run/$NAME.pid
+PIDFILE=/var/run/$NAME/$NAME.pid
 DAEMON=/usr/bin/chronos
 
 # Exit unless daemon exists
@@ -76,7 +76,7 @@ setup_environment()
 do_start()
 {
   # Allow us to write to the pidfile directory
-  install -m 755 -o $NAME -g root -d /var/run && chown -R $NAME /var/run
+  install -m 755 -o $NAME -g root -d /var/run/$NAME && chown -R $NAME /var/run/$NAME
 
   setup_environment
   start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null || return 1
@@ -94,7 +94,7 @@ do_stop()
 do_run()
 {
   # Allow us to write to the pidfile directory
-  install -m 755 -o $NAME -g root -d /var/run && chown -R $NAME /var/run
+  install -m 755 -o $NAME -g root -d /var/run/$NAME && chown -R $NAME /var/run/$NAME
 
   setup_environment
   $start_prefix start-stop-daemon --start --quiet --exec $DAEMON --chuid $NAME || return 2

@@ -53,6 +53,10 @@ set -e
 NAME=chronos
 log_directory=/var/log/$NAME
 
+remove_user() {
+    if grep -q "^$NAME:" /etc/passwd ; then userdel $NAME ; fi
+}
+
 remove_logging() {
     if [ -d "$log_directory" ]; then
         rm -r $log_directory
@@ -61,22 +65,25 @@ remove_logging() {
 
 case "$1" in
     remove|upgrade|deconfigure)
+        # Must stop before attempting to remove the user, else that will fail.
+        # Use || /bin/true to ignore a failure, because set -e is in effect.
         rm -f /etc/monit/conf.d/$NAME.monit
         reload clearwater-monit || true
-
-        if [ $1 != "upgrade" ]; then
-            # We shouldn't do this cleanup on upgrade - deleting the
-            # logs loses valuable information
-            remove_logging
-        fi
 
         # Remove any clearwater-cluster-manager plugins
         rm -f /usr/share/clearwater/clearwater-cluster-manager/plugins/$NAME*
         if [ -x "/etc/init.d/clearwater-cluster-manager" ]; then
           service clearwater-cluster-manager stop || /bin/true
         fi
+
+        service $NAME stop || /bin/true
+        if [ $1 != "upgrade" ]; then
+            remove_user
+            remove_logging
+            rm -rf /var/run/$NAME
+        fi
     ;;
-    
+
     failed-upgrade)
     ;;
 
