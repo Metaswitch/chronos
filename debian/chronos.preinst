@@ -52,10 +52,12 @@ NAME=chronos
 case "$1" in
     upgrade)
         # At some point we move the Chronos PID file from /var/run/chronos.pid
-        # to /var/log/chronos/chronos.pid.  If this upgrade is moving from
+        # to /var/run/chronos/chronos.pid.  If this upgrade is moving from
         # pre-change to post-change, then we need to stop Chronos here
-        # otherwise Monit will lose track the process.
+        # otherwise Monit will lose track of the process.  We also remove the
+        # old PID files.
         service $NAME stop || /bin/true
+        rm -f /var/run/chronos.pid* || /bin/true
     ;;
 
     install|abort-upgrade)
