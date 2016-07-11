@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# @file chronos.postinst
+# @file chronos.preinst
 #
 # Project Clearwater - IMS in the Cloud
-# Copyright (C) 2013  Metaswitch Networks Ltd
+# Copyright (C) 2016  Metaswitch Networks Ltd
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -40,63 +40,33 @@
 set -e
 
 # summary of how this script can be called:
-#        * <postinst> `configure' <most-recently-configured-version>
-#        * <old-postinst> `abort-upgrade' <new version>
-#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
-#          <new-version>
-#        * <postinst> `abort-remove'
-#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
-#          <failed-install-package> <version> `removing'
-#          <conflicting-package> <version>
+#        * <new-preinst> `install'
+#        * <new-preinst> `upgrade' <old-version>
+#        * <new-preinst> `install' <old-version>
+#        * <old-preinst> `abort-upgrade' <new-version>
 # for details, see http://www.debian.org/doc/debian-policy/ or
 # the debian-policy package
 
 NAME=chronos
-log_directory=/var/log/$NAME
-
-MONIT_CONF_DIR=/etc/monit/conf.d
-MONIT_CONF_FILE=$MONIT_CONF_DIR/chronos.monit
-
-SRC_CONF_DIR=/usr/share/chronos
-MONIT_SRC_CONF_FILE=$SRC_CONF_DIR/chronos.monit
-
-#
-# Function to set up the user account for the daemon
-#
-setup_user() {
-  if ! grep -q "^$NAME:" /etc/passwd ; then useradd --system -M -d /nonexistent -s /bin/false $NAME ; fi
-}
-
-#
-# Function to ensure logging directory is in place and has the right permissions
-#
-setup_logging() {
-  if [ ! -d "$log_directory" ]; then
-    mkdir -p $log_directory
-  fi
-  chown $NAME $log_directory
-}
 
 case "$1" in
-  configure)
-    setup_user
-    setup_logging
-    install $MONIT_SRC_CONF_FILE $MONIT_CONF_FILE
-    reload clearwater-monit || true
+    upgrade)
+        # At some point we move the Chronos PID file from /var/run/chronos.pid
+        # to /var/run/chronos/chronos.pid.  If this upgrade is moving from
+        # pre-change to post-change, then we need to stop Chronos here
+        # otherwise Monit will lose track of the process.  We also remove the
+        # old PID files.
+        service $NAME stop || /bin/true
+        rm -f /var/run/chronos.pid* || /bin/true
+    ;;
 
-    # Stop the cluster manager, so that it is restarted by Monit and picks
-    # up the new Chronos scaling plugin. We check whether the process is
-    # installed to avoid warning logs when etcd isn't being used
-    if [ -x "/etc/init.d/clearwater-cluster-manager" ]; then
-      service clearwater-cluster-manager stop || /bin/true
-    fi
+    install|abort-upgrade)
+    ;;
 
-    # Restart Chronos.  Always do this by terminating chronos so monit will
-    # restart it more-or-less immediately.  (monit restart seems to have
-    # significant lag.)
-    # Don't fail if it's already stopped.
-    service chronos stop || true
-  ;;
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
 esac
 
 # dh_installdeb will replace this with shell code automatically
