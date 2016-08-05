@@ -282,7 +282,7 @@ void Globals::update_config()
     }
     else
     {
-      TRC_STATUS("Configure remote site: %s", it->c_str());
+      TRC_STATUS("Configured remote site: %s", it->c_str());
       remote_sites[it->substr(0, pos)] = it->substr(pos + 1);
     }
   }
