@@ -1,8 +1,13 @@
 ## Chronos configuration
 
-Chronos's configuration is set up in two files. `/etc/chronos/chronos.conf` contains configuration options for
-the individual Chronos process, and `/etc/chronos/chronos_cluster.conf` contains the configuration options that
-control how the Chronos process clusters with other Chronos processes. 
+Chronos's configuration is set up in three files.
+
+*   `/etc/chronos/chronos.conf` contains configuration options for the
+    individual Chronos process.
+*   `/etc/chronos/chronos_cluster.conf` contains the configuration options that
+    control how the Chronos process clusters with other Chronos processes.
+*   `/etc/chronos/chronos_gr.conf` contains the configuration options that control
+    how the Chronos cluster connects to other clusters for geographic redundancy.
 
 The per-node configuration file has the following format:
 
@@ -10,7 +15,7 @@ The per-node configuration file has the following format:
     bind-address = 1.2.3.4         # Address to bind the HTTP server to
     bind-port = 7253               # Port to bind the HTTP server to
     threads = 50                   # Number of HTTP threads to create
-    
+
     [logging]
     folder = /var/log/chronos      # Location to output logs to
     level = 2                      # Logging level: 1(lowest) - 5(highest)
@@ -18,15 +23,15 @@ The per-node configuration file has the following format:
     [exceptions]
     max_ttl = 600                  # The maximum time before Chronos exits if it hits an exception
 
-    [dns]  
+    [dns]
     servers = 127.0.0.1            # DNS servers to use (up to three allowed)
 
     [timers]
     id-format = with_replicas      # The format of the timer ID. We recommend that users do not set this configuration option.
 
-A sample configuration is provided [here](https://github.com/Metaswitch/chronos/blob/dev/etc/chronos/chronos.conf.sample). To use this configuration, copy it to `/etc/chronos/chronos.conf`, and change the `bind_address` to the IP of the Chronos node. 
+A sample configuration is provided [here](https://github.com/Metaswitch/chronos/blob/dev/etc/chronos/chronos.conf.sample). To use this configuration, copy it to `/etc/chronos/chronos.conf`, and change the `bind_address` to the IP of the Chronos node.
 
-To update the per node configuration, make the desired changes in `etc/chronos/chronos.conf` and restart the Chronos service (e.g. run `service chronos stop` and allow monit to restart Chronos).
+To update the per node configuration, make the desired changes in `/etc/chronos/chronos.conf` and restart the Chronos service (e.g. run `service chronos stop` and allow monit to restart Chronos).
 
 The cluster configuration file has the following format:
 
@@ -42,12 +47,23 @@ The cluster configuration file has the following format:
 
 Details of how to set up the configuration for clustering is [here](https://github.com/Metaswitch/chronos/blob/dev/doc/clustering.md).
 
-To update the cluster configuration, make the desired changes in `etc/chronos/chronos_cluster.conf`, and reload Chronos (e.g. `service chronos reload`). This doesn't impact service. 
+To update the cluster configuration, make the desired changes in `/etc/chronos/chronos_cluster.conf`, and reload Chronos (e.g. `service chronos reload`). This doesn't impact service.
+
+The geographic redundancy configuration file has the following format:
+
+    [sites]
+    local_site = local-site-name         # The name of the local site
+    remote_site = site-b=site-b:8000     # The name of a remote site, and the address
+    remote_site = site-c=site-c:7000     # of the remote site. If the address doesn't
+    remote_site = site-d=site-d:5000     # include a port the bind-port will be used
+    remote_site = site-e=site-d          # Each site is listed in a separate entry
+
+To update the geographic redundancy configuration, make the desired changes in `/etc/chronos/chronos_gr.conf`, and reload Chronos (e.g. `service chronos reload`). This doesn't impact service.
 
 ### Migration
 
-We used to keep both types of configuration in the same file (in `/etc/chronos/chronos.conf`). To move to the new configuration files, you should move anything under the `[cluster]` section in `/etc/chronos/chronos.conf` to a new file `/etc/chronos/chronos_cluster.conf`. We have provided a script that does this for you; you can run this with:
+We used to keep both cluster and general configuration the same file (in `/etc/chronos/chronos.conf`). To move to the new configuration files, you should move anything under the `[cluster]` section in `/etc/chronos/chronos.conf` to a new file `/etc/chronos/chronos_cluster.conf`. We have provided a script that does this for you; you can run this with:
 
-    sudo /usr/share/clearwater/bin/chronos_configuration_split.py [--current "Your current configuration file"] [--cluster "Your new cluster configuration file"] 
+    sudo /usr/share/clearwater/bin/chronos_configuration_split.py [--current "Your current configuration file"] [--cluster "Your new cluster configuration file"]
 
-The script uses `/etc/chronos/chronos.conf` as your current configuration file and `/etc/chronos/chronos_cluster` as your new cluster configuration file if you don't provide an alternative
+The script uses `/etc/chronos/chronos.conf` as your current configuration file and `/etc/chronos/chronos_cluster` as your new cluster configuration file if you don't provide an alternative.
