@@ -43,7 +43,8 @@ void Base::SetUp()
 {
   // Set up globals to something sensible
   __globals = new Globals("/etc/chronos/chronos.conf",
-                          "/etc/chronos/chronos_cluster.conf");
+                          "/etc/chronos/chronos_cluster.conf",
+                          "/etc/chronos/chronos_gr.conf");
   __globals->lock();
   std::string localhost = "10.0.0.1";
   std::string localhost_port = "10.0.0.1:9999";

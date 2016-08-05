@@ -69,6 +69,7 @@ struct options
 {
   std::string config_file;
   std::string cluster_config_file;
+  std::string gr_config_file;
   std::string pidfile;
   bool daemon;
 };
@@ -78,6 +79,7 @@ enum OptionTypes
 {
   CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
   CLUSTER_CONFIG_FILE,
+  GR_CONFIG_FILE,
   PIDFILE,
   DAEMON,
   HELP
@@ -87,6 +89,7 @@ const static struct option long_opt[] =
 {
   {"config-file", required_argument, NULL, CONFIG_FILE},
   {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
+  {"gr-config-file", required_argument, NULL, GR_CONFIG_FILE},
   {"pidfile", required_argument, NULL, PIDFILE},
   {"daemon", no_argument, NULL, DAEMON},
   {"help", no_argument, NULL, HELP},
@@ -99,6 +102,7 @@ void usage(void)
        "\n"
        " --config-file <filename>         Specify the per node configuration file\n"
        " --cluster-config-file <filename> Specify the cluster configuration file\n"
+       " --gr-config-file <filename>      Specify the GR configuration file\n"
        " --pidfile <filename>             Specify the pidfile\n"
        " --daemon                         Run in the background as a daemon\n"
        " --help                           Show this help screen\n");
@@ -119,6 +123,10 @@ int init_options(int argc, char**argv, struct options& options)
 
     case CLUSTER_CONFIG_FILE:
       options.cluster_config_file = std::string(optarg);
+      break;
+
+    case GR_CONFIG_FILE:
+      options.gr_config_file = std::string(optarg);
       break;
 
     case PIDFILE:
@@ -189,6 +197,7 @@ int main(int argc, char** argv)
   struct options options;
   options.config_file = "/etc/chronos/chronos.conf";
   options.cluster_config_file = "/etc/chronos/chronos_cluster.conf";
+  options.gr_config_file = "/etc/chronos/chronos_gr.conf";
   options.pidfile = "";
 
   if (init_options(argc, argv, options) != 0)
@@ -233,7 +242,8 @@ int main(int argc, char** argv)
   // updates the global configuration. It also creates an updater thread,
   // so this mustn't be created until after the process has daemonised.
   __globals = new Globals(options.config_file,
-                          options.cluster_config_file);
+                          options.cluster_config_file,
+                          options.gr_config_file);
 
   AlarmManager* alarm_manager = NULL;
   Alarm* scale_operation_alarm = NULL;

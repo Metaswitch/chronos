@@ -50,9 +50,11 @@ namespace po = boost::program_options;
 Globals* __globals;
 
 Globals::Globals(std::string config_file,
-                 std::string cluster_config_file) :
+                 std::string cluster_config_file,
+                 std::string gr_config_file) :
   _config_file(config_file),
-  _cluster_config_file(cluster_config_file)
+  _cluster_config_file(cluster_config_file),
+  _gr_config_file(gr_config_file)
 {
   pthread_rwlock_init(&_lock, NULL);
 
@@ -70,6 +72,8 @@ Globals::Globals(std::string config_file,
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
+    ("sites.local_site", po::value<std::string>()->default_value("site1"), "The name of the local site")
+    ("sites.remote_site", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "SITE"), "The name and address of the remote sites in the cluster")
     ("throttling.target_latency", po::value<int>()->default_value(500000), "Target latency (in microseconds) for HTTP responses")
     ("throttling.max_tokens", po::value<int>()->default_value(1000), "Maximum token bucket size for HTTP overload control")
     ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
@@ -96,32 +100,35 @@ Globals::~Globals()
   pthread_rwlock_destroy(&_lock);
 }
 
-void Globals::update_config()
+static void parse_config_file(std::string& config_file,
+                              po::variables_map& conf_map,
+                              po::options_description _desc)
 {
   std::ifstream file;
+  file.open(config_file);
+
+  // This is safe even if the config file doesn't exist, and this
+  // also sets up the default values if the file deosn't exist, or
+  // if the config options aren't set.
+  po::store(po::parse_config_file(file, _desc), conf_map);
+
+  if (file.is_open())
+  {
+    file.close();
+  }
+}
+
+void Globals::update_config()
+{
   po::variables_map conf_map;
 
-  // Read clustering config from _cluster_config_file and other config from
-  // _config_file. Any remaining unset configuration options will be set to
-  // their default values defined above when notify is called.
-  file.open(_cluster_config_file);
-  if (file.is_open())
-  {
-    po::store(po::parse_config_file(file, _desc), conf_map);
-    file.close();
-  }
+  // Read clustering config from _cluster_config_file, geographic redundancy
+  // config from _gr_config_file and other config from_config_file.
+  parse_config_file(_cluster_config_file, conf_map, _desc);
+  parse_config_file(_config_file, conf_map, _desc);
+  parse_config_file(_gr_config_file, conf_map, _desc);
 
-  file.open(_config_file);
-  // This is safe even if the config file doesn't exist, and this also sets up
-  // the default values if the file doesn't exist, or for any config options
-  // that aren't set in the file.
-  po::store(po::parse_config_file(file, _desc), conf_map);
   po::notify(conf_map);
-
-  if (file.is_open())
-  {
-    file.close();
-  }
 
   lock();
 
@@ -256,6 +263,31 @@ void Globals::update_config()
   CL_CHRONOS_CLUSTER_CFG_READ.log(cluster_joining_addresses.size(),
                                   cluster_staying_addresses.size(),
                                   cluster_leaving_addresses.size());
+
+  // Store the Geographic Redunancy Sites
+  set_local_site_name(conf_map["sites.local_site"].as<std::string>());
+
+  std::vector<std::string> remote_site_list = conf_map["sites.remote_site"].as<std::vector<std::string>>();
+  std::map<std::string, std::string> remote_sites;
+
+  for (std::vector<std::string>::iterator it = remote_site_list.begin();
+                                          it != remote_site_list.end();
+                                          ++it)
+  {
+    std::size_t pos = it->find("=");
+    if (pos == std::string::npos || pos + 1 == it->length())
+    {
+      TRC_ERROR("Ignoring remote site: %s - Site must include name and address separated by =",
+                it->c_str());
+    }
+    else
+    {
+      TRC_STATUS("Configure remote site: %s", it->c_str());
+      remote_sites[it->substr(0, pos)] = it->substr(pos + 1);
+    }
+  }
+
+  set_remote_sites(remote_sites);
 
   unlock();
 }

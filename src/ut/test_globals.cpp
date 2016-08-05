@@ -51,7 +51,8 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 {
   // Initialize the global configuration. Use default configuration
   Globals* test_global = new Globals("./no_config_file",
-                                     "./no_cluster_config_file");
+                                     "./no_cluster_config_file",
+                                     "./no_gr_config_file");
 
   // Read all global entries
   test_global->update_config();
@@ -105,6 +106,14 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   test_global->get_timer_id_format(timer_id_format);
   EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITH_REPLICAS);
 
+  std::string local_site_name;
+  test_global->get_local_site_name(local_site_name);
+  EXPECT_EQ(local_site_name, "site1");
+
+  std::map<std::string, std::string> remote_sites;
+  test_global->get_remote_sites(remote_sites);
+  EXPECT_EQ(remote_sites.size(), 0);
+
   delete test_global; test_global = NULL;
 }
 
@@ -112,7 +121,8 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 {
   // Initialize the global configuration. Use default configuration
   Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos.conf"),
-                                     std::string(UT_DIR).append("/chronos_cluster.conf"));
+                                     std::string(UT_DIR).append("/chronos_cluster.conf"),
+                                     std::string(UT_DIR).append("/chronos_gr.conf"));
 
   // Read all global entries
   test_global->update_config();
@@ -172,6 +182,19 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   Globals::TimerIDFormat timer_id_format;
   test_global->get_timer_id_format(timer_id_format);
   EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITHOUT_REPLICAS);
+
+  std::string local_site_name;
+  test_global->get_local_site_name(local_site_name);
+  EXPECT_EQ(local_site_name, "mysite");
+
+  std::map<std::string, std::string> remote_sites;
+  test_global->get_remote_sites(remote_sites);
+
+  // Site C will be stripped as it doesn't have an address, so we only expect
+  // to see two entries
+  EXPECT_EQ(remote_sites.size(), 2);
+  EXPECT_EQ(remote_sites["a"], "foo.com:800");
+  EXPECT_EQ(remote_sites["b"], "bar.com");
 
   delete test_global; test_global = NULL;
 }

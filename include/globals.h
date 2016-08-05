@@ -57,7 +57,7 @@
       val = _##NAME; \
       pthread_rwlock_unlock(&_lock); \
     } \
-    void set_##NAME(__VA_ARGS__ & val) \
+    void set_##NAME(const __VA_ARGS__ & val) \
     { \
       _##NAME = val; \
     } \
@@ -68,7 +68,8 @@ class Globals
 {
 public:
   Globals(std::string config_file,
-          std::string cluster_config_file);
+          std::string cluster_config_file,
+          std::string gr_config_file);
   ~Globals();
   Globals(const Globals& copy) = delete;
 
@@ -101,6 +102,11 @@ public:
 
   GLOBAL(instance_id, uint32_t);
   GLOBAL(deployment_id, uint32_t);
+
+  // Geographic Redundancy configuration
+  GLOBAL(local_site_name, std::string);
+  GLOBAL(remote_sites, std::map<std::string, std::string>);
+
 public:
   void update_config();
   void lock() { pthread_rwlock_wrlock(&_lock); }
@@ -113,6 +119,7 @@ private:
 
   std::string _config_file;
   std::string _cluster_config_file;
+  std::string _gr_config_file;
   pthread_rwlock_t _lock; 
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
