@@ -38,6 +38,7 @@
 #include "murmur/MurmurHash3.h"
 #include "log.h"
 #include "chronos_pd_definitions.h"
+#include "utils.h"
 
 #include <fstream>
 
@@ -274,8 +275,10 @@ void Globals::update_config()
                                           it != remote_site_list.end();
                                           ++it)
   {
-    std::size_t pos = it->find("=");
-    if (pos == std::string::npos || pos + 1 == it->length())
+    std::vector<std::string> site_details;
+    Utils::split_string(*it, '=', site_details, 0);
+
+    if (site_details.size() != 2)
     {
       TRC_ERROR("Ignoring remote site: %s - Site must include name and address separated by =",
                 it->c_str());
@@ -283,7 +286,7 @@ void Globals::update_config()
     else
     {
       TRC_STATUS("Configured remote site: %s", it->c_str());
-      remote_sites[it->substr(0, pos)] = it->substr(pos + 1);
+      remote_sites[site_details[0]] = site_details[1];
     }
   }
 
