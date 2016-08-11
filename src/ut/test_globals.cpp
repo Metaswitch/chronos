@@ -191,7 +191,8 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   test_global->get_remote_sites(remote_sites);
 
   // Site C will be stripped as it doesn't have an address, so we only expect
-  // to see two entries
+  // to see two entries. Site mysite will be stripped as it's the same as the
+  // local site.
   EXPECT_EQ(remote_sites.size(), 2);
   EXPECT_EQ(remote_sites["a"], "foo.com:800");
   EXPECT_EQ(remote_sites["b"], "bar.com");

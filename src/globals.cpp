@@ -266,7 +266,8 @@ void Globals::update_config()
                                   cluster_leaving_addresses.size());
 
   // Store the Geographic Redunancy Sites
-  set_local_site_name(conf_map["sites.local_site"].as<std::string>());
+  std::string local_site_name = conf_map["sites.local_site"].as<std::string>();
+  set_local_site_name(local_site_name);
 
   std::vector<std::string> remote_site_list = conf_map["sites.remote_site"].as<std::vector<std::string>>();
   std::map<std::string, std::string> remote_sites;
@@ -282,6 +283,11 @@ void Globals::update_config()
     {
       TRC_ERROR("Ignoring remote site: %s - Site must include name and address separated by =",
                 it->c_str());
+    }
+    else if (site_details[0] == local_site_name)
+    {
+      TRC_DEBUG("Not adding remote site as it's the same as the local site name (%s)",
+                local_site_name.c_str());
     }
     else
     {
