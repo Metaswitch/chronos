@@ -37,4 +37,4 @@
 # Monit 5.8.1 does not support passing arguments to check program scripts.
 # check-uptime provides common uptime-checking code. This wrapper script
 # uses it, and can be called with no arguments.
-/usr/share/clearwater/bin/check-uptime /var/run/chronos.pid monit 3000.1
+/usr/share/clearwater/bin/check-uptime /var/run/chronos/chronos.pid monit 3000.1

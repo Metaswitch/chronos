@@ -37,7 +37,7 @@
 # Called by monit to gather extra diags from chronos before it is restarted due
 # to being unresponsive.
 
-PIDFILE=/var/run/chronos.pid
+PIDFILE=/var/run/chronos/chronos.pid
 DIAGS_DIR=/var/log/chronos/monit_restart_diags
 
 # Ensure the extra diags directory exists.

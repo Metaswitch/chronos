@@ -59,37 +59,7 @@ environment variable to the user and server name.
 
 ## Running Unit Tests
 
-To run the chronos unit test suite, change to the top-level `chronos` directory and issue `make test`.
-
-Chronos unit tests use the [Google Test](https://code.google.com/p/googletest/)
-framework, so the output from the test run looks something like this.
-
-    [==========] Running 46 tests from 4 test cases.
-    [----------] Global test environment set-up.
-    [----------] 6 tests from TestHandler
-    [ RUN      ] TestHandler.ValidJSONDeleteTimer
-    [       OK ] TestHandler.ValidJSONDeleteTimer (1577 ms)
-    [ RUN      ] TestHandler.ValidJSONCreateTimer
-    [       OK ] TestHandler.ValidJSONCreateTimer (224 ms)
-    [ RUN      ] TestHandler.InvalidNoTimerNoBody
-    [       OK ] TestHandler.InvalidNoTimerNoBody (279 ms)
-    [ RUN      ] TestHandler.InvalidMethodNoTimer
-    [       OK ] TestHandler.InvalidMethodNoTimer (36 ms)
-    [ RUN      ] TestHandler.InvalidMethodWithTimer
-    [       OK ] TestHandler.InvalidMethodWithTimer (29 ms)
-    [ RUN      ] TestHandler.InvalidTimer
-    [       OK ] TestHandler.InvalidTimer (37 ms)
-    ...
-    [       OK ] TestTimerStore.DeleteOverdueTimer (175 ms)
-    [----------] 23 tests from TestTimerStore (77891 ms total)
-
-    [----------] Global test environment tear-down
-    [==========] 46 tests from 4 test cases ran. (86766 ms total)
-    [  PASSED  ] 46 tests.
-
-To additionally run code coverage checks, and use [Valgrind](http://valgrind.org/) to test for memory leaks, run `make full_test`.
-
-Passing `NOISY=T` enables verbose logging during the tests; you can add a logging level (e.g., `NOISY=T:99`) to control which logs you see.
+Chronos uses our common infrastructure to run the unit tests. How to run the UTs, and the different options available when running the UTs are described [here](http://clearwater.readthedocs.io/en/latest/Running_unit_tests.html#c-unit-tests).
 
 ## Running Functional Tests
 
