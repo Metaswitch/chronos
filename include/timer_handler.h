@@ -48,6 +48,7 @@
 #include "timer_store.h"
 #include "callback.h"
 #include "replicator.h"
+#include "gr_replicator.h"
 #include "alarm.h"
 #include "snmp_continuous_increment_table.h"
 #include "snmp_infinite_timer_count_table.h"
@@ -60,6 +61,7 @@ public:
   TimerHandler(TimerStore*,
                Callback*,
                Replicator*,
+               GRReplicator*,
                SNMP::ContinuousIncrementTable*,
                SNMP::InfiniteTimerCountTable*,
                SNMP::InfiniteScalarTable*);
@@ -110,10 +112,10 @@ private:
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);
 
-
   TimerStore* _store;
   Callback* _callback;
   Replicator* _replicator;
+  GRReplicator* _gr_replicator;
   SNMP::ContinuousIncrementTable* _all_timers_table;
   SNMP::InfiniteTimerCountTable* _tagged_timers_table;
   SNMP::InfiniteScalarTable* _scalar_timers_table;

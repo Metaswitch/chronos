@@ -53,17 +53,19 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
 TimerHandler::TimerHandler(TimerStore* store,
                            Callback* callback,
                            Replicator* replicator,
+                           GRReplicator* gr_replicator,
                            SNMP::ContinuousIncrementTable* all_timers_table,
                            SNMP::InfiniteTimerCountTable* tagged_timers_table,
                            SNMP::InfiniteScalarTable* scalar_timers_table) :
-                           _store(store),
-                           _callback(callback),
-                           _replicator(replicator),
-                           _all_timers_table(all_timers_table),
-                           _tagged_timers_table(tagged_timers_table),
-                           _scalar_timers_table(scalar_timers_table),
-                           _terminate(false),
-                           _nearest_new_timer(-1)
+  _store(store),
+  _callback(callback),
+  _replicator(replicator),
+  _gr_replicator(gr_replicator),
+  _all_timers_table(all_timers_table),
+  _tagged_timers_table(tagged_timers_table),
+  _scalar_timers_table(scalar_timers_table),
+  _terminate(false),
+  _nearest_new_timer(-1)
 {
   pthread_mutex_init(&_mutex, NULL);
 
@@ -317,7 +319,7 @@ void TimerHandler::return_timer(Timer* timer)
 
 void TimerHandler::handle_successful_callback(TimerID timer_id)
 {
-  // Fetch the timer from the store and replicate it.
+  // Fetch the timer from the store and replicate it (within and cross-site)
   pthread_mutex_lock(&_mutex);
   TimerPair timer_pair;
   bool timer_found = _store->fetch(timer_id, timer_pair);
@@ -327,6 +329,7 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
     Timer* timer;
     timer = timer_pair.active_timer;
     _replicator->replicate(timer);
+    _gr_replicator->replicate(timer);
 
     std::vector<std::string> cluster_view_id_vector;
     cluster_view_id_vector.push_back(timer->cluster_view_id);

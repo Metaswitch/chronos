@@ -327,6 +327,7 @@ int main(int argc, char** argv)
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
                                            handler_rep,
+                                           gr_rep,
                                            all_timers_table,
                                            total_timers_table,
                                            scalar_timers_table);

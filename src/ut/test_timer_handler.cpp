@@ -40,6 +40,7 @@
 #include "mock_timer_handler.h"
 #include "mock_callback.h"
 #include "mock_replicator.h"
+#include "mock_gr_replicator.h"
 #include "base.h"
 #include "test_interposer.hpp"
 #include "globals.h"
@@ -70,6 +71,7 @@ protected:
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
+    _gr_replicator = new MockGRReplicator();
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -80,6 +82,7 @@ protected:
     delete _th;
     delete _store;
     delete _replicator;
+    delete _gr_replicator;
     delete _mock_tag_table;
     delete _mock_scalar_table;
     delete _mock_increment_table;
@@ -102,6 +105,7 @@ protected:
   MockTimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
+  MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
@@ -115,7 +119,7 @@ TEST_F(TestTimerHandlerFetchAndPop, StartUpAndShutDown)
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 }
 
@@ -134,7 +138,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopOneTimer)
 
   EXPECT_CALL(*_callback, perform(timer));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer; timer = NULL;
 }
@@ -156,7 +160,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopRepeatedTimer)
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -181,7 +185,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSimultaneously)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -209,7 +213,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSeries)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -241,7 +245,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleRepeatingTimers)
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -270,7 +274,7 @@ TEST_F(TestTimerHandlerFetchAndPop, EmptyStore)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
   // The first timer has been handled, but the store's now empty.  Pretend the store
@@ -295,7 +299,7 @@ TEST_F(TestTimerHandlerFetchAndPop, LeakTest)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(timers));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 }
 
@@ -328,7 +332,7 @@ TEST_F(TestTimerHandlerFetchAndPop, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
   EXPECT_CALL(*_callback, perform(_));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
   cwtest_advance_time_ms(100);
@@ -347,7 +351,7 @@ TEST_F(TestTimerHandlerFetchAndPop, PopTombstoneTimer)
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
-  _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
   _th->pop(timer1);
@@ -373,6 +377,7 @@ protected:
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
+    _gr_replicator = new MockGRReplicator();
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -381,7 +386,7 @@ protected:
     EXPECT_CALL(*_store, fetch_next_timers(_)).
                          WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
                          WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
-    _th = new TimerHandler(_store, _callback, _replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+    _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
     _cond()->block_till_waiting();
   }
 
@@ -390,6 +395,7 @@ protected:
     delete _th;
     delete _store;
     delete _replicator;
+    delete _gr_replicator;
     delete _mock_tag_table;
     delete _mock_scalar_table;
     delete _mock_increment_table;
@@ -412,6 +418,7 @@ protected:
   MockTimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
+  MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
@@ -998,6 +1005,7 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
               WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_replicator, replicate(insert_pair.active_timer));
+  EXPECT_CALL(*_gr_replicator, replicate(insert_pair.active_timer));
   EXPECT_CALL(*_store, insert(_, insert_pair.active_timer->id, insert_pair.active_timer->next_pop_time(), _)).
                               WillOnce(SaveArg<0>(&insert_pair));
   _th->handle_successful_callback(id);
@@ -1175,6 +1183,7 @@ protected:
     _store = new TimerStore(_health_checker);
     _callback = new MockCallback();
     _replicator = new MockReplicator();
+    _gr_replicator = new MockGRReplicator();
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -1182,6 +1191,7 @@ protected:
     _th = new TimerHandler(_store,
                            _callback,
                            _replicator,
+                           _gr_replicator,
                            _mock_increment_table,
                            _mock_tag_table,
                            _mock_scalar_table);
@@ -1193,6 +1203,7 @@ protected:
     delete _store;
     delete _health_checker;
     delete _replicator;
+    delete _gr_replicator;
     delete _mock_tag_table;
     delete _mock_scalar_table;
     delete _mock_increment_table;
@@ -1212,6 +1223,7 @@ protected:
   TimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
+  MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
