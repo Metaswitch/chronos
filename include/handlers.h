@@ -44,6 +44,7 @@
 #include "timer.h"
 #include "timer_handler.h"
 #include "replicator.h"
+#include "gr_replicator.h"
 #include "globals.h"
 
 class ControllerTask : public HttpStackUtils::Task
@@ -52,8 +53,10 @@ public:
   struct Config
   {
     Config(Replicator* replicator,
+           GRReplicator* gr_replicator,
            TimerHandler* handler) :
       _replicator(replicator),
+      _gr_replicator(gr_replicator),
       _handler(handler)
     {}
   
@@ -61,6 +64,7 @@ public:
     {}
 
     Replicator* _replicator;
+    GRReplicator* _gr_replicator;
     TimerHandler* _handler;
   };
 

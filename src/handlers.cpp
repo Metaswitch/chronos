@@ -119,16 +119,21 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
 {
   Timer* timer = NULL;
   bool replicated_timer;
+  bool gr_replicated_timer;
 
   if (_req.method() == htp_method_DELETE)
   {
     // Replicated deletes are implemented as replicated tombstones so no DELETE
-    // can be a replication request.
+    // can be a replication request - it must have come from the client so we
+    // should replicate it ourselves (both within site and cross-site).
     replicated_timer = false;
+    gr_replicated_timer = false;
     timer = Timer::create_tombstone(timer_id, replica_hash);
   }
   else
   {
+    // Create a timer from the JSON body. This also works out whether the
+    // timer has already been replicated within/cross-site.
     std::string body = _req.get_rx_body();
     std::string error_str;
     timer = Timer::from_json(timer_id,
@@ -136,7 +141,8 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
                              replica_hash,
                              body,
                              error_str,
-                             replicated_timer);
+                             replicated_timer,
+                             gr_replicated_timer);
 
     if (!timer)
     {
@@ -147,16 +153,26 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
     }
   }
 
-  TRC_DEBUG("Accepted timer definition, timer is%s a replica", replicated_timer ? "" : " not");
+  TRC_DEBUG("Timer accepted: %s replicating within-site, %s replicating cross-site",
+            replicated_timer ? "does not need" : "needs",
+            gr_replicated_timer ? "does not need" : "needs");
 
   // Now we have a valid timer object, reply to the HTTP request.
   _req.add_header("Location", timer->url());
   send_http_reply(HTTP_OK);
 
-  // Replicate the timer to the other replicas if this is a client request
+  // Replicate the timer to the other replicas within the site if this is the
+  // first Chronos in this site to handle the request
   if (!replicated_timer)
   {
     _cfg->_replicator->replicate(timer);
+
+    // Replicate the timer cross site if this is the first Chronos in this
+    // deployment to handle the request
+    if (!gr_replicated_timer)
+    {
+      _cfg->_gr_replicator->replicate(timer);
+    }
   }
 
   // If the timer belongs to the local node, store it. Otherwise, turn it into
