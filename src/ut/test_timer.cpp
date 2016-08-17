@@ -274,6 +274,10 @@ protected:
     std::vector<std::string> replicas;
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
+    std::vector<std::string> sites;
+    sites.push_back("local_site");
+    sites.push_back("remote_site_1_name");
+
     std::map<std::string, uint32_t> tags;
     tags["TAG1"]++;
     tags["TAG2"]++;
@@ -285,6 +289,7 @@ protected:
     t1->start_time_mono_ms = 1000000;
     t1->sequence_number = 0;
     t1->replicas = replicas;
+    t1->sites = sites;
     t1->_replication_factor = 2;
     t1->tags = tags;
     t1->callback_url = "http://localhost:80/callback";
@@ -488,6 +493,7 @@ TEST_F(TestTimer, ToJSON)
   t2->start_time_mono_ms = 1000000;
   t2->sequence_number = 0;
   t2->replicas = t1->replicas;
+  t2->sites = t1->sites;
   t2->tags = t1->tags;
   t2->callback_url = "http://localhost:80/callback";
   t2->callback_body = "{\"stuff\": \"stuff\"}";
@@ -512,6 +518,7 @@ TEST_F(TestTimer, ToJSON)
   EXPECT_EQ(t2->repeat_for, t3->repeat_for) << json;
   EXPECT_EQ(2, get_replication_factor(t3)) << json;
   EXPECT_EQ(t2->replicas, t3->replicas) << json;
+  EXPECT_EQ(t2->sites, t3->sites) << json;
   EXPECT_EQ(t2->tags, t3->tags) << json;
   EXPECT_EQ(t2->cluster_view_id, t3->cluster_view_id) << json;
   EXPECT_EQ("http://localhost:80/callback", t3->callback_url) << json;

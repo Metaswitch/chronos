@@ -77,6 +77,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
+  sites(std::vector<std::string>()),
   tags(std::map<std::string, uint32_t>()),
   callback_url(""),
   callback_body(""),
@@ -198,9 +199,8 @@ std::string Timer::url(std::string host)
 //     },
 //     "reliability": {
 //         "cluster-view-id": "string",
-//         "replicas": [
-//             <comma separated "string"s>
-//         ]
+//         "sites": ["site name 1", "site name 2",...],
+//         "replicas": ["replica 1", "replica 2",...]
 //     }
 //     "statistics": {
 //         "tag-info": [ {"type": <TAG>,
@@ -270,6 +270,17 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
       {
         for (std::vector<std::string>::iterator it = replicas.begin();
                                                 it != replicas.end();
+                                                ++it)
+        {
+          writer->String((*it).c_str());
+        }
+      }
+      writer->EndArray();
+      writer->String("sites");
+      writer->StartArray();
+      {
+        for (std::vector<std::string>::iterator it = sites.begin();
+                                                it != sites.end();
                                                 ++it)
         {
           writer->String((*it).c_str());
@@ -622,11 +633,16 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 
 // Create a Timer object from the JSON representation.
 //
-// @param id - The unique identity for the timer (see generate_timer_id() above).
-// @param replication_factor - The replication_factor extracted from the timer URL (or 0 for new timer).
-// @param json - The JSON representation of the timer.
-// @param error - This will be populated with a descriptive error string if required.
-// @param replicated - This will be set to true if this is a replica of a timer.
+// @param id - The unique identity for the timer (see generate_timer_id()
+//             above
+// @param replication_factor - The replication_factor extracted from the timer
+//                             URL (or 0 for new timer)
+// @param json - The JSON representation of the timer
+// @param error - This will be populated with a descriptive error string if
+//                 required
+// @param replicated - This will be set to true if this is a replica of a timer
+// @param gr_replicated - This will be set to true if this isn't the first site
+//                        to process this timer
 Timer* Timer::from_json(TimerID id,
                         uint32_t replication_factor,
                         uint64_t replica_hash,
@@ -798,6 +814,20 @@ Timer* Timer::from_json_obj(TimerID id,
           // If the URL contained a replication factor, use that, otherwise
           // default replication factor is 2.
           timer->_replication_factor = replication_factor ? replication_factor : 2;
+        }
+      }
+
+      if (reliability.HasMember("sites"))
+      {
+        rapidjson::Value& sites = reliability["sites"];
+        JSON_ASSERT_ARRAY(sites);
+
+        for (rapidjson::Value::ConstValueIterator it = sites.Begin();
+                                                  it != sites.End();
+                                                  ++it)
+        {
+          JSON_ASSERT_STRING(*it);
+          timer->sites.push_back(std::string(it->GetString(), it->GetStringLength()));
         }
       }
     }
