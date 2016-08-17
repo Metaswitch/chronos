@@ -78,6 +78,21 @@ void Base::SetUp()
   __globals->set_instance_id(instance_id);
   __globals->set_deployment_id(deployment_id);
 
+  std::string local_site_name = "local_site";
+  __globals->set_local_site_name(local_site_name);
+
+  std::map<std::string, std::string> remote_sites;
+  remote_sites.insert(std::make_pair("remote_site_1_name", "remote_site_1_host"));
+  __globals->set_remote_sites(remote_sites);
+
+  std::vector<std::string> remote_site_names;
+  remote_site_names.push_back("remote_site_1_name");
+  __globals->set_remote_site_names(remote_site_names);
+
+  std::vector<std::string> remote_site_hosts;
+  remote_site_hosts.push_back("remote_site_1_host");
+  __globals->set_remote_site_hosts(remote_site_hosts);
+
   __globals->unlock();
 }
 

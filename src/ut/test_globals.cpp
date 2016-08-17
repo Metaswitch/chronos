@@ -104,15 +104,22 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 
   Globals::TimerIDFormat timer_id_format;
   test_global->get_timer_id_format(timer_id_format);
-  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITH_REPLICAS);
+  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITHOUT_REPLICAS);
 
   std::string local_site_name;
   test_global->get_local_site_name(local_site_name);
   EXPECT_EQ(local_site_name, "site1");
 
   std::map<std::string, std::string> remote_sites;
+  std::vector<std::string> remote_site_names;
+  std::vector<std::string> remote_site_hosts;
   test_global->get_remote_sites(remote_sites);
+  test_global->get_remote_site_names(remote_site_names);
+  test_global->get_remote_site_hosts(remote_site_hosts);
+
   EXPECT_EQ(remote_sites.size(), 0);
+  EXPECT_EQ(remote_site_names.size(), 0);
+  EXPECT_EQ(remote_site_hosts.size(), 0);
 
   delete test_global; test_global = NULL;
 }
@@ -188,7 +195,11 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   EXPECT_EQ(local_site_name, "mysite");
 
   std::map<std::string, std::string> remote_sites;
+  std::vector<std::string> remote_site_names;
+  std::vector<std::string> remote_site_hosts;
   test_global->get_remote_sites(remote_sites);
+  test_global->get_remote_site_names(remote_site_names);
+  test_global->get_remote_site_hosts(remote_site_hosts);
 
   // Site C will be stripped as it doesn't have an address, so we only expect
   // to see two entries. Site mysite will be stripped as it's the same as the
@@ -196,6 +207,12 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   EXPECT_EQ(remote_sites.size(), 2);
   EXPECT_EQ(remote_sites["a"], "foo.com:800");
   EXPECT_EQ(remote_sites["b"], "bar.com");
+  EXPECT_EQ(remote_site_names.size(), 2);
+  EXPECT_TRUE(std::find(remote_site_names.begin(), remote_site_names.end(), "a") != remote_site_names.end());
+  EXPECT_TRUE(std::find(remote_site_names.begin(), remote_site_names.end(), "b") != remote_site_names.end());
+  EXPECT_EQ(remote_site_hosts.size(), 2);
+  EXPECT_TRUE(std::find(remote_site_hosts.begin(), remote_site_hosts.end(), "foo.com:800") != remote_site_hosts.end());
+  EXPECT_TRUE(std::find(remote_site_hosts.begin(), remote_site_hosts.end(), "bar.com") != remote_site_hosts.end());
 
   delete test_global; test_global = NULL;
 }
