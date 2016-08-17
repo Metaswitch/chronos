@@ -48,7 +48,6 @@ typedef uint64_t TimerID;
 
 // Separate class implementing the hash approach for rendezvous hashing -
 // allows the hashing to be changed in UT (e.g. to force collisions).
-
 class Hasher
 {
 public:
@@ -159,12 +158,14 @@ public:
                           uint64_t replica_hash,
                           std::string json,
                           std::string& error,
-                          bool& replicated);
+                          bool& replicated,
+                          bool& gr_replicated);
   static Timer* from_json_obj(TimerID id,
                               uint32_t replication_factor,
                               uint64_t replica_hash,
                               std::string& error,
                               bool& replicated,
+                              bool& gr_replicated,
                               rapidjson::Value& doc);
 };
 

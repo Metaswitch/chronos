@@ -118,16 +118,14 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
                                          uint64_t replica_hash)
 {
   Timer* timer = NULL;
-  bool replicated_timer;
-  bool gr_replicated_timer;
+  bool replicated_timer = false;
+  bool gr_replicated_timer = false;
 
   if (_req.method() == htp_method_DELETE)
   {
     // Replicated deletes are implemented as replicated tombstones so no DELETE
     // can be a replication request - it must have come from the client so we
     // should replicate it ourselves (both within site and cross-site).
-    replicated_timer = false;
-    gr_replicated_timer = false;
     timer = Timer::create_tombstone(timer_id, replica_hash);
   }
   else

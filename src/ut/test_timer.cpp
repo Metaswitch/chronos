@@ -170,15 +170,15 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
        it != failing_test_data.end();
        ++it)
   {
-    std::string err; bool replicated;
-    EXPECT_EQ((void*)NULL, Timer::from_json(1, 0, 0, *it, err, replicated)) << *it;
+    std::string err; bool replicated; bool gr_replicated;
+    EXPECT_EQ((void*)NULL, Timer::from_json(1, 0, 0, *it, err, replicated, gr_replicated)) << *it;
     EXPECT_NE("", err);
   }
 
-  std::string err; bool replicated; Timer* timer;
+  std::string err; bool replicated; bool gr_replicated; Timer* timer;
 
   // If you don't specify a replication-factor, use 2.
-  timer = Timer::from_json(1, 0, 0, default_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 0, 0, default_repl_factor, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
@@ -186,7 +186,7 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
 
-  timer = Timer::from_json(1, 0, 0, default_repl_factor2, err, replicated);
+  timer = Timer::from_json(1, 0, 0, default_repl_factor2, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
@@ -195,21 +195,21 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   delete timer;
 
   // If you do specify a replication-factor, use that.
-  timer = Timer::from_json(1, 0, 0, custom_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 0, 0, custom_repl_factor, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer); EXPECT_EQ("", err); EXPECT_FALSE(replicated);
   EXPECT_EQ(3, TestFixture::get_replication_factor(timer));
   EXPECT_EQ(3u, timer->replicas.size());
   delete timer;
 
   // Get the replicas from the bloom filter if given
-  timer = Timer::from_json(1, 2, 0x11011100011101, default_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, default_repl_factor, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
   EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
   delete timer;
 
-  timer = Timer::from_json(1, 3, 0x11011100011101, custom_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 3, 0x11011100011101, custom_repl_factor, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
@@ -218,7 +218,7 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
 
   // If the replication factor on the URL (in this case 2) doesn't match the
   // replication factor in the JSON body, reject the JSON.
-  timer = Timer::from_json(1, 2, 0x11011100011101, custom_repl_factor, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, custom_repl_factor, err, replicated, gr_replicated);
   EXPECT_EQ((void*)NULL, timer);
   EXPECT_NE("", err);
   err = "";
@@ -226,7 +226,7 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
 
   // If specific replicas are specified, use them (regardless of presence of
   // bloom hash).
-  timer = Timer::from_json(1, 2, 0x11011100011101, specific_replicas, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, specific_replicas, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_TRUE(replicated);
@@ -234,20 +234,20 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   delete timer;
 
   // If no repeat for was specifed, use the interval
-  timer = Timer::from_json(1, 2, 0x11011100011101, no_repeat_for, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, no_repeat_for, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(timer->interval_ms, timer->repeat_for);
   delete timer;
 
   // If delta-start-time was provided, use that
-  timer = Timer::from_json(1, 2, 0x11011100011101, delta_start_time, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, delta_start_time, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err); EXPECT_EQ(mono_time - 200, timer->start_time_mono_ms);
   delete timer;
 
   // If absolute start time was proved (and no delta-time), use that.
-  timer = Timer::from_json(1, 2, 0x11011100011101, absolute_start_time, err, replicated);
+  timer = Timer::from_json(1, 2, 0x11011100011101, absolute_start_time, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
 
@@ -311,7 +311,7 @@ protected:
 // all tag data is rejected, creating a timer with an empty tags map.
 TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
 {
-  std::string err; bool replicated; Timer* timer;
+  std::string err; bool replicated; bool gr_replicated; Timer* timer;
   std::map<std::string, uint32_t> empty_tags;
 
   // If the "statistics" block is present, but badly formed, no tags should be parsed.
@@ -319,7 +319,7 @@ TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
   std::string bad_statistics_object = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\":[]}";
 
   // If bad statistics object, no error, but no tags.
-  timer = Timer::from_json(1, 0, 0, bad_statistics_object, err, replicated);
+  timer = Timer::from_json(1, 0, 0, bad_statistics_object, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(empty_tags, timer->tags);
@@ -330,7 +330,7 @@ TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
 // all tag data is rejected, creating a timer with an empty tags map.
 TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
 {
-  std::string err; bool replicated; Timer* timer;
+  std::string err; bool replicated; bool gr_replicated; Timer* timer;
   std::map<std::string, uint32_t> empty_tags;
 
   // If the "tag-info" block is present, but badly formed, no tags should be parsed.
@@ -338,7 +338,7 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
   std::string bad_tag_info_array = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": {\"type\": \"TAG1\", \"count\":1}}}";
 
   // If bad tag-info array, no error, but no tags.
-  timer = Timer::from_json(1, 0, 0, bad_tag_info_array, err, replicated);
+  timer = Timer::from_json(1, 0, 0, bad_tag_info_array, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(empty_tags, timer->tags);
@@ -350,7 +350,7 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
 // creating a timer with only well-formed tag-info objects in the tags map.
 TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
 {
-  std::string err; bool replicated; Timer* timer;
+  std::string err; bool replicated; bool gr_replicated; Timer* timer;
   std::map<std::string, uint32_t> expected_tags;
   expected_tags["TAG5"] = 3;
 
@@ -360,7 +360,7 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
   std::string bad_tag_info_object = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": [{\"nottype\": \"TAG1\", \"count\":1}, {\"type\": \"TAG2\", \"count\":-1}, {\"type\": \"TAG3\", \"count\":\"one\"}, {\"type\": 4, \"count\":3}, {\"type\": \"TAG5\", \"count\": 3}]}}";
 
   // If bad tag-info object, no error, but no bad tags.
-  timer = Timer::from_json(1, 0, 0, bad_tag_info_object, err, replicated);
+  timer = Timer::from_json(1, 0, 0, bad_tag_info_object, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(expected_tags, timer->tags);
@@ -372,7 +372,7 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
 // and added to the tags map.
 TEST_F(TestTimer, FromJSONTestsStatisticsMultipleTags)
 {
-  std::string err; bool replicated; Timer* timer;
+  std::string err; bool replicated; bool gr_replicated; Timer* timer;
   std::map<std::string, uint32_t> expected_tags;
   expected_tags["TAG1"] = 1;
   expected_tags["TAG2"] = 8;
@@ -382,7 +382,7 @@ TEST_F(TestTimer, FromJSONTestsStatisticsMultipleTags)
   // We should also correctly parse large numbers for count.
   std::string multiple_tags = "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}, \"statistics\": { \"tag-info\": [{\"type\": \"TAG1\", \"count\":1}, {\"type\": \"TAG2\", \"count\":5}, {\"type\": \"TAG2\", \"count\":3}, {\"type\": \"TAG3\", \"count\": 1234567890}]}}";
 
-  timer = Timer::from_json(1, 0, 0, multiple_tags, err, replicated);
+  timer = Timer::from_json(1, 0, 0, multiple_tags, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_EQ(expected_tags, timer->tags);
@@ -500,7 +500,8 @@ TEST_F(TestTimer, ToJSON)
 
   std::string err;
   bool replicated;
-  Timer* t3 = Timer::from_json(2, 0, 0, json, err, replicated);
+  bool gr_replicated;
+  Timer* t3 = Timer::from_json(2, 0, 0, json, err, replicated, gr_replicated);
   EXPECT_EQ(err, "");
   EXPECT_TRUE(replicated);
   ASSERT_NE((void*)NULL, t2);

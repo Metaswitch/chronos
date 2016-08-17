@@ -632,7 +632,8 @@ Timer* Timer::from_json(TimerID id,
                         uint64_t replica_hash,
                         std::string json,
                         std::string& error,
-                        bool& replicated)
+                        bool& replicated,
+                        bool& gr_replicated)
 {
   rapidjson::Document doc;
   doc.Parse<0>(json.c_str());
@@ -644,7 +645,13 @@ Timer* Timer::from_json(TimerID id,
     return NULL;
   }
 
-  return from_json_obj(id, replication_factor, replica_hash, error, replicated, doc);
+  return from_json_obj(id,
+                       replication_factor,
+                       replica_hash,
+                       error,
+                       replicated,
+                       gr_replicated,
+                       doc);
 }
 
 Timer* Timer::from_json_obj(TimerID id,
@@ -652,6 +659,7 @@ Timer* Timer::from_json_obj(TimerID id,
                             uint64_t replica_hash,
                             std::string& error,
                             bool& replicated,
+                            bool& gr_replicated,
                             rapidjson::Value& doc)
 {
   Timer* timer = NULL;

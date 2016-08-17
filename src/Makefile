@@ -34,7 +34,8 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   snmp_agent.cpp \
                   snmp_row.cpp \
                   timer_counter.cpp \
-                  MurmurHash3.cpp
+                  MurmurHash3.cpp \
+                  gr_replicator.cpp
 
 chronos_SOURCES := ${COMMON_SOURCES} \
                    main.cpp \

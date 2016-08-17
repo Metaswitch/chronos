@@ -37,6 +37,7 @@
 #include "handlers.h"
 #include "mock_timer_handler.h"
 #include "mock_replicator.h"
+#include "mock_gr_replicator.h"
 #include "mockhttpstack.hpp"
 #include "base.h"
 #include "test_interposer.hpp"
@@ -60,6 +61,7 @@ protected:
     Base::SetUp();
 
     _replicator = new MockReplicator();
+    _gr_replicator = new MockGRReplicator();
     _th = new MockTimerHandler();
     _httpstack = new MockHttpStack();
   }
@@ -71,6 +73,7 @@ protected:
 
     delete _httpstack;
     delete _th;
+    delete _gr_replicator;
     delete _replicator;
 
     Base::TearDown();
@@ -88,11 +91,12 @@ protected:
                                       body,
                                       method);
 
-    _cfg = new ControllerTask::Config(_replicator, _th);
+    _cfg = new ControllerTask::Config(_replicator, _gr_replicator, _th);
     _task = new ControllerTask(*_req, _cfg, 0);
   }
 
   MockReplicator* _replicator;
+  MockGRReplicator* _gr_replicator;
   MockTimerHandler* _th;
   MockHttpStack* _httpstack;
 
@@ -107,7 +111,11 @@ TEST_F(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
   Timer* added_timer;
 
   controller_request("/timers/1234123412341234-2", htp_method_DELETE, "", "");
+
+  // It's a valid timer so we expect it to be replicated in/cross-site, added
+  // to this node, and have a 200 response
   EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
   EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
@@ -122,6 +130,7 @@ TEST_F(TestHandler, ValidJSONDeleteTimerWithReplicas)
 
   controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
   EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
   EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
@@ -144,7 +153,9 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
   HttpStack::Request req(NULL, NULL);
 
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
+
   EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
   EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
@@ -177,6 +188,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
 
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
   EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
   EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();

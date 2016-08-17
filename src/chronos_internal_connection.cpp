@@ -271,11 +271,14 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             bool store_timer = false;
             std::string error_str;
             bool replicated_timer;
+            bool unused_gr_replicated_timer;
+
             Timer* timer = Timer::from_json_obj(timer_id,
                                                 0,
                                                 0,
                                                 error_str,
                                                 replicated_timer,
+                                                unused_gr_replicated_timer,
                                                 (rapidjson::Value&)timer_obj);
 
             if (!timer)
