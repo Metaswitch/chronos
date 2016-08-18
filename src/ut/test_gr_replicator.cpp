@@ -1,5 +1,5 @@
 /**
- * @file gr_replicator.h
+ * @file test_gr_replicator.cpp
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2016  Metaswitch Networks Ltd
@@ -34,41 +34,71 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef GR_REPLICATOR_H__
-#define GR_REPLICATOR_H__
+#include "globals.h"
+#include "gr_replicator.h"
+#include "base.h"
+#include "fakecurl.hpp"
+#include "fakehttpresolver.hpp"
+#include "timer_helper.h"
 
-#include "timer.h"
-#include "chronos_gr_connection.h"
-#include "exception_handler.h"
-#include "eventq.h"
-
-#define GR_REPLICATOR_THREAD_COUNT 20
-
-struct GRReplicationRequest
+/// Fixture for GRReplicatorTest.
+class TestGRReplicator : public Base
 {
-  ChronosGRConnection* connection;
-  std::string id;
-  std::string body;
-  std::string replication_factor;
+protected:
+  void SetUp()
+  {
+    Base::SetUp();
+
+    _resolver = new FakeHttpResolver("10.42.42.42");
+    _conn = new ChronosGRConnection("site1", _resolver);
+    _gr = new GRReplicator(std::vector<ChronosGRConnection*>(1, _conn), NULL);
+
+    fakecurl_responses.clear();
+  }
+
+  void TearDown()
+  {
+    delete _gr;
+    delete _conn;
+    delete _resolver;
+
+    Base::TearDown();
+  }
+
+  FakeHttpResolver* _resolver;
+  ChronosGRConnection* _conn;
+  GRReplicator* _gr;
 };
 
-// This class is used to replicate timers cross-site
-class GRReplicator
+// Test that a timer is replicated successfully
+TEST_F(TestGRReplicator, ReplicateTimer)
 {
-public:
-  GRReplicator(std::vector<ChronosGRConnection*> connections,
-               ExceptionHandler* exception_handler);
-  virtual ~GRReplicator();
+  // Timer should have an ID of 1, and a replication factor of 2. If it doesn't
+  // the send_put will fail
+  fakecurl_responses["http://10.42.42.42:80/timers/1-1"] = CURLE_OK;
+  Timer* timer1 = default_timer(1);
+  ASSERT_FALSE(timer1->replicas.empty());
+  _gr->replicate(timer1);
 
-  void worker_thread_entry_point();
-  virtual void replicate(Timer*);
-  static void* worker_thread_entry_point(void*);
+  // Have to sleep to make sure there's time for the request to have been
+  // processed
+  sleep(1); 
 
-private:
-  eventq<GRReplicationRequest *> _q;
-  pthread_t _worker_threads[GR_REPLICATOR_THREAD_COUNT];
-  std::vector<ChronosGRConnection*> _connections;
-  ExceptionHandler* _exception_handler;
-};
+  // Look at the body sent on the request. Check that it doesn't have any
+  // replica information, and that it makes a valid timer
+  Request& request = fakecurl_requests["http://10.42.42.42:80/timers/1-1"];
+  rapidjson::Document doc;
+  doc.Parse<0>(request._body.c_str());
+  ASSERT_FALSE(doc.HasParseError());
+  ASSERT_FALSE(doc["reliability"].HasMember("replicas"));
 
-#endif
+  std::string error;
+  bool replicated;
+  bool gr_replicated;
+
+  Timer* timer2 = Timer::from_json(1, 1, 0, request._body, error, replicated, gr_replicated);
+  ASSERT_TRUE(timer2);
+
+  delete timer1; timer1 = NULL;
+  delete timer2; timer2 = NULL;
+}

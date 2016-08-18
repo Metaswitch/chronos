@@ -1,5 +1,5 @@
 /**
- * @file gr_replicator.h
+ * @file chronos_gr_connection.h
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2016  Metaswitch Networks Ltd
@@ -34,41 +34,27 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef GR_REPLICATOR_H__
-#define GR_REPLICATOR_H__
+#ifndef CHRONOS_GR_CONNECTION_H__
+#define CHRONOS_GR_CONNECTION_H__
 
-#include "timer.h"
-#include "chronos_gr_connection.h"
-#include "exception_handler.h"
-#include "eventq.h"
+#include "httpconnection.h"
 
-#define GR_REPLICATOR_THREAD_COUNT 20
-
-struct GRReplicationRequest
-{
-  ChronosGRConnection* connection;
-  std::string id;
-  std::string body;
-  std::string replication_factor;
-};
-
-// This class is used to replicate timers cross-site
-class GRReplicator
+/// @class ChronosGRConnection
+class ChronosGRConnection
 {
 public:
-  GRReplicator(std::vector<ChronosGRConnection*> connections,
-               ExceptionHandler* exception_handler);
-  virtual ~GRReplicator();
+  ChronosGRConnection(const std::string& remote_site,
+                      HttpResolver* resolver);
+  virtual ~ChronosGRConnection();
 
-  void worker_thread_entry_point();
-  virtual void replicate(Timer*);
-  static void* worker_thread_entry_point(void*);
+  // Replicate the timer cross-site.
+  virtual void send_put(std::string id,
+                        std::string body,
+                        std::string repl_factor);
 
 private:
-  eventq<GRReplicationRequest *> _q;
-  pthread_t _worker_threads[GR_REPLICATOR_THREAD_COUNT];
-  std::vector<ChronosGRConnection*> _connections;
-  ExceptionHandler* _exception_handler;
+  std::string _site_name;
+  HttpConnection* _http;
 };
 
 #endif

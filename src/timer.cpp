@@ -301,28 +301,37 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     {
       writer->String("cluster-view-id");
       writer->String(cluster_view_id.c_str());
-      writer->String("replicas");
-      writer->StartArray();
+
+      if (!replicas.empty())
       {
-        for (std::vector<std::string>::iterator it = replicas.begin();
-                                                it != replicas.end();
-                                                ++it)
+        writer->String("replicas");
+        writer->StartArray();
         {
-          writer->String((*it).c_str());
+          for (std::vector<std::string>::iterator it = replicas.begin();
+                                                  it != replicas.end();
+                                                  ++it)
+          {
+            writer->String((*it).c_str());
+          }
         }
+
+        writer->EndArray();
       }
-      writer->EndArray();
-      writer->String("sites");
-      writer->StartArray();
+
+      if (!sites.empty())
       {
-        for (std::vector<std::string>::iterator it = sites.begin();
-                                                it != sites.end();
-                                                ++it)
+        writer->String("sites");
+        writer->StartArray();
         {
-          writer->String((*it).c_str());
+          for (std::vector<std::string>::iterator it = sites.begin();
+                                                  it != sites.end();
+                                                  ++it)
+          {
+            writer->String((*it).c_str());
+          }
         }
+        writer->EndArray();
       }
-      writer->EndArray();
     }
     writer->EndObject();
 

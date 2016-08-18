@@ -1,5 +1,5 @@
 /**
- * @file gr_replicator.h
+ * @file chronos_gr_connection.cpp.
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2016  Metaswitch Networks Ltd
@@ -34,41 +34,38 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef GR_REPLICATOR_H__
-#define GR_REPLICATOR_H__
-
-#include "timer.h"
+#include "log.h"
+#include "sasevent.h"
 #include "chronos_gr_connection.h"
-#include "exception_handler.h"
-#include "eventq.h"
 
-#define GR_REPLICATOR_THREAD_COUNT 20
-
-struct GRReplicationRequest
+ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
+                                         HttpResolver* resolver) :
+  _site_name(remote_site),
+  _http(new HttpConnection(remote_site,
+                           false,
+                           resolver,
+                           SASEvent::HttpLogLevel::DETAIL,
+                           NULL))
 {
-  ChronosGRConnection* connection;
-  std::string id;
-  std::string body;
-  std::string replication_factor;
-};
+}
 
-// This class is used to replicate timers cross-site
-class GRReplicator
+ChronosGRConnection::~ChronosGRConnection()
 {
-public:
-  GRReplicator(std::vector<ChronosGRConnection*> connections,
-               ExceptionHandler* exception_handler);
-  virtual ~GRReplicator();
+  delete _http; _http = NULL;
+}
 
-  void worker_thread_entry_point();
-  virtual void replicate(Timer*);
-  static void* worker_thread_entry_point(void*);
+void ChronosGRConnection::send_put(std::string id,
+                                   std::string body,
+                                   std::string repl_factor)
+{
+  std::string path = "/timers/" + id + "-" + repl_factor;
+  HTTPCode rc = _http->send_put(path, body, 0);
 
-private:
-  eventq<GRReplicationRequest *> _q;
-  pthread_t _worker_threads[GR_REPLICATOR_THREAD_COUNT];
-  std::vector<ChronosGRConnection*> _connections;
-  ExceptionHandler* _exception_handler;
-};
-
-#endif
+  if (rc != HTTP_OK)
+  {
+    // LCOV_EXCL_START - No value in testing this log in UT
+    TRC_ERROR("Unable to send replication to a remote site (%s)",
+              _site_name.c_str());
+    // LCOV_EXCL_STOP
+  }
+}

@@ -44,7 +44,7 @@
 class MockGRReplicator : public GRReplicator
 {
 public:
-  MockGRReplicator() : GRReplicator(NULL) {}
+  MockGRReplicator() : GRReplicator(std::vector<ChronosGRConnection*>(), NULL) {}
 
   MOCK_METHOD1(replicate, void(Timer*));
 };
