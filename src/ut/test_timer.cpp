@@ -275,7 +275,7 @@ protected:
     replicas.push_back("10.0.0.1:9999");
     replicas.push_back("10.0.0.2:9999");
     std::vector<std::string> sites;
-    sites.push_back("local_site");
+    sites.push_back("local_site_name");
     sites.push_back("remote_site_1_name");
 
     std::map<std::string, uint32_t> tags;
@@ -614,7 +614,7 @@ TEST_F(TestTimer, NextPopTimeMidReplicaAndSite)
   t->replicas = replicas;
   std::vector<std::string> sites;
   sites.push_back("remote_site_2_name");
-  sites.push_back("local_site");
+  sites.push_back("local_site_name");
   sites.push_back("remote_site_1_name");
   t->sites = sites;
   t->start_time_mono_ms = 1000000;

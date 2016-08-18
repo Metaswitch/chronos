@@ -238,6 +238,7 @@ int main(int argc, char** argv)
   }
 
   start_signal_handlers();
+  srand(time(NULL));
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,

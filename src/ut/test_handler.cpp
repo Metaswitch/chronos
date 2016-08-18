@@ -430,3 +430,96 @@ TEST_F(TestHandler, InvalidTimerGetInvalidClusterID)
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
+
+// Test that a request that doesn't have any site information is GR replicated,
+// and the sites are populated as expected
+TEST_F(TestHandler, TimerNoSites)
+{
+  // Extend how many remote sites there are for this test
+  std::vector<std::string> old_remote_site_names;
+  __globals->get_remote_site_names(old_remote_site_names);
+
+  std::vector<std::string> remote_site_names;
+
+  remote_site_names.push_back("remote_site_1_name");
+  remote_site_names.push_back("remote_site_2_name");
+  remote_site_names.push_back("remote_site_3_name");
+
+  __globals->lock();
+  __globals->set_remote_site_names(remote_site_names);
+  __globals->unlock();
+
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
+  EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  // Check that the timer is plausible. The local site should be first in the
+  // list, and all the other sites should be present
+  EXPECT_EQ(added_timer->sites.size(), 4);
+  EXPECT_EQ(added_timer->sites[0], "local_site_name");
+  EXPECT_TRUE(std::find(added_timer->sites.begin(), added_timer->sites.end(), "remote_site_1_name") != added_timer->sites.end());
+  EXPECT_TRUE(std::find(added_timer->sites.begin(), added_timer->sites.end(), "remote_site_2_name") != added_timer->sites.end());
+  EXPECT_TRUE(std::find(added_timer->sites.begin(), added_timer->sites.end(), "remote_site_3_name") != added_timer->sites.end());
+  delete added_timer; added_timer = NULL;
+
+  __globals->lock();
+  __globals->set_remote_site_names(old_remote_site_names);
+  __globals->unlock();
+}
+
+// Tests that a timer with site and replica information isn't replicated further
+TEST_F(TestHandler, TimerWithSitesAndReplicas)
+{
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"], \"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
+  EXPECT_CALL(*_replicator, replicate(_)).Times(0);
+  EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests that a timer with site information but no replica information is
+// only replicated within the site
+TEST_F(TestHandler, TimerWithSitesNoReplicas)
+{
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
+  EXPECT_CALL(*_replicator, replicate(_)).Times(1);
+  EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests that a timer with replica information but no site information isn't
+// replicated. This situation should only occur in the reregistration period
+// after upgrade
+TEST_F(TestHandler, TimerWithReplicasNoSites)
+{
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"]}}", "");
+  EXPECT_CALL(*_replicator, replicate(_)).Times(0);
+  EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  delete added_timer; added_timer = NULL;
+}

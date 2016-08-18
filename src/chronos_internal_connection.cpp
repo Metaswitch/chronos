@@ -116,7 +116,6 @@ void ChronosInternalConnection::resynchronize()
 
   // Shuffle the lists (so the same Chronos node doesn't get queried by
   // all the other nodes at the same time) and remove the local node
-  srand(time(NULL));
   std::random_shuffle(cluster_nodes.begin(), cluster_nodes.end());
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);

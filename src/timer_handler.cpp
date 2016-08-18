@@ -192,6 +192,9 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       // If the new timer is a tombstone, make sure its interval is long enough
       save_tombstone_information(new_tp.active_timer, existing_tp.active_timer);
 
+      // Update the site information
+      save_site_information(new_tp.active_timer, existing_tp.active_timer);
+
       // Decide whether we should save the old timer as an informational timer
       if (existing_tp.active_timer->cluster_view_id !=
           new_tp.active_timer->cluster_view_id)
@@ -328,6 +331,9 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
   {
     Timer* timer;
     timer = timer_pair.active_timer;
+
+    // Update the sites
+    timer->calculate_sites();
     _replicator->replicate(timer);
     _gr_replicator->replicate(timer);
 
@@ -692,11 +698,43 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 {
   if (t->is_tombstone())
   {
-  // Learn the interval so that this tombstone lasts long enough to
-  //  catch errors.
+    // Learn the interval so that this tombstone lasts long enough to
+    // catch errors.
     t->interval_ms = existing->interval_ms;
     t->repeat_for = existing->repeat_for;
   }
+}
+
+void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
+{
+  std::vector<std::string> site_names;
+
+  // Remove any sites that aren't in the new timer
+  for (std::string site: old_timer->sites)
+  {
+    if (std::find(new_timer->sites.begin(), new_timer->sites.end(), site) !=
+        new_timer->sites.end())
+    {
+      site_names.push_back(site);
+    }
+    else
+    {
+      TRC_DEBUG("Removing site (%s) as it no longer exists", site.c_str());
+    }
+  }
+
+  // Add any new sites that are only in the new timer
+  for (std::string site: new_timer->sites)
+  {
+    if (std::find(site_names.begin(), site_names.end(), site) ==
+        site_names.end())
+    {
+      TRC_DEBUG("Adding remote site (%s) to sites", site.c_str());
+      site_names.push_back(site);
+    }
+  }
+
+  new_timer->sites = site_names;
 }
 
 // Report an update to the number of timers to statistics

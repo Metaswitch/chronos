@@ -105,6 +105,9 @@ private:
   // as the previous timer
   void save_tombstone_information(Timer* timer, Timer* existing);
 
+  // Ensure the update to the timer honours any previous site ordering
+  void save_site_information(Timer* new_timer, Timer* old_timer);
+
   // Report a statistics changed - called with empty maps if a timer has only
   // just been introduced, or is being permanently deleted/tombstoned
   void update_statistics(std::map<std::string, uint32_t> new_tags, std::map<std::string, uint32_t> old_tags);

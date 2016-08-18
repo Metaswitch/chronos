@@ -78,7 +78,7 @@ void Base::SetUp()
   __globals->set_instance_id(instance_id);
   __globals->set_deployment_id(deployment_id);
 
-  std::string local_site_name = "local_site";
+  std::string local_site_name = "local_site_name";
   __globals->set_local_site_name(local_site_name);
 
   std::map<std::string, std::string> remote_sites;

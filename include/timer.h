@@ -115,6 +115,9 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
+  // Calculate the site list for this timer.
+  void calculate_sites();
+
   // Mark which replicas have been informed about the timer
   int update_replica_tracker(int replica_index);
 

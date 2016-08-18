@@ -47,7 +47,8 @@ Timer* default_timer(TimerID id)
   timer->start_time_mono_ms = (ts.tv_sec * 1000) + (ts.tv_nsec / (1000 * 1000));
   timer->sequence_number = 0;
   timer->replicas = std::vector<std::string>(1, "10.0.0.1:9999");
-  timer->sites = std::vector<std::string>(1, "local_site");
+  timer->sites = std::vector<std::string>(1, "local_site_name");
+  timer->sites.push_back("remote_site_1_name");
   timer->tags = std::map<std::string, uint32_t> {{"TAG" + std::to_string(id), 1}};
   timer->callback_url = "localhost:80/callback" + std::to_string(id);
   timer->callback_body = "stuff stuff stuff";

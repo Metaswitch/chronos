@@ -565,6 +565,55 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   delete timer2;
 }
 
+// Tests updating a timer, and having the sites change on the update
+TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSites)
+{
+  // Add the first timer.
+  Timer* timer = default_timer(1);
+  timer->tags.clear();
+  timer->sites.push_back("remote_site_2_name");
+  TimerPair insert_pair;
+  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
+                       WillOnce(SaveArg<0>(&insert_pair));
+  _th->add_timer(timer);
+
+  ASSERT_EQ(insert_pair.active_timer->sites.size(), 3);
+  EXPECT_EQ(insert_pair.active_timer->sites[0], "local_site_name");
+  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_1_name");
+  EXPECT_EQ(insert_pair.active_timer->sites[2], "remote_site_2_name");
+
+  // Update the site information. Make sure the newer timer is picked by
+  // giving it a later start time.
+  Timer* timer2 = default_timer(1);
+  timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
+  timer2->tags.clear();
+  timer2->sites.clear();
+  timer2->sites.push_back("remote_site_4_name");
+  timer2->sites.push_back("remote_site_1_name");
+  timer2->sites.push_back("local_site_name");
+  timer2->sites.push_back("remote_site_3_name");
+
+  EXPECT_CALL(*_store, fetch(timer2->id, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  EXPECT_CALL(*_store, insert(_, timer2->id, _, _)).
+                       WillOnce(SaveArg<0>(&insert_pair));
+  _th->add_timer(timer2);
+
+  // The timer is successfully updated, and the site ordering uses the existing
+  // site ordering for any existing sites
+  ASSERT_EQ(insert_pair.active_timer->sites.size(), 4);
+  EXPECT_EQ(insert_pair.active_timer->sites[0], "local_site_name");
+  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_1_name");
+  EXPECT_EQ(insert_pair.active_timer->sites[2], "remote_site_4_name");
+  EXPECT_EQ(insert_pair.active_timer->sites[3], "remote_site_3_name");
+
+  // Delete the timer (this is normally done by the insert call, but this
+  // is mocked out)
+  delete timer2;
+}
+
 // Test that if there is already an information timer for this timer
 // we overwrite it with a new information timer
 TEST_F(TestTimerHandlerAddAndReturn, OverrideInformationTimer)
@@ -979,7 +1028,7 @@ TEST_F(TestTimerHandlerAddAndReturn, TombstoneZeroIntervalAndRepeatForTimer)
 TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
 {
   // Add a timer. This is a new timer, so should cause the stats to
-  // increment (counts and tags)
+  // increment (counts and tags).
   Timer* timer = default_timer(1);
   Timer* info_timer = default_timer(1);
   TimerPair insert_pair;
@@ -1014,6 +1063,64 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
   delete insert_pair.information_timer;
 }
 
+// Test that the handle_callback_success function updates the site information
+// correctly
+TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccessSiteChanges)
+{
+  // Add a timer. Clear out any tags as we don't care about them for this test
+  Timer* timer = default_timer(1);
+  timer->tags.clear();
+  TimerPair insert_pair;
+  TimerID id = timer->id;
+  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_store, insert(_, _, _, _)).WillOnce(SaveArg<0>(&insert_pair));
+  _th->add_timer(timer);
+
+  // The timer is successfully added. As it's a new timer it's passed through to
+  // the store unchanged.
+  EXPECT_EQ(insert_pair.active_timer, timer);
+
+  timer = NULL;
+
+  // Change the local and remote sites (so we can check that the sites are
+  // updated correctly)
+  std::vector<std::string> old_remote_site_names;
+  __globals->get_remote_site_names(old_remote_site_names);
+  std::string old_local_site_name;
+  __globals->get_local_site_name(old_local_site_name);
+
+  std::vector<std::string> remote_site_names;
+  remote_site_names.push_back("remote_site_2_name");
+  std::string local_site_name = "new_local_site_name";
+
+  __globals->lock();
+  __globals->set_remote_site_names(remote_site_names);
+  __globals->set_local_site_name(local_site_name);
+  __globals->unlock();
+
+  // Now call handle_successful_callback as if called from http_callback
+  EXPECT_CALL(*_store, fetch(_, _)).Times(1).
+              WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
+  EXPECT_CALL(*_store, insert(_, _, _, _)).WillOnce(SaveArg<0>(&insert_pair));
+  _th->handle_successful_callback(id);
+
+  // Check that the sites have been changed correctly
+  ASSERT_EQ(insert_pair.active_timer->sites.size(), 2);
+  EXPECT_EQ(insert_pair.active_timer->sites[0], "new_local_site_name");
+  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_2_name");
+
+  delete insert_pair.active_timer;
+  delete insert_pair.information_timer;
+
+  __globals->lock();
+  __globals->set_remote_site_names(old_remote_site_names);
+  __globals->set_local_site_name(old_local_site_name);
+  __globals->unlock();
+}
+
 // Test that the handle_failed_callback function correctly handles updating statistics,
 // and then does not put it back into the store.
 TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
@@ -1042,6 +1149,8 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
   // Now call handle_failed_callback as if called from http_callback
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
               WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  EXPECT_CALL(*_replicator, replicate(insert_pair.active_timer)).Times(0);
+  EXPECT_CALL(*_gr_replicator, replicate(insert_pair.active_timer)).Times(0);
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
@@ -1249,7 +1358,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
   // There should be one returned timer. We check this by matching the JSON
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
 }
@@ -1331,7 +1440,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 206);
 }
@@ -1372,7 +1481,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeInformationalTimers)
   // (so there's still a body)
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
 }

@@ -637,6 +637,55 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   }
 }
 
+void Timer::calculate_sites()
+{
+  std::string local_site_name;
+  __globals->get_local_site_name(local_site_name);
+
+  std::vector<std::string> remote_site_names;
+  __globals->get_remote_site_names(remote_site_names);
+
+  std::vector<std::string> site_names;
+
+  // Build up a new list of sites
+  // - Firstly, remove any sites that no longer exist
+  // - Secondly, add any new sites to the end of the list (local site first)
+  for (std::string site: sites)
+  {
+    if ((std::find(remote_site_names.begin(), remote_site_names.end(), site)
+         != remote_site_names.end()) ||
+        (site == local_site_name))
+    {
+      site_names.push_back(site);
+    }
+    else
+    {
+      TRC_DEBUG("Removing site (%s) as it no longer exists", site.c_str());
+    }
+  }
+
+  if (std::find(site_names.begin(), site_names.end(), local_site_name) ==
+      site_names.end())
+  {
+    TRC_DEBUG("Adding local site (%s) to sites", local_site_name.c_str());
+    site_names.push_back(local_site_name);
+  }
+
+  // Shuffle the remote sites - TODO
+  std::random_shuffle(remote_site_names.begin(), remote_site_names.end());
+  for (std::string site: remote_site_names)
+  {
+    if (std::find(site_names.begin(), site_names.end(), site) ==
+        site_names.end())
+    {
+      TRC_DEBUG("Adding remote site (%s) to sites", site.c_str());
+      site_names.push_back(site);
+    }
+  }
+
+  sites = site_names;
+}
+
 // Generate a timer that should be unique across the (possibly geo-redundant) cluster.
 // The idea is to use a combination of deployment id, instance id, timestamp and
 // an incrementing sequence number.
@@ -878,8 +927,9 @@ Timer* Timer::from_json_obj(TimerID id,
 
     if (timer->replicas.empty())
     {
-      // Replicas not determined above, determine them now.  Note that this implies
-      // the request is from a client, not another replica.
+      // Replicas not determined above, determine them now. Note that this
+      // implies the request is from a client (or a Chronos in a different
+      // site), not another replica.
       replicated = false;
       timer->calculate_replicas(replica_hash);
     }
@@ -888,6 +938,18 @@ Timer* Timer::from_json_obj(TimerID id,
       // Replicas were specified in the request, must be a replication message
       // from another cluster node.
       replicated = true;
+    }
+
+    if (timer->sites.empty())
+    {
+      // Sites not determined above, determine them now. Note that this implies
+      // the request is from a client, not another replica.
+      gr_replicated = false;
+      timer->calculate_sites();
+    }
+    else
+    {
+      gr_replicated = true;
     }
 
     if ((doc.HasMember("statistics")) &&
