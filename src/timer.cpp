@@ -52,6 +52,8 @@
 #include <atomic>
 #include <time.h>
 
+uint32_t DELAY_BETWEEN_CHRONOS_INSTANCES_MS = 2000;
+
 uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 {
   uint32_t hash;
@@ -97,9 +99,9 @@ Timer::~Timer()
 {
 }
 
-// Returns the next pop time in ms.
-uint32_t Timer::next_pop_time() const
+uint32_t Timer::delay_from_replica_position() const
 {
+  // Get the replica position
   std::string localhost;
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
@@ -114,7 +116,41 @@ uint32_t Timer::next_pop_time() const
     }
   }
 
-  return start_time_mono_ms + ((sequence_number + 1) * interval_ms) + (replica_index * 2 * 1000);
+  return replica_index * DELAY_BETWEEN_CHRONOS_INSTANCES_MS;
+}
+
+uint32_t Timer::delay_from_site_position() const
+{
+  // Get the site position
+  std::string local_site_name;
+  int site_index = 0;
+  __globals->get_local_site_name(local_site_name);
+
+  for (std::vector<std::string>::const_iterator it = sites.begin();
+       it != sites.end();
+       ++it, ++site_index)
+  {
+    if (*it == local_site_name)
+    {
+      break;
+    }
+  }
+
+  return site_index * replicas.size() * DELAY_BETWEEN_CHRONOS_INSTANCES_MS;
+}
+
+uint32_t Timer::delay_from_sequence_position() const
+{
+  return (sequence_number + 1) * interval_ms;
+}
+
+// Returns the next pop time in ms.
+uint32_t Timer::next_pop_time() const
+{
+  return start_time_mono_ms +
+         delay_from_sequence_position() +
+         delay_from_replica_position() +
+         delay_from_site_position();
 }
 
 uint64_t Timer::get_pop_time() const

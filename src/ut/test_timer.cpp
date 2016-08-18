@@ -573,3 +573,54 @@ TEST_F(TestTimer, IsLastReplica)
   EXPECT_TRUE(t2->is_last_replica());
   delete t2;
 }
+
+TEST_F(TestTimer, NextPopTimeSequenceNumber)
+{
+  Timer* t = new Timer(100, 100, 400);
+  t->sequence_number = 2;
+  std::vector<std::string> replicas;
+  replicas.push_back("10.0.0.1:9999");
+  t->replicas = replicas;
+  t->start_time_mono_ms = 1000000;
+
+  EXPECT_EQ(t->next_pop_time(), 1000300);
+
+  delete t;
+}
+
+TEST_F(TestTimer, NextPopTimeFirstInReplicaAndSite)
+{
+  Timer* t = new Timer(100, 100, 200);
+  t->sequence_number = 0;
+  std::vector<std::string> replicas;
+  replicas.push_back("10.0.0.1:9999");
+  t->replicas = replicas;
+  t->start_time_mono_ms = 1000000;
+  t->sequence_number = 0;
+
+  EXPECT_EQ(t->next_pop_time(), 1000100);
+
+  delete t;
+}
+
+TEST_F(TestTimer, NextPopTimeMidReplicaAndSite)
+{
+  Timer* t = new Timer(100, 100, 200);
+  t->sequence_number = 0;
+  std::vector<std::string> replicas;
+  replicas.push_back("10.0.0.2:9999");
+  replicas.push_back("10.0.0.1:9999");
+  replicas.push_back("10.0.0.3:9999");
+  t->replicas = replicas;
+  std::vector<std::string> sites;
+  sites.push_back("remote_site_2_name");
+  sites.push_back("local_site");
+  sites.push_back("remote_site_1_name");
+  t->sites = sites;
+  t->start_time_mono_ms = 1000000;
+  t->sequence_number = 0;
+
+  EXPECT_EQ(t->next_pop_time(), 1008100);
+
+  delete t;
+}

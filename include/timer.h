@@ -141,6 +141,18 @@ public:
   std::string callback_body;
 
 private:
+  // Work out how delayed the timer should be based on this node's position
+  // in the replica list
+  uint32_t delay_from_replica_position() const;
+
+  // Work out how delayed the timer should be based on this node's position
+  // in the site list
+  uint32_t delay_from_site_position() const;
+
+  // Work out how delayed the timer should be based on the timer's sequence
+  // number and interval period
+  uint32_t delay_from_sequence_position() const;
+
   uint32_t _replication_factor;
 
   // The replica tracker is used to track which replicas need to be informed
