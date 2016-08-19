@@ -55,6 +55,7 @@ import unittest
 # perform scaling operations, and check that the correct number of
 # timers still pop
 CHRONOS_BINARY = 'build/bin/chronos'
+PID_PATTERN = 'scripts/pid/chronos.livetest.%i.pid'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.livetest.conf%i'
 CLUSTER_CONFIG_FILE_PATTERN = 'scripts/log/chronos.cluster.livetest.conf%i'
 LOG_FILE_DIR = 'scripts/log/'
@@ -115,30 +116,40 @@ def run_app():
 def start_nodes(lower, upper):
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
-        processes.append(Popen([CHRONOS_BINARY, '--config-file',
+        Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i, '--config-file',
             CONFIG_FILE_PATTERN % i, '--cluster-config-file',
-            CLUSTER_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL))
+            CLUSTER_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL)
+        sleep(2)
 
-    sleep(2)
+        f = open(PID_PATTERN % i)
+        processes.append(f.read())
+        f.close()
 
 
 def kill_nodes(lower, upper):
-    # kill nodes with indexes [lower, upper)
+    # Kill nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
-        p.kill()
+        try:
+            os.kill(int(p), signal.SIGKILL)
+        except OSError as e:
+            if 'No such process' not in str(e):
+                # At the end of the test we try and delete any Chronos
+                # processes - it's fine for them to have already been
+                # killed
+                raise
 
 
 def node_reload_config(lower, upper):
     # SIGHUP nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
-        os.kill(p.pid, signal.SIGHUP)
+        os.kill(int(p), signal.SIGHUP)
     sleep(2)
 
 
 def node_trigger_scaling(lower, upper):
     # SIGHUSR1 nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
-        os.kill(p.pid, signal.SIGUSR1)
+        os.kill(int(p), signal.SIGUSR1)
     sleep(2)
 
 
@@ -203,7 +214,7 @@ def write_cluster_conf(filename, this_node, joining, nodes, leaving):
 
 
 # Test the resynchronization operations for Chronos.
-class ChronosLiveTests(unittest.TestCase):
+class ChronosFVTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
