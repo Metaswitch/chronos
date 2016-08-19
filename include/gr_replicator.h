@@ -47,9 +47,8 @@
 struct GRReplicationRequest
 {
   ChronosGRConnection* connection;
-  std::string id;
+  std::string url;
   std::string body;
-  std::string replication_factor;
 };
 
 // This class is used to replicate timers cross-site

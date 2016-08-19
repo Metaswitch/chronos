@@ -48,9 +48,8 @@ public:
   virtual ~ChronosGRConnection();
 
   // Replicate the timer cross-site.
-  virtual void send_put(std::string id,
-                        std::string body,
-                        std::string repl_factor);
+  virtual void send_put(std::string url,
+                        std::string body);
 
 private:
   std::string _site_name;

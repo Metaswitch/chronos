@@ -75,7 +75,7 @@ TEST_F(TestGRReplicator, ReplicateTimer)
 {
   // Timer should have an ID of 1, and a replication factor of 2. If it doesn't
   // the send_put will fail
-  fakecurl_responses["http://10.42.42.42:80/timers/1-1"] = CURLE_OK;
+  fakecurl_responses["http://10.42.42.42:80/timers/0000000000000001-1"] = CURLE_OK;
   Timer* timer1 = default_timer(1);
   ASSERT_FALSE(timer1->replicas.empty());
   _gr->replicate(timer1);
@@ -86,7 +86,7 @@ TEST_F(TestGRReplicator, ReplicateTimer)
 
   // Look at the body sent on the request. Check that it doesn't have any
   // replica information, and that it makes a valid timer
-  Request& request = fakecurl_requests["http://10.42.42.42:80/timers/1-1"];
+  Request& request = fakecurl_requests["http://10.42.42.42:80/timers/0000000000000001-1"];
   rapidjson::Document doc;
   doc.Parse<0>(request._body.c_str());
   ASSERT_FALSE(doc.HasParseError());

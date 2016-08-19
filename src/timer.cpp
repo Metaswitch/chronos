@@ -680,7 +680,7 @@ void Timer::calculate_sites()
     site_names.push_back(local_site_name);
   }
 
-  // Shuffle the remote sites - TODO
+  // Shuffle the remote sites
   std::random_shuffle(remote_site_names.begin(), remote_site_names.end());
   for (std::string site: remote_site_names)
   {

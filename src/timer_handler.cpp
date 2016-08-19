@@ -250,7 +250,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
           !(existing_tp.active_timer->is_tombstone()))
       {
         tags_to_remove = existing_tp.active_timer->tags;
-        TRC_DEBUG("new timer is a tombstone overwriting an existing timer");
+        TRC_DEBUG("New timer is a tombstone overwriting an existing timer");
         _all_timers_table->decrement(1);
       }
     }

@@ -85,7 +85,7 @@ void GRReplicator::replicate(Timer* timer)
 {
   // Create the JSON body - strip out any replica information
   Timer* timer_copy = new Timer(*timer);
-  uint32_t repl_factor = timer_copy->get_replication_factor();
+  std::string url = timer_copy->url();
   timer_copy->replicas.clear();
   std::string body = timer_copy->to_json();
 
@@ -94,8 +94,7 @@ void GRReplicator::replicate(Timer* timer)
     GRReplicationRequest* replication_request = new GRReplicationRequest();
     replication_request->connection = conn;
     replication_request->body = body;
-    replication_request->id = std::to_string(timer->id);
-    replication_request->replication_factor = std::to_string(repl_factor);
+    replication_request->url = url;
     _q.push(replication_request);
   }
 
@@ -113,10 +112,8 @@ void GRReplicator::worker_thread_entry_point()
   {
     CW_TRY
     {
-      replication_request->connection->send_put(
-                                   replication_request->id,
-                                   replication_request->body,
-                                   replication_request->replication_factor);
+      replication_request->connection->send_put(replication_request->url,
+                                                replication_request->body);
     }
     // LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)

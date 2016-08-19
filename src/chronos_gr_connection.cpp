@@ -54,12 +54,10 @@ ChronosGRConnection::~ChronosGRConnection()
   delete _http; _http = NULL;
 }
 
-void ChronosGRConnection::send_put(std::string id,
-                                   std::string body,
-                                   std::string repl_factor)
+void ChronosGRConnection::send_put(std::string url,
+                                   std::string body)
 {
-  std::string path = "/timers/" + id + "-" + repl_factor;
-  HTTPCode rc = _http->send_put(path, body, 0);
+  HTTPCode rc = _http->send_put(url, body, 0);
 
   if (rc != HTTP_OK)
   {

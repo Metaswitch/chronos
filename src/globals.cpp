@@ -265,8 +265,9 @@ void Globals::update_config()
                                   cluster_staying_addresses.size(),
                                   cluster_leaving_addresses.size());
 
-  // Store the Geographic Redunancy Sites
+  // Store the Geographic Redundancy Sites
   std::string local_site_name = conf_map["sites.local_site"].as<std::string>();
+  TRC_STATUS("Local site: %s", local_site_name.c_str());
   set_local_site_name(local_site_name);
 
   std::vector<std::string> remote_site_list = conf_map["sites.remote_site"].as<std::vector<std::string>>();
