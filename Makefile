@@ -44,6 +44,6 @@ deb: build deb-only
 
 .PHONY: all build test clean distclean
 
-.PHONY: resync_test
-resync_test: build/bin/chronos
+.PHONY: fv_test
+fv_test: build/bin/chronos
 	./scripts/chronos_resync.py
