@@ -151,7 +151,8 @@ As with the public API, the URL shall be `/timers/<timer-id>` and the body shall
       },
       "reliability": {
         "cluster-view-id": <cluster-view-id>,
-        "replicas": [<replica-1>, ...]
+        "replicas": [<replica-1>, ...],
+        "sites": [<site-1>, ...]
       }
     }
 
@@ -161,6 +162,7 @@ Each of the attributes that overlap with the public API are used in the same way
  * `timing/sequence-number` - The instance of the timer that is next to pop (always 0 for one-shot timers)
  * `reliability/cluster-view-id` - The ID of the current cluster topology (used for error-checking and to spot inconsistencies in the cluster)
  * `reliability/replicas` - The ordered list of the replicas for the timer, the receiving node can use this to work out when it should pop the timer.
+ * `reliability/sites` - The ordered list of the sites for the timer, the receiving node can use this to work out when it should pop the timer.
 
 #### Replicating a Timer Pop
 

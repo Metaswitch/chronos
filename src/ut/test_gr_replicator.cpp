@@ -73,8 +73,8 @@ protected:
 // Test that a timer is replicated successfully
 TEST_F(TestGRReplicator, ReplicateTimer)
 {
-  // Timer should have an ID of 1, and a replication factor of 2. If it doesn't
-  // the send_put will fail
+  // Timer should have an ID of 1, and a replication factor of 1. If it doesn't
+  // the send_put will fail in the Chronos GR connection
   fakecurl_responses["http://10.42.42.42:80/timers/0000000000000001-1"] = CURLE_OK;
   Timer* timer1 = default_timer(1);
   ASSERT_FALSE(timer1->replicas.empty());
