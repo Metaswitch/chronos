@@ -58,6 +58,7 @@ CHRONOS_BINARY = 'build/bin/chronos'
 PID_PATTERN = 'scripts/pid/chronos.fvtest.%i.pid'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.fvtest.conf%i'
 CLUSTER_CONFIG_FILE_PATTERN = 'scripts/log/chronos.cluster.fvtest.conf%i'
+GR_CONFIG_FILE_PATTERN = 'scripts/log/chronos.gr.fvtest.conf%i'
 LOG_FILE_DIR = 'scripts/log/'
 LOG_FILE_PATTERN = LOG_FILE_DIR + 'chronos%s'
 
@@ -73,6 +74,7 @@ chronos_nodes = [
 receiveCount = 0
 processes = []
 timerCounts = []
+timerIDs = []
 
 # Create log folders for each Chronos process. These are useful for
 # debugging any problems. Running the tests deletes the logs from the
@@ -118,7 +120,8 @@ def start_nodes(lower, upper):
     for i in range(lower, upper):
         Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i, '--config-file',
             CONFIG_FILE_PATTERN % i, '--cluster-config-file',
-            CLUSTER_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL)
+            CLUSTER_CONFIG_FILE_PATTERN % i, '--gr-config-file',
+            GR_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL)
         sleep(2)
 
         f = open(PID_PATTERN % i)
@@ -156,6 +159,7 @@ def node_trigger_scaling(lower, upper):
 def create_timers(target, num):
     # Create and send timer requests. These are all sent to the first Chronos
     # process which will replicate the timers out to the other Chronos processes
+    global timerIDs
     body_dict = {
         'timing': {
             'interval': 10,
@@ -176,8 +180,13 @@ def create_timers(target, num):
         r = requests.post('http://%s:%s/timers' % (target.ip, target.port),
                           data=json.dumps(body_dict)
                           )
+        timerIDs.append(r.headers['location'])
         assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
+def delete_timers(target, num):
+    for i in range(num):
+        r = requests.delete('http://%s:%s%s' % (target.ip, target.port, timerIDs[i]))
+        assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
 def write_conf(filename, this_node):
     # Create a configuration file for a chronos process. Use a generous token
@@ -212,6 +221,17 @@ def write_cluster_conf(filename, this_node, joining, nodes, leaving):
         for node in leaving:
             f.write('leaving = {node.ip}:{node.port}\n'.format(**locals()))
 
+
+def write_gr_conf(filename, local_site, remote_sites):
+    # Create a configuration file for a chronos process. Use a generous token
+    # bucket size so we can make lots of requests quickly.
+    with open(filename, 'w') as f:
+        f.write(dedent("""\
+        [sites]
+        local_site = {local_site}
+        """).format(**locals()))
+        for site in remote_sites:
+            f.write('remote_site = {site}\n'.format(**locals()))
 
 # Test the resynchronization operations for Chronos.
 class ChronosFVTest(unittest.TestCase):
@@ -263,3 +283,16 @@ class ChronosFVTest(unittest.TestCase):
                                [chronos_nodes[i] for i in joining],
                                [chronos_nodes[i] for i in staying],
                                [chronos_nodes[i] for i in leaving])
+
+    def write_gr_config_for_nodes(self, staying, local_site, remote_sites):
+        # Write configuration files for the nodes
+        for num in staying:
+            write_conf(CONFIG_FILE_PATTERN % num,
+                       chronos_nodes[num])
+            write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
+                               chronos_nodes[num],
+                               [],
+                               [chronos_nodes[i] for i in staying],
+                               [])
+            write_gr_conf(GR_CONFIG_FILE_PATTERN % num,
+                          local_site, remote_sites)
