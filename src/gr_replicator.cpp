@@ -80,7 +80,7 @@ void* GRReplicator::worker_thread_entry_point(void* arg)
   return NULL;
 }
 
-// Handle the replication of the given timer to its replicas.
+// Handle the replication of the timer to other sites
 void GRReplicator::replicate(Timer* timer)
 {
   // Create the JSON body - strip out any replica information
@@ -101,9 +101,6 @@ void GRReplicator::replicate(Timer* timer)
   delete timer_copy; timer_copy = NULL;
 }
 
-// The replication worker thread.  This loops, receiving cURL handles off a queue
-// and handling them synchronously.  We run a pool of these threads to mitigate
-// starvation.
 void GRReplicator::worker_thread_entry_point()
 {
   GRReplicationRequest* replication_request;

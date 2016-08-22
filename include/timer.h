@@ -128,8 +128,6 @@ public:
   // cluster view ID)
   void update_cluster_information();
 
-  uint32_t get_replication_factor() { return _replication_factor; }
-
   // Member variables (mostly public since this is pretty much a struct with utility
   // functions, rather than a full-blown object).
   TimerID id;

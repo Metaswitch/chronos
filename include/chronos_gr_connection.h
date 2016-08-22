@@ -40,6 +40,8 @@
 #include "httpconnection.h"
 
 /// @class ChronosGRConnection
+///
+/// Responsible for sending replication requests between sites
 class ChronosGRConnection
 {
 public:

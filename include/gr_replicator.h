@@ -51,7 +51,10 @@ struct GRReplicationRequest
   std::string body;
 };
 
-// This class is used to replicate timers cross-site
+/// @class GRReplicator
+///
+/// Responsible for creating replication requests to send between sites, and
+/// queuing these requests.
 class GRReplicator
 {
 public:

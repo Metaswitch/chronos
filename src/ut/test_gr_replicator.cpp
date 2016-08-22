@@ -97,7 +97,7 @@ TEST_F(TestGRReplicator, ReplicateTimer)
   bool gr_replicated;
 
   Timer* timer2 = Timer::from_json(1, 1, 0, request._body, error, replicated, gr_replicated);
-  ASSERT_TRUE(timer2);
+  EXPECT_TRUE(timer2);
 
   delete timer1; timer1 = NULL;
   delete timer2; timer2 = NULL;

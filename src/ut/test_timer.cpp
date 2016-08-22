@@ -574,6 +574,7 @@ TEST_F(TestTimer, IsLastReplica)
   delete t2;
 }
 
+// Test that the next pop time correctly uses the timer's sequence number
 TEST_F(TestTimer, NextPopTimeSequenceNumber)
 {
   Timer* t = new Timer(100, 100, 400);
@@ -588,6 +589,8 @@ TEST_F(TestTimer, NextPopTimeSequenceNumber)
   delete t;
 }
 
+// Test that the next pop time correctly uses the timer's site and replica
+// position (timer is first in the replica and site list)
 TEST_F(TestTimer, NextPopTimeFirstInReplicaAndSite)
 {
   Timer* t = new Timer(100, 100, 200);
@@ -603,6 +606,8 @@ TEST_F(TestTimer, NextPopTimeFirstInReplicaAndSite)
   delete t;
 }
 
+// Test that the next pop time correctly uses the timer's site and replica
+// position (timer is not the first in the replica and site list)
 TEST_F(TestTimer, NextPopTimeMidReplicaAndSite)
 {
   Timer* t = new Timer(100, 100, 200);

@@ -223,8 +223,7 @@ def write_cluster_conf(filename, this_node, joining, nodes, leaving):
 
 
 def write_gr_conf(filename, local_site, remote_sites):
-    # Create a configuration file for a chronos process. Use a generous token
-    # bucket size so we can make lots of requests quickly.
+    # Create a GR configuration file for a chronos process.
     with open(filename, 'w') as f:
         f.write(dedent("""\
         [sites]
@@ -284,15 +283,15 @@ class ChronosFVTest(unittest.TestCase):
                                [chronos_nodes[i] for i in staying],
                                [chronos_nodes[i] for i in leaving])
 
-    def write_gr_config_for_nodes(self, staying, local_site, remote_sites):
+    def write_gr_config_for_nodes(self, nodes, local_site, remote_sites):
         # Write configuration files for the nodes
-        for num in staying:
+        for num in nodes:
             write_conf(CONFIG_FILE_PATTERN % num,
                        chronos_nodes[num])
             write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
                                chronos_nodes[num],
                                [],
-                               [chronos_nodes[i] for i in staying],
+                               [chronos_nodes[i] for i in nodes],
                                [])
             write_gr_conf(GR_CONFIG_FILE_PATTERN % num,
                           local_site, remote_sites)

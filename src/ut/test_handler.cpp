@@ -508,7 +508,7 @@ TEST_F(TestHandler, TimerWithSitesNoReplicas)
 
 // Tests that a timer with replica information but no site information isn't
 // replicated. This situation should only occur in the reregistration period
-// after upgrade
+// after upgrade to Chronos with GR support
 TEST_F(TestHandler, TimerWithReplicasNoSites)
 {
   Timer* added_timer;

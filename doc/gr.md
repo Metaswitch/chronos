@@ -7,14 +7,14 @@ At a high level, when a timer is added (or first modified after a deployment bec
 The Chronos process then replicates the timer both within site and cross site. Each Chronos process that the timer is replicated to uses both the site's position in the site ordering list and the Chronos node's position in the replica list to decide what offset to apply to the pop time of the timer. For example, in a 3 site deployment with two replicas per site you can get a timer with the following replicas and pop delays.
 
 * Site 1
-** Replica 1 - No delay
-** Replica 2 - 2 sec delay
+ * Replica 1 - No delay
+ * Replica 2 - 2 sec delay
 * Site 3
-** Replica 1 - 4 sec delay
-** Replica 2 - 6 sec delay
+ * Replica 1 - 4 sec delay
+ * Replica 2 - 6 sec delay
 * Site 2
-** Replica 1 - 8 sec delay
-** Replica 2 - 10 sec delay
+ * Replica 1 - 8 sec delay
+ * Replica 2 - 10 sec delay
 
 When a timer pops in a Chronos process, Chronos handles the timer as normal (e.g. handling the callback, replicating the timer/tombstone to all other replicas of the timer).
  
@@ -48,7 +48,7 @@ The available sites can be changed by modifying the Chronos GR config - see [her
 
 ### Site removal
 
-The next time a timer is modified by the client, or the timer pops, its site list is edited to remove the site. This reduces the delay for any sites that where after the removed site in the site list.
+The next time a timer is modified by the client, or the timer pops, its site list is edited to remove the site. This reduces the delay for any sites that were after the removed site in the site list.
 
 The removed site is never included on any new timers.
 
