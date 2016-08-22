@@ -5,4 +5,4 @@ usr/lib/*.so.* /usr/share/chronos/lib
 chronos.root/* /
 
 # Install the etcd plugin
-clearwater-etcd-plugins/chronos/chronos_plugin.py /usr/share/clearwater/clearwater-cluster-manager/plugins/
+modules/clearwater-etcd-plugins/chronos/chronos_plugin.py /usr/share/clearwater/clearwater-cluster-manager/plugins/

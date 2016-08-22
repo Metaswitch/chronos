@@ -26,5 +26,5 @@
 	path = modules/sas-client
 	url = git@github.com:Metaswitch/sas-client.git
 [submodule "clearwater-etcd-plugins"]
-	path = clearwater-etcd-plugins
+	path = modules/clearwater-etcd-plugins
 	url = git@github.com:Metaswitch/clearwater-etcd-plugins.git
