@@ -43,6 +43,7 @@ import os
 import sys
 import shutil
 import signal
+import random
 from subprocess import Popen
 from time import sleep
 from collections import namedtuple
@@ -118,10 +119,11 @@ def run_app():
 def start_nodes(lower, upper):
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
-        Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i, '--config-file',
-            CONFIG_FILE_PATTERN % i, '--cluster-config-file',
-            CLUSTER_CONFIG_FILE_PATTERN % i, '--gr-config-file',
-            GR_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL)
+        Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i,
+              '--config-file', CONFIG_FILE_PATTERN % i,
+              '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i,
+              '--gr-config-file', GR_CONFIG_FILE_PATTERN % i],
+              stdout=FNULL, stderr=FNULL)
         sleep(2)
 
         f = open(PID_PATTERN % i)
@@ -142,6 +144,13 @@ def kill_nodes(lower, upper):
                 raise
 
 
+def kill_random_nodes(count):
+    # Kill a random count of the processes
+    kill_list = random.sample(processes, count)
+    for p in kill_list:
+        os.kill(int(p), signal.SIGKILL)
+
+
 def node_reload_config(lower, upper):
     # SIGHUP nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
@@ -156,7 +165,7 @@ def node_trigger_scaling(lower, upper):
     sleep(2)
 
 
-def create_timers(target, num):
+def create_timers(target, num, max_num):
     # Create and send timer requests. These are all sent to the first Chronos
     # process which will replicate the timers out to the other Chronos processes
     global timerIDs
@@ -175,7 +184,7 @@ def create_timers(target, num):
 
     # Set the number of the timer in the opaque data - this way we can check we
     # get the correct timers back
-    for i in range(num):
+    for i in range(num, max_num):
         body_dict['callback']['http']['opaque'] = str(i)
         r = requests.post('http://%s:%s/timers' % (target.ip, target.port),
                           data=json.dumps(body_dict)
@@ -227,8 +236,8 @@ def write_gr_conf(filename, local_site, remote_sites):
     with open(filename, 'w') as f:
         f.write(dedent("""\
         [sites]
-        local_site = {local_site}
-        """).format(**locals()))
+        local_site = {}
+        """).format(local_site))
         for site in remote_sites:
             f.write('remote_site = {site}\n'.format(**locals()))
 
@@ -289,9 +298,9 @@ class ChronosFVTest(unittest.TestCase):
             write_conf(CONFIG_FILE_PATTERN % num,
                        chronos_nodes[num])
             write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
-                               chronos_nodes[num],
-                               [],
-                               [chronos_nodes[i] for i in nodes],
-                               [])
+                               this_node=chronos_nodes[num],
+                               joining=[],
+                               nodes=[chronos_nodes[i] for i in nodes],
+                               leaving=[])
             write_gr_conf(GR_CONFIG_FILE_PATTERN % num,
                           local_site, remote_sites)

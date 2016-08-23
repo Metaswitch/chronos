@@ -165,10 +165,6 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
   EXPECT_EQ(status, 200);
 
-  _cluster_addresses.pop_back();
-  leaving_cluster_addresses.clear();
-  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
-
   delete added_timer; added_timer = NULL;
 }
 
@@ -195,10 +191,6 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
   // There are three calls to replicate to 10.0.0.2 as it is lower/equal in the old/new replica lists
   EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.2:9999")).Times(3);
   _chronos->resynchronize();
-
-  _cluster_addresses.pop_back();
-  leaving_cluster_addresses.clear();
-  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
 }
 
 TEST_F(TestChronosInternalConnection, ResynchronizeWithInvalidGetResponse)

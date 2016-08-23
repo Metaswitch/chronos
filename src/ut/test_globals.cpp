@@ -40,6 +40,8 @@
 #include <gmock/gmock.h>
 #include <map>
 
+using ::testing::UnorderedElementsAreArray;
+
 static const std::string UT_FILE(__FILE__);
 const std::string UT_DIR = UT_FILE.substr(0, UT_FILE.rfind("/"));
 
@@ -112,14 +114,14 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 
   std::map<std::string, std::string> remote_sites;
   std::vector<std::string> remote_site_names;
-  std::vector<std::string> remote_site_hosts;
+  std::vector<std::string> remote_site_dns_records;
   test_global->get_remote_sites(remote_sites);
   test_global->get_remote_site_names(remote_site_names);
-  test_global->get_remote_site_hosts(remote_site_hosts);
+  test_global->get_remote_site_dns_records(remote_site_dns_records);
 
   EXPECT_EQ(remote_sites.size(), 0);
   EXPECT_EQ(remote_site_names.size(), 0);
-  EXPECT_EQ(remote_site_hosts.size(), 0);
+  EXPECT_EQ(remote_site_dns_records.size(), 0);
 
   delete test_global; test_global = NULL;
 }
@@ -196,10 +198,10 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 
   std::map<std::string, std::string> remote_sites;
   std::vector<std::string> remote_site_names;
-  std::vector<std::string> remote_site_hosts;
+  std::vector<std::string> remote_site_dns_records;
   test_global->get_remote_sites(remote_sites);
   test_global->get_remote_site_names(remote_site_names);
-  test_global->get_remote_site_hosts(remote_site_hosts);
+  test_global->get_remote_site_dns_records(remote_site_dns_records);
 
   // Site C will be stripped as it doesn't have an address, so we only expect
   // to see two entries. Site mysite will be stripped as it's the same as the
@@ -208,11 +210,15 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   EXPECT_EQ(remote_sites["a"], "foo.com:800");
   EXPECT_EQ(remote_sites["b"], "bar.com");
   EXPECT_EQ(remote_site_names.size(), 2);
-  EXPECT_TRUE(std::find(remote_site_names.begin(), remote_site_names.end(), "a") != remote_site_names.end());
-  EXPECT_TRUE(std::find(remote_site_names.begin(), remote_site_names.end(), "b") != remote_site_names.end());
-  EXPECT_EQ(remote_site_hosts.size(), 2);
-  EXPECT_TRUE(std::find(remote_site_hosts.begin(), remote_site_hosts.end(), "foo.com:800") != remote_site_hosts.end());
-  EXPECT_TRUE(std::find(remote_site_hosts.begin(), remote_site_hosts.end(), "bar.com") != remote_site_hosts.end());
+  std::vector<std::string> expected_remote_site_names;
+  expected_remote_site_names.push_back("a");
+  expected_remote_site_names.push_back("b");
+  EXPECT_THAT(expected_remote_site_names, UnorderedElementsAreArray(remote_site_names));
+  EXPECT_EQ(remote_site_dns_records.size(), 2);
+  std::vector<std::string> expected_remote_site_dns_records;
+  expected_remote_site_dns_records.push_back("foo.com:800");
+  expected_remote_site_dns_records.push_back("bar.com");
+  EXPECT_THAT(remote_site_dns_records, UnorderedElementsAreArray(expected_remote_site_dns_records));
 
   delete test_global; test_global = NULL;
 }

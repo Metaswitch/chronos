@@ -38,12 +38,20 @@
 #include "globals.h"
 #include <pthread.h>
 
-GRReplicator::GRReplicator(std::vector<ChronosGRConnection*> connections,
+GRReplicator::GRReplicator(HttpResolver* http_resolver,
                            ExceptionHandler* exception_handler) :
   _q(),
-  _connections(connections),
   _exception_handler(exception_handler)
 {
+  std::vector<std::string> remote_site_dns_records;
+  __globals->get_remote_site_dns_records(remote_site_dns_records);
+
+  for (std::string site: remote_site_dns_records)
+  {
+    ChronosGRConnection* conn = new ChronosGRConnection(site, http_resolver);
+    _connections.push_back(conn);
+  }
+
   // Create a pool of replicator threads
   for (int ii = 0; ii < GR_REPLICATOR_THREAD_COUNT; ++ii)
   {
@@ -71,6 +79,11 @@ GRReplicator::~GRReplicator()
   {
     pthread_join(_worker_threads[ii], NULL);
   }
+
+  for (ChronosGRConnection* conn: _connections)
+  {
+    delete conn;
+  }
 }
 
 void* GRReplicator::worker_thread_entry_point(void* arg)
@@ -84,21 +97,17 @@ void* GRReplicator::worker_thread_entry_point(void* arg)
 void GRReplicator::replicate(Timer* timer)
 {
   // Create the JSON body - strip out any replica information
-  Timer* timer_copy = new Timer(*timer);
-  std::string url = timer_copy->url();
-  timer_copy->replicas.clear();
-  std::string body = timer_copy->to_json();
+  Timer timer_copy(*timer);
+  std::string url = timer_copy.url();
+  timer_copy.replicas.clear();
+  std::string body = timer_copy.to_json();
 
   for (ChronosGRConnection* conn : _connections)
   {
-    GRReplicationRequest* replication_request = new GRReplicationRequest();
-    replication_request->connection = conn;
-    replication_request->body = body;
-    replication_request->url = url;
+    GRReplicationRequest* replication_request =
+                                      new GRReplicationRequest(conn, url, body);
     _q.push(replication_request);
   }
-
-  delete timer_copy; timer_copy = NULL;
 }
 
 void GRReplicator::worker_thread_entry_point()
@@ -109,8 +118,8 @@ void GRReplicator::worker_thread_entry_point()
   {
     CW_TRY
     {
-      replication_request->connection->send_put(replication_request->url,
-                                                replication_request->body);
+      replication_request->_connection->send_put(replication_request->_url,
+                                                 replication_request->_body);
     }
     // LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)

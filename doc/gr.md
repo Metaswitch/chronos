@@ -4,7 +4,9 @@ Geographic redundancy (GR) is supported in Chronos by using essentially the same
 
 At a high level, when a timer is added (or first modified after a deployment becomes GR) it creates a site ordering list. This list simply takes the available sites, makes the local site the primary site, and then orders the rest of the sites randomly after it. Chronos knows what sites are available as these are configured in the [GR config](https://github.com/Metaswitch/chronos/blob/dev/doc/configuration.md).
 
-The Chronos process then replicates the timer both within site and cross site. Each Chronos process that the timer is replicated to uses both the site's position in the site ordering list and the Chronos node's position in the replica list to decide what offset to apply to the pop time of the timer. For example, in a 3 site deployment with two replicas per site you can get a timer with the following replicas and pop delays.
+The Chronos process then replicates the timer both within site and cross site. Each Chronos process that the timer is replicated to then delays the timer bases on both the site's priority and its own priority within the site.
+
+For example, in a 3 site deployment with two replicas per site you can get a timer with the following replicas and pop delays. In this case the timer went to Site 1 to start with, so Site 1 is first. Site 2 and 3 were ordered randomly, and Site 3 was chosen as the first backup, and Site 2 as the second backup.
 
 * Site 1
  * Replica 1 - No delay
@@ -18,7 +20,7 @@ The Chronos process then replicates the timer both within site and cross site. E
 
 When a timer pops in a Chronos process, Chronos handles the timer as normal (e.g. handling the callback, replicating the timer/tombstone to all other replicas of the timer).
  
-This solution provides the desired data resiliency. A timers can be delayed by `((number of sites - 1) * number of replicas * 2) + 2 + site latencies)` seconds in the case of a multi-site failure.
+This solution provides the desired data resiliency. A timer can be delayed by `((number of sites - 1) * number of replicas * 2) + 2 + site latencies)` seconds in the case of a multi-site failure.
 
 There's no active timer resynchronisation on site failure - when a site recovers it won't have any Chronos timers until the timers are modified by a client or they pop (which triggers a replication cross-site).
 
@@ -36,11 +38,11 @@ All existing timers are delayed by a maximum of `(number of site - 1) * number o
 
 All new timers include the failed sites when they calculate the site priority list for the timer, but sole working site should always be the primary site (as the primary site is always the site that creates the timer). Therefore, new timers won't have delayed pop times.
 
-### Net split between site
+### Net split between sites
 
 When the communication between sites goes down, rather than a site going down, then timer replication requests won't be sent successfully between sites.
 
-Existing timers will double pop (e.g. if `site1` is the primary site it will pop at 0 secs, then `site2` will pop at 4 secs). All users of Chronos should be safe to this type of double pop.
+Existing timers will double pop (e.g. if `site1` is the primary site it will pop at 0 secs, then `site2` will pop at 4 secs). All users of Chronos must be safe to this type of double pop (and must already be safe to cope with netsplits within a site).
 
 ## Adding or removing sites
 

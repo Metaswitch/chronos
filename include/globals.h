@@ -107,7 +107,7 @@ public:
   GLOBAL(local_site_name, std::string);
   GLOBAL(remote_sites, std::map<std::string, std::string>);
   GLOBAL(remote_site_names, std::vector<std::string>);
-  GLOBAL(remote_site_hosts, std::vector<std::string>);
+  GLOBAL(remote_site_dns_records, std::vector<std::string>);
 
 public:
   void update_config();

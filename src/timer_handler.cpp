@@ -333,7 +333,7 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
     timer = timer_pair.active_timer;
 
     // Update the sites
-    timer->calculate_sites();
+    timer->update_sites_on_timer_pop();
     _replicator->replicate(timer);
     _gr_replicator->replicate(timer);
 
@@ -707,6 +707,17 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 
 void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
 {
+  std::vector<std::string> old_timer_sites = old_timer->sites;
+  std::vector<std::string> new_timer_sites = new_timer->sites;
+  std::sort(old_timer_sites.begin(), old_timer_sites.end());
+  std::sort(new_timer_sites.begin(), new_timer_sites.end());
+
+  if (old_timer_sites == new_timer_sites)
+  {
+    new_timer->sites = old_timer->sites;
+    return;
+  }
+
   std::vector<std::string> site_names;
 
   // Remove any sites that aren't in the new timer

@@ -273,7 +273,7 @@ void Globals::update_config()
   std::vector<std::string> remote_site_list = conf_map["sites.remote_site"].as<std::vector<std::string>>();
   std::map<std::string, std::string> remote_sites;
   std::vector<std::string> remote_site_names;
-  std::vector<std::string> remote_site_hosts;
+  std::vector<std::string> remote_site_dns_records;
 
   for (std::vector<std::string>::iterator it = remote_site_list.begin();
                                           it != remote_site_list.end();
@@ -297,13 +297,13 @@ void Globals::update_config()
       TRC_STATUS("Configured remote site: %s", it->c_str());
       remote_sites[site_details[0]] = site_details[1];
       remote_site_names.push_back(site_details[0]);
-      remote_site_hosts.push_back(site_details[1]);
+      remote_site_dns_records.push_back(site_details[1]);
     }
   }
 
   set_remote_sites(remote_sites);
   set_remote_site_names(remote_site_names);
-  set_remote_site_hosts(remote_site_hosts);
+  set_remote_site_dns_records(remote_site_dns_records);
 
   unlock();
 }

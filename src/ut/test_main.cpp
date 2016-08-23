@@ -42,6 +42,8 @@ int main(int argc, char **argv) {
   curl_global_init(CURL_GLOBAL_DEFAULT);
   ::testing::InitGoogleMock(&argc, argv);
   curl_global_cleanup();
-  srand(time(NULL));
+  std::time_t seed = time(NULL);
+  printf("Tests using random seed of %lu\n", seed);
+  srand(seed);
   return RUN_ALL_TESTS();
 }

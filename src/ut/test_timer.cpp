@@ -316,7 +316,10 @@ protected:
 // all tag data is rejected, creating a timer with an empty tags map.
 TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
 {
-  std::string err; bool replicated; bool gr_replicated; Timer* timer;
+  std::string err;
+  bool replicated;
+  bool gr_replicated;
+  Timer* timer;
   std::map<std::string, uint32_t> empty_tags;
 
   // If the "statistics" block is present, but badly formed, no tags should be parsed.
@@ -335,7 +338,10 @@ TEST_F(TestTimer, FromJSONTestsBadStatisticsObject)
 // all tag data is rejected, creating a timer with an empty tags map.
 TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
 {
-  std::string err; bool replicated; bool gr_replicated; Timer* timer;
+  std::string err;
+  bool replicated;
+  bool gr_replicated;
+  Timer* timer;
   std::map<std::string, uint32_t> empty_tags;
 
   // If the "tag-info" block is present, but badly formed, no tags should be parsed.
@@ -355,7 +361,10 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoArray)
 // creating a timer with only well-formed tag-info objects in the tags map.
 TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
 {
-  std::string err; bool replicated; bool gr_replicated; Timer* timer;
+  std::string err;
+  bool replicated;
+  bool gr_replicated;
+  Timer* timer;
   std::map<std::string, uint32_t> expected_tags;
   expected_tags["TAG5"] = 3;
 
@@ -377,7 +386,10 @@ TEST_F(TestTimer, FromJSONTestsBadTagInfoObject)
 // and added to the tags map.
 TEST_F(TestTimer, FromJSONTestsStatisticsMultipleTags)
 {
-  std::string err; bool replicated; bool gr_replicated; Timer* timer;
+  std::string err;
+  bool replicated;
+  bool gr_replicated;
+  Timer* timer;
   std::map<std::string, uint32_t> expected_tags;
   expected_tags["TAG1"] = 1;
   expected_tags["TAG2"] = 8;
@@ -451,26 +463,18 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 
 TEST_F(TestTimer, URLWithoutReplicas)
 {
-  Globals::TimerIDFormat stored_timer_id;
   Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITHOUT_REPLICAS;
-  __globals->get_timer_id_format(stored_timer_id);
-
   __globals->set_timer_id_format(new_timer_id);
   EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname:9999"));
   EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname"));
-  __globals->set_timer_id_format(stored_timer_id);
 }
 
 TEST_F(TestTimer, URLWithReplicas)
 {
-  Globals::TimerIDFormat stored_timer_id;
   Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITH_REPLICAS;
-  __globals->get_timer_id_format(stored_timer_id);
-
   __globals->set_timer_id_format(new_timer_id);
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
   EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
-  __globals->set_timer_id_format(stored_timer_id);
 }
 
 TEST_F(TestTimer, ToJSON)
@@ -579,6 +583,7 @@ TEST_F(TestTimer, NextPopTimeSequenceNumber)
 {
   Timer* t = new Timer(100, 100, 400);
   t->sequence_number = 2;
+  t->_replication_factor = 1;
   std::vector<std::string> replicas;
   replicas.push_back("10.0.0.1:9999");
   t->replicas = replicas;
@@ -595,11 +600,11 @@ TEST_F(TestTimer, NextPopTimeFirstInReplicaAndSite)
 {
   Timer* t = new Timer(100, 100, 200);
   t->sequence_number = 0;
+  t->_replication_factor = 1;
   std::vector<std::string> replicas;
   replicas.push_back("10.0.0.1:9999");
   t->replicas = replicas;
   t->start_time_mono_ms = 1000000;
-  t->sequence_number = 0;
 
   EXPECT_EQ(t->next_pop_time(), 1000100);
 
@@ -612,6 +617,7 @@ TEST_F(TestTimer, NextPopTimeMidReplicaAndSite)
 {
   Timer* t = new Timer(100, 100, 200);
   t->sequence_number = 0;
+  t->_replication_factor = 3;
   std::vector<std::string> replicas;
   replicas.push_back("10.0.0.2:9999");
   replicas.push_back("10.0.0.1:9999");
@@ -625,6 +631,10 @@ TEST_F(TestTimer, NextPopTimeMidReplicaAndSite)
   t->start_time_mono_ms = 1000000;
   t->sequence_number = 0;
 
+  // We're the second replica in the second site. As there are three replicas
+  // per site this makes us the fifth replica overall, giving us a delay of 8
+  // seconds (replicas at 0, 2, 4, 6, 8, ... seconds). Then add 100ms as this
+  // is when the timer was due to pop.
   EXPECT_EQ(t->next_pop_time(), 1008100);
 
   delete t;

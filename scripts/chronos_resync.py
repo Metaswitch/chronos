@@ -52,7 +52,7 @@ class ChronosResyncTest(ChronosFVTest):
         # Start initial nodes and add timers
         self.write_config_for_nodes([0,1])
         start_nodes(0, 2)
-        create_timers(chronos_nodes[0], 100)
+        create_timers(chronos_nodes[0], 0, 100)
 
         # Scale up
         self.write_config_for_nodes([0,1], [2,3])
@@ -72,7 +72,7 @@ class ChronosResyncTest(ChronosFVTest):
         # Start initial nodes and add timers
         self.write_config_for_nodes([0,1,2,3])
         start_nodes(0, 4)
-        create_timers(chronos_nodes[0], 100)
+        create_timers(chronos_nodes[0], 0, 100)
 
         # Scale down
         self.write_config_for_nodes([0,1], [], [2,3])
@@ -93,7 +93,7 @@ class ChronosResyncTest(ChronosFVTest):
         # Start initial nodes and add timers
         self.write_config_for_nodes([0,1])
         start_nodes(0, 2)
-        create_timers(chronos_nodes[0], 100)
+        create_timers(chronos_nodes[0], 0, 100)
 
         # Scale up
         self.write_config_for_nodes([0,1], [2,3])
@@ -119,7 +119,7 @@ class ChronosResyncTest(ChronosFVTest):
         # Start initial nodes and add timers
         self.write_config_for_nodes([0])
         start_nodes(0, 1)
-        create_timers(chronos_nodes[0], 100)
+        create_timers(chronos_nodes[0], 0, 100)
 
         # Scale up
         self.write_config_for_nodes([0], [1])

@@ -52,6 +52,8 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::MatchesRegex;
+using ::testing::ContainerEq;
+using ::testing::UnorderedElementsAreArray;
 
 class TestHandler : public Base
 {
@@ -266,11 +268,6 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
   EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
-
-  leaving_cluster_addresses.clear();
-  __globals->lock();
-  __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
-  __globals->unlock();
 }
 
 // Tests that get requests for timer references for a joining node
@@ -289,11 +286,6 @@ TEST_F(TestHandler, ValidTimerGetJoiningNode)
   EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
-
-  joining_cluster_addresses.clear();
-  __globals->lock();
-  __globals->set_cluster_joining_addresses(joining_cluster_addresses);
-  __globals->unlock();
 }
 
 // Invalid request: Tests the case where we attempt to create a new timer,
@@ -463,14 +455,13 @@ TEST_F(TestHandler, TimerNoSites)
   // list, and all the other sites should be present
   EXPECT_EQ(added_timer->sites.size(), 4);
   EXPECT_EQ(added_timer->sites[0], "local_site_name");
-  EXPECT_TRUE(std::find(added_timer->sites.begin(), added_timer->sites.end(), "remote_site_1_name") != added_timer->sites.end());
-  EXPECT_TRUE(std::find(added_timer->sites.begin(), added_timer->sites.end(), "remote_site_2_name") != added_timer->sites.end());
-  EXPECT_TRUE(std::find(added_timer->sites.begin(), added_timer->sites.end(), "remote_site_3_name") != added_timer->sites.end());
+  std::vector<std::string> expected_remote_site_names;
+  expected_remote_site_names.push_back("local_site_name");
+  expected_remote_site_names.push_back("remote_site_1_name");
+  expected_remote_site_names.push_back("remote_site_2_name");
+  expected_remote_site_names.push_back("remote_site_3_name");
+  EXPECT_THAT(expected_remote_site_names, UnorderedElementsAreArray(added_timer->sites));
   delete added_timer; added_timer = NULL;
-
-  __globals->lock();
-  __globals->set_remote_site_names(old_remote_site_names);
-  __globals->unlock();
 }
 
 // Tests that a timer with site and replica information isn't replicated further
@@ -521,5 +512,62 @@ TEST_F(TestHandler, TimerWithReplicasNoSites)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests that the replication factor is maintained even when there aren't
+// enough replicas - for a new timer
+TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasNew)
+{
+  // This test is only valid when the TimerIDFormat is without replicas
+  Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITHOUT_REPLICAS;
+  __globals->lock();
+  __globals->set_timer_id_format(timer_id_format);
+  __globals->unlock();
+
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 5 }}", "");
+  EXPECT_CALL(*_replicator, replicate(_));
+  EXPECT_CALL(*_gr_replicator, replicate(_));
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  // Check the Timer ID has 5 for the replication factor
+  std::string exp_rsp = "/timers/.*-5";
+  EXPECT_THAT(std::string(evhtp_header_find(req.req()->headers_out, "Location")), MatchesRegex(exp_rsp));
+
+  // Check that the timer has 5 for the replication factor
+  EXPECT_EQ(added_timer->_replication_factor, 5);
+  EXPECT_NE(added_timer->replicas.size(), 5);
+  delete added_timer; added_timer = NULL;
+}
+
+// Tests that the replication factor is maintained even when there aren't
+// enough replicas - for an already replicated timer
+TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasReplicated)
+{
+  // This test is only valid when the TimerIDFormat is without replicas
+  Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITHOUT_REPLICAS;
+  __globals->lock();
+  __globals->set_timer_id_format(timer_id_format);
+  __globals->unlock();
+
+  Timer* added_timer;
+  HttpStack::Request req(NULL, NULL);
+
+  controller_request("/timers/1231231231231231-5", htp_method_PUT, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [\"10.0.0.1:9999\"] }}", "");
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  _task->run();
+
+  // Check the Timer ID still has 5 for the replication factor
+  EXPECT_EQ(std::string(evhtp_header_find(req.req()->headers_out, "Location")), "/timers/1231231231231231-5");
+
+  // Check that the timer has 5 for the replication factor
+  EXPECT_EQ(added_timer->_replication_factor, 5);
+  EXPECT_EQ(added_timer->replicas.size(), 1);
   delete added_timer; added_timer = NULL;
 }

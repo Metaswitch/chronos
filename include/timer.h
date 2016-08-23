@@ -115,8 +115,13 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
-  // Calculate the site list for this timer.
-  void calculate_sites();
+  // Populate the site list for this timer. Should be called when the site
+  // list is empty
+  void populate_sites();
+
+  // Update the site list for a timer. Should be called when the timer has
+  // just popped
+  void update_sites_on_timer_pop();
 
   // Mark which replicas have been informed about the timer
   int update_replica_tracker(int replica_index);
@@ -153,7 +158,7 @@ private:
   uint32_t delay_from_site_position() const;
 
   // Work out how delayed the timer should be based on the timer's sequence
-  // number and interval period
+  // number and interval period (i.e. if this is a repeating timer)
   uint32_t delay_from_sequence_position() const;
 
   uint32_t _replication_factor;

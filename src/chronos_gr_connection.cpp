@@ -44,7 +44,7 @@ ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
   _http(new HttpConnection(remote_site,
                            false,
                            resolver,
-                           SASEvent::HttpLogLevel::DETAIL,
+                           SASEvent::HttpLogLevel::NONE,
                            NULL))
 {
 }

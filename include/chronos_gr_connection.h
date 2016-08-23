@@ -41,7 +41,8 @@
 
 /// @class ChronosGRConnection
 ///
-/// Responsible for sending replication requests between sites
+/// Responsible for sending replication requests between sites. Each connection
+/// is responsible for replication to a single remote site.
 class ChronosGRConnection
 {
 public:

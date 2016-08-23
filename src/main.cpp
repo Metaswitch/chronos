@@ -53,7 +53,6 @@
 #include <getopt.h>
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
-#include "chronos_gr_connection.h"
 #include "gr_replicator.h"
 #include "snmp_infinite_timer_count_table.h"
 #include "snmp_infinite_scalar_table.h"
@@ -320,22 +319,11 @@ int main(int argc, char** argv)
 
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
 
-  // Create the GR connections
-  std::vector<ChronosGRConnection*> gr_connections;
-   std::vector<std::string> remote_site_hosts;
-  __globals->get_remote_site_hosts(remote_site_hosts);
-
-  for (std::string site: remote_site_hosts)
-  {
-    ChronosGRConnection* conn = new ChronosGRConnection(site, http_resolver);
-    gr_connections.push_back(conn);
-  }
-
   // Create the timer store, handlers, replicators...
   TimerStore* store = new TimerStore(hc);
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
-  GRReplicator* gr_rep = new GRReplicator(gr_connections, exception_handler);
+  GRReplicator* gr_rep = new GRReplicator(http_resolver, exception_handler);
   HTTPCallback* callback = new HTTPCallback();
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
@@ -421,10 +409,6 @@ int main(int argc, char** argv)
   delete handler; handler = NULL;
   // Callback is deleted by the handler
   delete gr_rep; gr_rep = NULL;
-  for (ChronosGRConnection* conn: gr_connections)
-  {
-    delete conn;
-  }
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;

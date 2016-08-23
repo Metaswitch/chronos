@@ -46,9 +46,18 @@
 
 struct GRReplicationRequest
 {
-  ChronosGRConnection* connection;
-  std::string url;
-  std::string body;
+  GRReplicationRequest(ChronosGRConnection* connection,
+                       std::string url,
+                       std::string body) :
+    _connection(connection),
+    _url(url),
+    _body(body)
+  {
+  }
+
+  ChronosGRConnection* _connection;
+  std::string _url;
+  std::string _body;
 };
 
 /// @class GRReplicator
@@ -58,7 +67,7 @@ struct GRReplicationRequest
 class GRReplicator
 {
 public:
-  GRReplicator(std::vector<ChronosGRConnection*> connections,
+  GRReplicator(HttpResolver* http_resolver,
                ExceptionHandler* exception_handler);
   virtual ~GRReplicator();
 

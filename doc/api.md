@@ -161,8 +161,8 @@ Each of the attributes that overlap with the public API are used in the same way
  * `timing/start-time-delta` - The delta to apply to the current time to compensate for time that the timer was programmed on the sending node.
  * `timing/sequence-number` - The instance of the timer that is next to pop (always 0 for one-shot timers)
  * `reliability/cluster-view-id` - The ID of the current cluster topology (used for error-checking and to spot inconsistencies in the cluster)
- * `reliability/replicas` - The ordered list of the replicas for the timer, the receiving node can use this to work out when it should pop the timer.
- * `reliability/sites` - The ordered list of the sites for the timer, the receiving node can use this to work out when it should pop the timer.
+ * `reliability/replicas` - The ordered list of the replicas for the timer, the receiving node can use this to work out when it should pop the timer. This uses the IP addresses defined in `/etc/chronos/chronos_cluster.conf`.
+ * `reliability/sites` - The ordered list of the sites for the timer, the receiving node can use this to work out when it should pop the timer. This uses the site names defined in `/etc/chronos/chronos_gr.conf`.
 
 #### Replicating a Timer Pop
 

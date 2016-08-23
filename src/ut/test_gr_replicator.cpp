@@ -50,23 +50,21 @@ protected:
     Base::SetUp();
 
     _resolver = new FakeHttpResolver("10.42.42.42");
-    _conn = new ChronosGRConnection("site1", _resolver);
-    _gr = new GRReplicator(std::vector<ChronosGRConnection*>(1, _conn), NULL);
+    _gr = new GRReplicator(_resolver, NULL);
 
     fakecurl_responses.clear();
+    fakecurl_requests.clear();
   }
 
   void TearDown()
   {
     delete _gr;
-    delete _conn;
     delete _resolver;
 
     Base::TearDown();
   }
 
   FakeHttpResolver* _resolver;
-  ChronosGRConnection* _conn;
   GRReplicator* _gr;
 };
 
@@ -77,20 +75,34 @@ TEST_F(TestGRReplicator, ReplicateTimer)
   // the send_put will fail in the Chronos GR connection
   fakecurl_responses["http://10.42.42.42:80/timers/0000000000000001-1"] = CURLE_OK;
   Timer* timer1 = default_timer(1);
-  ASSERT_FALSE(timer1->replicas.empty());
+  EXPECT_FALSE(timer1->replicas.empty());
   _gr->replicate(timer1);
 
-  // Have to sleep to make sure there's time for the request to have been
-  // processed
-  sleep(1); 
+  // The timer's been sent when fakecurl records the request. Sleep until then.
+  std::map<std::string, Request>::iterator it =
+      fakecurl_requests.find("http://10.42.42.42:80/timers/0000000000000001-1");
+  int count = 0;
+  while (it == fakecurl_requests.end() && count < 10)
+  {
+    // Don't wait for more than 10 seconds
+    count++;
+    sleep(1);
+    it = fakecurl_requests.find("http://10.42.42.42:80/timers/0000000000000001-1");
+  }
+
+  if (count >= 10)
+  {
+    printf("No request was sent that matched the expected timer");
+  }
 
   // Look at the body sent on the request. Check that it doesn't have any
   // replica information, and that it makes a valid timer
   Request& request = fakecurl_requests["http://10.42.42.42:80/timers/0000000000000001-1"];
   rapidjson::Document doc;
   doc.Parse<0>(request._body.c_str());
-  ASSERT_FALSE(doc.HasParseError());
-  ASSERT_FALSE(doc["reliability"].HasMember("replicas"));
+  EXPECT_FALSE(doc.HasParseError());
+  ASSERT_TRUE(doc.HasMember("reliability"));
+  EXPECT_FALSE(doc["reliability"].HasMember("replicas"));
 
   std::string error;
   bool replicated;

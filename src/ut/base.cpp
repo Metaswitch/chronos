@@ -82,16 +82,16 @@ void Base::SetUp()
   __globals->set_local_site_name(local_site_name);
 
   std::map<std::string, std::string> remote_sites;
-  remote_sites.insert(std::make_pair("remote_site_1_name", "remote_site_1_host"));
+  remote_sites.insert(std::make_pair("remote_site_1_name", "remote_site_1_dns_record"));
   __globals->set_remote_sites(remote_sites);
 
   std::vector<std::string> remote_site_names;
   remote_site_names.push_back("remote_site_1_name");
   __globals->set_remote_site_names(remote_site_names);
 
-  std::vector<std::string> remote_site_hosts;
-  remote_site_hosts.push_back("remote_site_1_host");
-  __globals->set_remote_site_hosts(remote_site_hosts);
+  std::vector<std::string> remote_site_dns_records;
+  remote_site_dns_records.push_back("remote_site_1_dns_record");
+  __globals->set_remote_site_dns_records(remote_site_dns_records);
 
   __globals->unlock();
 }
