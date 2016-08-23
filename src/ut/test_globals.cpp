@@ -218,7 +218,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   std::vector<std::string> expected_remote_site_dns_records;
   expected_remote_site_dns_records.push_back("foo.com:800");
   expected_remote_site_dns_records.push_back("bar.com");
-  EXPECT_THAT(remote_site_dns_records, UnorderedElementsAreArray(expected_remote_site_dns_records));
+  EXPECT_THAT(expected_remote_site_dns_records, UnorderedElementsAreArray(remote_site_dns_records));
 
   delete test_global; test_global = NULL;
 }

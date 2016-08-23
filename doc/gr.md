@@ -4,7 +4,7 @@ Geographic redundancy (GR) is supported in Chronos by using essentially the same
 
 At a high level, when a timer is added (or first modified after a deployment becomes GR) it creates a site ordering list. This list simply takes the available sites, makes the local site the primary site, and then orders the rest of the sites randomly after it. Chronos knows what sites are available as these are configured in the [GR config](https://github.com/Metaswitch/chronos/blob/dev/doc/configuration.md).
 
-The Chronos process then replicates the timer both within site and cross site. Each Chronos process that the timer is replicated to then delays the timer bases on both the site's priority and its own priority within the site.
+The Chronos process then replicates the timer both within site and cross site. Each Chronos process that the timer is replicated to then delays the timer based on both the site's priority and its own priority within the site.
 
 For example, in a 3 site deployment with two replicas per site you can get a timer with the following replicas and pop delays. In this case the timer went to Site 1 to start with, so Site 1 is first. Site 2 and 3 were ordered randomly, and Site 3 was chosen as the first backup, and Site 2 as the second backup.
 

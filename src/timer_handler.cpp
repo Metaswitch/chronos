@@ -707,6 +707,9 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 
 void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
 {
+  // Firstly, check if the sites are the same (potentially in a different
+  // order). We expect this to be the mainline case, so we always do this
+  // cheaper check
   std::vector<std::string> old_timer_sites = old_timer->sites;
   std::vector<std::string> new_timer_sites = new_timer->sites;
   std::sort(old_timer_sites.begin(), old_timer_sites.end());
@@ -718,6 +721,9 @@ void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
     return;
   }
 
+  // The sites aren't the same. We have to check the sites to make sure that
+  // the site ordering is retained (which is O(n^2) cost - but this only
+  // happens when the sites are added/removed which we expect to be rare).
   std::vector<std::string> site_names;
 
   // Remove any sites that aren't in the new timer
