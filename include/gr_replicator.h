@@ -1,8 +1,8 @@
 /**
- * @file main.cpp
+ * @file gr_replicator.h
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2016  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,16 +34,52 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <curl/curl.h>
+#ifndef GR_REPLICATOR_H__
+#define GR_REPLICATOR_H__
 
-int main(int argc, char **argv) {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-  ::testing::InitGoogleMock(&argc, argv);
-  curl_global_cleanup();
-  std::time_t seed = time(NULL);
-  printf("Tests using random seed of %lu\n", seed);
-  srand(seed);
-  return RUN_ALL_TESTS();
-}
+#include "timer.h"
+#include "chronos_gr_connection.h"
+#include "exception_handler.h"
+#include "eventq.h"
+
+#define GR_REPLICATOR_THREAD_COUNT 20
+
+struct GRReplicationRequest
+{
+  GRReplicationRequest(ChronosGRConnection* connection,
+                       std::string url,
+                       std::string body) :
+    _connection(connection),
+    _url(url),
+    _body(body)
+  {
+  }
+
+  ChronosGRConnection* _connection;
+  std::string _url;
+  std::string _body;
+};
+
+/// @class GRReplicator
+///
+/// Responsible for creating replication requests to send between sites, and
+/// queuing these requests.
+class GRReplicator
+{
+public:
+  GRReplicator(HttpResolver* http_resolver,
+               ExceptionHandler* exception_handler);
+  virtual ~GRReplicator();
+
+  void worker_thread_entry_point();
+  virtual void replicate(Timer*);
+  static void* worker_thread_entry_point(void*);
+
+private:
+  eventq<GRReplicationRequest *> _q;
+  pthread_t _worker_threads[GR_REPLICATOR_THREAD_COUNT];
+  std::vector<ChronosGRConnection*> _connections;
+  ExceptionHandler* _exception_handler;
+};
+
+#endif

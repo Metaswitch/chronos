@@ -52,6 +52,8 @@
 #include <atomic>
 #include <time.h>
 
+uint32_t DELAY_BETWEEN_CHRONOS_INSTANCES_MS = 2000;
+
 uint32_t Hasher::do_hash(TimerID data, uint32_t seed)
 {
   uint32_t hash;
@@ -77,6 +79,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   repeat_for(repeat_for),
   sequence_number(0),
   replicas(std::vector<std::string>()),
+  sites(std::vector<std::string>()),
   tags(std::map<std::string, uint32_t>()),
   callback_url(""),
   callback_body(""),
@@ -96,24 +99,50 @@ Timer::~Timer()
 {
 }
 
-// Returns the next pop time in ms.
-uint32_t Timer::next_pop_time() const
+uint32_t Timer::delay_from_replica_position() const
 {
+  // Get the replica position
   std::string localhost;
   int replica_index = 0;
   __globals->get_cluster_local_ip(localhost);
 
-  for (std::vector<std::string>::const_iterator it = replicas.begin();
-       it != replicas.end();
-       ++it, ++replica_index)
-  {
-    if (*it == localhost)
-    {
-      break;
-    }
-  }
+  replica_index = std::find(replicas.begin(), replicas.end(), localhost) -
+                                                                  replicas.begin();
 
-  return start_time_mono_ms + ((sequence_number + 1) * interval_ms) + (replica_index * 2 * 1000);
+  // Delay by 2 seconds for each place down in the replica list
+  return replica_index * DELAY_BETWEEN_CHRONOS_INSTANCES_MS;
+}
+
+uint32_t Timer::delay_from_site_position() const
+{
+  // Get the site position
+  std::string local_site_name;
+  int site_index = 0;
+  __globals->get_local_site_name(local_site_name);
+
+  site_index = std::find(sites.begin(), sites.end(), local_site_name) -
+                                                                  sites.begin();
+
+  // Delay for each site ahead of us in the site list. The delay for each site
+  // is 2 seconds * number of replicas
+  return site_index * _replication_factor * DELAY_BETWEEN_CHRONOS_INSTANCES_MS;
+}
+
+uint32_t Timer::delay_from_sequence_position() const
+{
+  // Delay depending where this timer is in its sequence. This affects
+  // repeating timers (e.g. a timer that's due to pop every 20 secs for the
+  // next 100 secs).
+  return (sequence_number + 1) * interval_ms;
+}
+
+// Returns the next pop time in ms.
+uint32_t Timer::next_pop_time() const
+{
+  return start_time_mono_ms +
+         delay_from_sequence_position() +
+         delay_from_replica_position() +
+         delay_from_site_position();
 }
 
 uint64_t Timer::get_pop_time() const
@@ -198,9 +227,8 @@ std::string Timer::url(std::string host)
 //     },
 //     "reliability": {
 //         "cluster-view-id": "string",
-//         "replicas": [
-//             <comma separated "string"s>
-//         ]
+//         "sites": ["site name 1", "site name 2",...],
+//         "replicas": ["replica 1", "replica 2",...]
 //     }
 //     "statistics": {
 //         "tag-info": [ {"type": <TAG>,
@@ -265,17 +293,33 @@ void Timer::to_json_obj(rapidjson::Writer<rapidjson::StringBuffer>* writer)
     {
       writer->String("cluster-view-id");
       writer->String(cluster_view_id.c_str());
-      writer->String("replicas");
-      writer->StartArray();
+
+      if (!replicas.empty())
       {
-        for (std::vector<std::string>::iterator it = replicas.begin();
-                                                it != replicas.end();
-                                                ++it)
+        writer->String("replicas");
+        writer->StartArray();
         {
-          writer->String((*it).c_str());
+          for (std::string replica : replicas)
+          {
+            writer->String(replica.c_str());
+          }
         }
+
+        writer->EndArray();
       }
-      writer->EndArray();
+
+      if (!sites.empty())
+      {
+        writer->String("sites");
+        writer->StartArray();
+        {
+          for (std::string site: sites)
+          {
+            writer->String(site.c_str());
+          }
+        }
+        writer->EndArray();
+      }
     }
     writer->EndObject();
 
@@ -590,12 +634,77 @@ void Timer::calculate_replicas(uint64_t replica_hash)
   }
 }
 
-// Generate a timer that should be unique across the (possibly geo-redundant) cluster.
-// The idea is to use a combination of deployment id, instance id, timestamp and
-// an incrementing sequence number.
-//
-// The ID returned to the client will also contain a
-// list of replicas, but this doesn't add much uniqueness.
+void Timer::populate_sites()
+{
+  std::string local_site_name;
+  __globals->get_local_site_name(local_site_name);
+
+  std::vector<std::string> remote_site_names;
+  __globals->get_remote_site_names(remote_site_names);
+
+  sites.push_back(local_site_name);
+
+  std::random_shuffle(remote_site_names.begin(), remote_site_names.end());
+  for (std::string remote_site_name: remote_site_names)
+  {
+    sites.push_back(remote_site_name);
+  }
+}
+
+
+void Timer::update_sites_on_timer_pop()
+{
+  std::string local_site_name;
+  __globals->get_local_site_name(local_site_name);
+
+  std::vector<std::string> remote_site_names;
+  __globals->get_remote_site_names(remote_site_names);
+
+  std::vector<std::string> site_names;
+
+  // Build up a new list of sites
+  // - Firstly, remove any sites that no longer exist
+  // - Secondly, add any new sites to the end of the list (local site first)
+  for (std::string site: sites)
+  {
+    std::vector<std::string>::iterator pos =
+            std::find(remote_site_names.begin(), remote_site_names.end(), site);
+
+    if (pos != remote_site_names.end())
+    {
+      site_names.push_back(site);
+      remote_site_names.erase(pos);
+    }
+    else if (site == local_site_name)
+    {
+      site_names.push_back(site);
+    }
+    else
+    {
+      TRC_DEBUG("Removing site (%s) as it no longer exists", site.c_str());
+    }
+  }
+
+  if (std::find(site_names.begin(), site_names.end(), local_site_name)
+        == site_names.end())
+  {
+    site_names.push_back(local_site_name);
+  }
+
+  // Shuffle the remote sites
+  std::random_shuffle(remote_site_names.begin(), remote_site_names.end());
+  for (std::string site: remote_site_names)
+  {
+    TRC_DEBUG("Adding remote site (%s) to sites", site.c_str());
+    site_names.push_back(site);
+  }
+
+  sites = site_names;
+}
+
+// Generate a timer that should be unique across the (possibly geo-redundant)
+// cluster. The idea is to use a combination of deployment id, instance id,
+// timestamp and an incrementing sequence number.
 TimerID Timer::generate_timer_id()
 {
   uint32_t instance_id = 0;
@@ -622,17 +731,23 @@ Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
 
 // Create a Timer object from the JSON representation.
 //
-// @param id - The unique identity for the timer (see generate_timer_id() above).
-// @param replication_factor - The replication_factor extracted from the timer URL (or 0 for new timer).
-// @param json - The JSON representation of the timer.
-// @param error - This will be populated with a descriptive error string if required.
-// @param replicated - This will be set to true if this is a replica of a timer.
+// @param id - The unique identity for the timer (see generate_timer_id()
+//             above
+// @param replication_factor - The replication_factor extracted from the timer
+//                             URL (or 0 for new timer)
+// @param json - The JSON representation of the timer
+// @param error - This will be populated with a descriptive error string if
+//                 required
+// @param replicated - This will be set to true if this is a replica of a timer
+// @param gr_replicated - This will be set to true if this isn't the first site
+//                        to process this timer
 Timer* Timer::from_json(TimerID id,
                         uint32_t replication_factor,
                         uint64_t replica_hash,
                         std::string json,
                         std::string& error,
-                        bool& replicated)
+                        bool& replicated,
+                        bool& gr_replicated)
 {
   rapidjson::Document doc;
   doc.Parse<0>(json.c_str());
@@ -644,7 +759,13 @@ Timer* Timer::from_json(TimerID id,
     return NULL;
   }
 
-  return from_json_obj(id, replication_factor, replica_hash, error, replicated, doc);
+  return from_json_obj(id,
+                       replication_factor,
+                       replica_hash,
+                       error,
+                       replicated,
+                       gr_replicated,
+                       doc);
 }
 
 Timer* Timer::from_json_obj(TimerID id,
@@ -652,6 +773,7 @@ Timer* Timer::from_json_obj(TimerID id,
                             uint64_t replica_hash,
                             std::string& error,
                             bool& replicated,
+                            bool& gr_replicated,
                             rapidjson::Value& doc)
 {
   Timer* timer = NULL;
@@ -753,7 +875,9 @@ Timer* Timer::from_json_obj(TimerID id,
           return NULL;
         }
 
-        timer->_replication_factor = replicas.Size();
+        timer->_replication_factor = (replication_factor > 0) ?
+                                      replication_factor :
+                                      replicas.Size();
 
         for (rapidjson::Value::ConstValueIterator it = replicas.Begin();
                                                   it != replicas.End();
@@ -792,6 +916,20 @@ Timer* Timer::from_json_obj(TimerID id,
           timer->_replication_factor = replication_factor ? replication_factor : 2;
         }
       }
+
+      if (reliability.HasMember("sites"))
+      {
+        rapidjson::Value& sites = reliability["sites"];
+        JSON_ASSERT_ARRAY(sites);
+
+        for (rapidjson::Value::ConstValueIterator it = sites.Begin();
+                                                  it != sites.End();
+                                                  ++it)
+        {
+          JSON_ASSERT_STRING(*it);
+          timer->sites.push_back(std::string(it->GetString(), it->GetStringLength()));
+        }
+      }
     }
     else
     {
@@ -804,8 +942,9 @@ Timer* Timer::from_json_obj(TimerID id,
 
     if (timer->replicas.empty())
     {
-      // Replicas not determined above, determine them now.  Note that this implies
-      // the request is from a client, not another replica.
+      // Replicas not determined above, determine them now. Note that this
+      // implies the request is from a client (or a Chronos in a different
+      // site), not another replica.
       replicated = false;
       timer->calculate_replicas(replica_hash);
     }
@@ -814,6 +953,18 @@ Timer* Timer::from_json_obj(TimerID id,
       // Replicas were specified in the request, must be a replication message
       // from another cluster node.
       replicated = true;
+    }
+
+    if (timer->sites.empty())
+    {
+      // Sites not determined above, determine them now. Note that this implies
+      // the request is from a client, not another replica.
+      gr_replicated = false;
+      timer->populate_sites();
+    }
+    else
+    {
+      gr_replicated = true;
     }
 
     if ((doc.HasMember("statistics")) &&

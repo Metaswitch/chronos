@@ -48,7 +48,6 @@ typedef uint64_t TimerID;
 
 // Separate class implementing the hash approach for rendezvous hashing -
 // allows the hashing to be changed in UT (e.g. to force collisions).
-
 class Hasher
 {
 public:
@@ -116,6 +115,14 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
+  // Populate the site list for this timer. Should be called when the site
+  // list is empty
+  void populate_sites();
+
+  // Update the site list for a timer. Should be called when the timer has
+  // just popped
+  void update_sites_on_timer_pop();
+
   // Mark which replicas have been informed about the timer
   int update_replica_tracker(int replica_index);
 
@@ -136,11 +143,24 @@ public:
   std::string cluster_view_id;
   std::vector<std::string> replicas;
   std::vector<std::string> extra_replicas;
+  std::vector<std::string> sites;
   std::map<std::string, uint32_t> tags;
   std::string callback_url;
   std::string callback_body;
 
 private:
+  // Work out how delayed the timer should be based on this node's position
+  // in the replica list
+  uint32_t delay_from_replica_position() const;
+
+  // Work out how delayed the timer should be based on this node's position
+  // in the site list
+  uint32_t delay_from_site_position() const;
+
+  // Work out how delayed the timer should be based on the timer's sequence
+  // number and interval period (i.e. if this is a repeating timer)
+  uint32_t delay_from_sequence_position() const;
+
   uint32_t _replication_factor;
 
   // The replica tracker is used to track which replicas need to be informed
@@ -159,12 +179,14 @@ public:
                           uint64_t replica_hash,
                           std::string json,
                           std::string& error,
-                          bool& replicated);
+                          bool& replicated,
+                          bool& gr_replicated);
   static Timer* from_json_obj(TimerID id,
                               uint32_t replication_factor,
                               uint64_t replica_hash,
                               std::string& error,
                               bool& replicated,
+                              bool& gr_replicated,
                               rapidjson::Value& doc);
 };
 

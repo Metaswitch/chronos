@@ -1,8 +1,8 @@
 /**
- * @file main.cpp
+ * @file mock_gr_replicator.h
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2016  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,16 +34,19 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <curl/curl.h>
+#ifndef MOCK_GR_REPLICATOR_H__
+#define MOCK_GR_REPLICATOR_H__
 
-int main(int argc, char **argv) {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-  ::testing::InitGoogleMock(&argc, argv);
-  curl_global_cleanup();
-  std::time_t seed = time(NULL);
-  printf("Tests using random seed of %lu\n", seed);
-  srand(seed);
-  return RUN_ALL_TESTS();
-}
+#include "gr_replicator.h"
+
+#include <gmock/gmock.h>
+
+class MockGRReplicator : public GRReplicator
+{
+public:
+  MockGRReplicator() : GRReplicator(NULL, NULL) {}
+
+  MOCK_METHOD1(replicate, void(Timer*));
+};
+
+#endif

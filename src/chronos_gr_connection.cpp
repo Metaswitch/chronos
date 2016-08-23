@@ -1,8 +1,8 @@
 /**
- * @file main.cpp
+ * @file chronos_gr_connection.cpp.
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2016  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,16 +34,36 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <curl/curl.h>
+#include "log.h"
+#include "sasevent.h"
+#include "chronos_gr_connection.h"
 
-int main(int argc, char **argv) {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-  ::testing::InitGoogleMock(&argc, argv);
-  curl_global_cleanup();
-  std::time_t seed = time(NULL);
-  printf("Tests using random seed of %lu\n", seed);
-  srand(seed);
-  return RUN_ALL_TESTS();
+ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
+                                         HttpResolver* resolver) :
+  _site_name(remote_site),
+  _http(new HttpConnection(remote_site,
+                           false,
+                           resolver,
+                           SASEvent::HttpLogLevel::NONE,
+                           NULL))
+{
+}
+
+ChronosGRConnection::~ChronosGRConnection()
+{
+  delete _http; _http = NULL;
+}
+
+void ChronosGRConnection::send_put(std::string url,
+                                   std::string body)
+{
+  HTTPCode rc = _http->send_put(url, body, 0);
+
+  if (rc != HTTP_OK)
+  {
+    // LCOV_EXCL_START - No value in testing this log in UT
+    TRC_ERROR("Unable to send replication to a remote site (%s)",
+              _site_name.c_str());
+    // LCOV_EXCL_STOP
+  }
 }

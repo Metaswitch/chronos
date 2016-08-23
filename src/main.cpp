@@ -53,6 +53,7 @@
 #include <getopt.h>
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
+#include "gr_replicator.h"
 #include "snmp_infinite_timer_count_table.h"
 #include "snmp_infinite_scalar_table.h"
 #include "snmp_continuous_increment_table.h"
@@ -237,6 +238,7 @@ int main(int argc, char** argv)
   }
 
   start_signal_handlers();
+  srand(time(NULL));
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,
@@ -298,21 +300,7 @@ int main(int argc, char** argv)
                                            false,
                                            hc);
 
-  // Create the timer store, handlers, replicators...
-  TimerStore *store = new TimerStore(hc);
-  Replicator* controller_rep = new Replicator(exception_handler);
-  Replicator* handler_rep = new Replicator(exception_handler);
-  HTTPCallback* callback = new HTTPCallback();
-  TimerHandler* handler = new TimerHandler(store, callback,
-                                           handler_rep,
-                                           all_timers_table,
-                                           total_timers_table,
-                                           scalar_timers_table);
-  callback->start(handler);
-
-  // Create a Chronos internal connection class for scaling operations.
-  // This uses HTTPConnection from cpp-common so needs various
-  // resolvers
+  // Create the resolvers
   std::vector<std::string> dns_servers;
   __globals->get_dns_servers(dns_servers);
 
@@ -331,6 +319,22 @@ int main(int argc, char** argv)
 
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
 
+  // Create the timer store, handlers, replicators...
+  TimerStore* store = new TimerStore(hc);
+  Replicator* controller_rep = new Replicator(exception_handler);
+  Replicator* handler_rep = new Replicator(exception_handler);
+  GRReplicator* gr_rep = new GRReplicator(http_resolver, exception_handler);
+  HTTPCallback* callback = new HTTPCallback();
+  TimerHandler* handler = new TimerHandler(store,
+                                           callback,
+                                           handler_rep,
+                                           gr_rep,
+                                           all_timers_table,
+                                           total_timers_table,
+                                           scalar_timers_table);
+  callback->start(handler);
+
+  // Create a Chronos internal connection class for scaling operations.
   ChronosInternalConnection* chronos_internal_connection =
             new ChronosInternalConnection(http_resolver,
                                           handler,
@@ -364,7 +368,7 @@ int main(int argc, char** argv)
   __globals->get_threads(http_threads);
 
   HttpStackUtils::PingHandler ping_handler;
-  ControllerTask::Config controller_config(controller_rep, handler);
+  ControllerTask::Config controller_config(controller_rep, gr_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
                                                                                              &HttpStack::NULL_SAS_LOGGER);
 
@@ -400,23 +404,27 @@ int main(int argc, char** argv)
     std::cerr << "Caught HttpStack::Exception" << std::endl;
   }
 
+  delete load_monitor; load_monitor = NULL;
   delete chronos_internal_connection; chronos_internal_connection = NULL;
-  delete http_resolver; http_resolver = NULL;
-  delete dns_resolver; dns_resolver = NULL;
   delete handler; handler = NULL;
   // Callback is deleted by the handler
+  delete gr_rep; gr_rep = NULL;
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
+  delete http_resolver; http_resolver = NULL;
+  delete dns_resolver; dns_resolver = NULL;
 
-  delete remaining_nodes_scalar;
-  delete timers_processed_table;
-  delete invalid_timers_processed_table;
-  delete total_timers_table;
+  delete scalar_timers_table; scalar_timers_table = NULL;
+  delete total_timers_table; total_timers_table = NULL;
+  delete all_timers_table; all_timers_table = NULL;
+  delete invalid_timers_processed_table; invalid_timers_processed_table = NULL;
+  delete timers_processed_table; timers_processed_table = NULL;
+  delete remaining_nodes_scalar; remaining_nodes_scalar = NULL;
 
+  delete exception_handler; exception_handler = NULL;
   hc->stop_thread();
   delete hc; hc = NULL;
-  delete exception_handler; exception_handler = NULL;
 
   // Delete Chronos's alarm object
   delete scale_operation_alarm;

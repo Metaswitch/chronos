@@ -265,12 +265,15 @@ void Globals::update_config()
                                   cluster_staying_addresses.size(),
                                   cluster_leaving_addresses.size());
 
-  // Store the Geographic Redunancy Sites
+  // Store the Geographic Redundancy Sites
   std::string local_site_name = conf_map["sites.local_site"].as<std::string>();
+  TRC_STATUS("Local site: %s", local_site_name.c_str());
   set_local_site_name(local_site_name);
 
   std::vector<std::string> remote_site_list = conf_map["sites.remote_site"].as<std::vector<std::string>>();
   std::map<std::string, std::string> remote_sites;
+  std::vector<std::string> remote_site_names;
+  std::vector<std::string> remote_site_dns_records;
 
   for (std::vector<std::string>::iterator it = remote_site_list.begin();
                                           it != remote_site_list.end();
@@ -293,10 +296,14 @@ void Globals::update_config()
     {
       TRC_STATUS("Configured remote site: %s", it->c_str());
       remote_sites[site_details[0]] = site_details[1];
+      remote_site_names.push_back(site_details[0]);
+      remote_site_dns_records.push_back(site_details[1]);
     }
   }
 
   set_remote_sites(remote_sites);
+  set_remote_site_names(remote_site_names);
+  set_remote_site_dns_records(remote_site_dns_records);
 
   unlock();
 }

@@ -106,12 +106,14 @@ public:
   // Geographic Redundancy configuration
   GLOBAL(local_site_name, std::string);
   GLOBAL(remote_sites, std::map<std::string, std::string>);
+  GLOBAL(remote_site_names, std::vector<std::string>);
+  GLOBAL(remote_site_dns_records, std::vector<std::string>);
 
 public:
   void update_config();
   void lock() { pthread_rwlock_wrlock(&_lock); }
   void unlock() { pthread_rwlock_unlock(&_lock); }
-  TimerIDFormat default_id_format() { return TimerIDFormat::WITH_REPLICAS; }
+  TimerIDFormat default_id_format() { return TimerIDFormat::WITHOUT_REPLICAS; }
 
 private:
   uint64_t generate_bloom_filter(std::string);

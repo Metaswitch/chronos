@@ -53,17 +53,19 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
 TimerHandler::TimerHandler(TimerStore* store,
                            Callback* callback,
                            Replicator* replicator,
+                           GRReplicator* gr_replicator,
                            SNMP::ContinuousIncrementTable* all_timers_table,
                            SNMP::InfiniteTimerCountTable* tagged_timers_table,
                            SNMP::InfiniteScalarTable* scalar_timers_table) :
-                           _store(store),
-                           _callback(callback),
-                           _replicator(replicator),
-                           _all_timers_table(all_timers_table),
-                           _tagged_timers_table(tagged_timers_table),
-                           _scalar_timers_table(scalar_timers_table),
-                           _terminate(false),
-                           _nearest_new_timer(-1)
+  _store(store),
+  _callback(callback),
+  _replicator(replicator),
+  _gr_replicator(gr_replicator),
+  _all_timers_table(all_timers_table),
+  _tagged_timers_table(tagged_timers_table),
+  _scalar_timers_table(scalar_timers_table),
+  _terminate(false),
+  _nearest_new_timer(-1)
 {
   pthread_mutex_init(&_mutex, NULL);
 
@@ -190,6 +192,9 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       // If the new timer is a tombstone, make sure its interval is long enough
       save_tombstone_information(new_tp.active_timer, existing_tp.active_timer);
 
+      // Update the site information
+      save_site_information(new_tp.active_timer, existing_tp.active_timer);
+
       // Decide whether we should save the old timer as an informational timer
       if (existing_tp.active_timer->cluster_view_id !=
           new_tp.active_timer->cluster_view_id)
@@ -245,7 +250,7 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
           !(existing_tp.active_timer->is_tombstone()))
       {
         tags_to_remove = existing_tp.active_timer->tags;
-        TRC_DEBUG("new timer is a tombstone overwriting an existing timer");
+        TRC_DEBUG("New timer is a tombstone overwriting an existing timer");
         _all_timers_table->decrement(1);
       }
     }
@@ -317,7 +322,7 @@ void TimerHandler::return_timer(Timer* timer)
 
 void TimerHandler::handle_successful_callback(TimerID timer_id)
 {
-  // Fetch the timer from the store and replicate it.
+  // Fetch the timer from the store and replicate it (within and cross-site)
   pthread_mutex_lock(&_mutex);
   TimerPair timer_pair;
   bool timer_found = _store->fetch(timer_id, timer_pair);
@@ -326,7 +331,11 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
   {
     Timer* timer;
     timer = timer_pair.active_timer;
+
+    // Update the sites
+    timer->update_sites_on_timer_pop();
     _replicator->replicate(timer);
+    _gr_replicator->replicate(timer);
 
     std::vector<std::string> cluster_view_id_vector;
     cluster_view_id_vector.push_back(timer->cluster_view_id);
@@ -689,11 +698,60 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 {
   if (t->is_tombstone())
   {
-  // Learn the interval so that this tombstone lasts long enough to
-  //  catch errors.
+    // Learn the interval so that this tombstone lasts long enough to
+    // catch errors.
     t->interval_ms = existing->interval_ms;
     t->repeat_for = existing->repeat_for;
   }
+}
+
+void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
+{
+  // Firstly, check if the sites are the same (potentially in a different
+  // order). We expect this to be the mainline case, so we always do this
+  // cheaper check
+  std::vector<std::string> old_timer_sites = old_timer->sites;
+  std::vector<std::string> new_timer_sites = new_timer->sites;
+  std::sort(old_timer_sites.begin(), old_timer_sites.end());
+  std::sort(new_timer_sites.begin(), new_timer_sites.end());
+
+  if (old_timer_sites == new_timer_sites)
+  {
+    new_timer->sites = old_timer->sites;
+    return;
+  }
+
+  // The sites aren't the same. We have to check the sites to make sure that
+  // the site ordering is retained (which is O(n^2) cost - but this only
+  // happens when the sites are added/removed which we expect to be rare).
+  std::vector<std::string> site_names;
+
+  // Remove any sites that aren't in the new timer
+  for (std::string site: old_timer->sites)
+  {
+    if (std::find(new_timer->sites.begin(), new_timer->sites.end(), site) !=
+        new_timer->sites.end())
+    {
+      site_names.push_back(site);
+    }
+    else
+    {
+      TRC_DEBUG("Removing site (%s) as it no longer exists", site.c_str());
+    }
+  }
+
+  // Add any new sites that are only in the new timer
+  for (std::string site: new_timer->sites)
+  {
+    if (std::find(site_names.begin(), site_names.end(), site) ==
+        site_names.end())
+    {
+      TRC_DEBUG("Adding remote site (%s) to sites", site.c_str());
+      site_names.push_back(site);
+    }
+  }
+
+  new_timer->sites = site_names;
 }
 
 // Report an update to the number of timers to statistics

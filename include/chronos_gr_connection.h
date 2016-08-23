@@ -1,8 +1,8 @@
 /**
- * @file main.cpp
+ * @file chronos_gr_connection.h
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2016  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,16 +34,29 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <curl/curl.h>
+#ifndef CHRONOS_GR_CONNECTION_H__
+#define CHRONOS_GR_CONNECTION_H__
 
-int main(int argc, char **argv) {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-  ::testing::InitGoogleMock(&argc, argv);
-  curl_global_cleanup();
-  std::time_t seed = time(NULL);
-  printf("Tests using random seed of %lu\n", seed);
-  srand(seed);
-  return RUN_ALL_TESTS();
-}
+#include "httpconnection.h"
+
+/// @class ChronosGRConnection
+///
+/// Responsible for sending replication requests between sites. Each connection
+/// is responsible for replication to a single remote site.
+class ChronosGRConnection
+{
+public:
+  ChronosGRConnection(const std::string& remote_site,
+                      HttpResolver* resolver);
+  virtual ~ChronosGRConnection();
+
+  // Replicate the timer cross-site.
+  virtual void send_put(std::string url,
+                        std::string body);
+
+private:
+  std::string _site_name;
+  HttpConnection* _http;
+};
+
+#endif

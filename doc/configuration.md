@@ -53,12 +53,12 @@ The geographic redundancy configuration file has the following format:
 
     [sites]
     local_site = local-site-name             # The name of the local site
-    remote_site = site-b=bar.foo.com:8000    # The name of a remote site, and the address
-    remote_site = site-c=cat.foo.com:7000    # of the remote site. If the address doesn't
-    remote_site = site-d=delta.foo.com:5000  # include a port the bind-port will be used
+    remote_site = site-b=bar.foo.com:8000    # The name of a remote site, and a DNS name resolving to
+    remote_site = site-c=cat.foo.com:7000    # all Chronos nodes in that remote site. If the address
+    remote_site = site-d=delta.foo.com:5000  # doesn't include a port the bind-port will be used.
     remote_site = site-e=echo.foo.com        # Each site is listed in a separate entry
 
-To update the geographic redundancy configuration, make the desired changes in `/etc/chronos/chronos.conf` and restart the Chronos service (e.g. run `service chronos stop` and allow monit to restart Chronos).
+To update the geographic redundancy configuration, make the desired changes in `/etc/chronos/chronos_gr.conf` and restart the Chronos service (e.g. run `service chronos stop` and allow monit to restart Chronos).
 
 ### Migration
 
