@@ -184,7 +184,8 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       }
     }
 
-    // We're adding the new timer (not just replacing an existing timer)
+    // We're adding the new timer (rather than discarding it and putting the
+    // existing timer back in the store)
     if (will_add_timer)
     {
       // If the new timer is a tombstone, make sure its interval is long enough
