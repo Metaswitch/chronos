@@ -22,6 +22,7 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   utils.cpp \
                   health_checker.cpp \
                   exception_handler.cpp \
+                  httpconnectionpool.cpp \
                   httpconnection.cpp \
                   statistic.cpp \
                   baseresolver.cpp \
