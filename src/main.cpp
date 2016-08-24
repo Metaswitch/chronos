@@ -300,7 +300,8 @@ int main(int argc, char** argv)
                                            false,
                                            hc);
 
-  // Create the resolvers
+  // We're going to need an HttpResolver both for our HTTP callbacks and for
+  // our internal connections.  Create one.
   std::vector<std::string> dns_servers;
   __globals->get_dns_servers(dns_servers);
 
@@ -324,7 +325,7 @@ int main(int argc, char** argv)
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
   GRReplicator* gr_rep = new GRReplicator(http_resolver, exception_handler);
-  HTTPCallback* callback = new HTTPCallback();
+  HTTPCallback* callback = new HTTPCallback(http_resolver);
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
                                            handler_rep,
