@@ -63,6 +63,7 @@ chronos_test_SOURCES := ${COMMON_SOURCES} \
                         test_interposer.cpp \
                         test_chronos_internal_connection.cpp \
                         test_gr_replicator.cpp \
+                        test_http_callback.cpp \
                         fakelogger.cpp \
                         mock_sas.cpp \
                         fakecurl.cpp \
