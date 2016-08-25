@@ -59,11 +59,10 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                                                      SNMP::U32Scalar* remaining_nodes_scalar,
                                                      SNMP::CounterTable* timers_processed_table,
                                                      SNMP::CounterTable* invalid_timers_processed_table) :
-  _http(new HttpConnection("",
-                           false,
-                           resolver,
-                           SASEvent::HttpLogLevel::NONE,
-                           NULL)),
+  _http(new HttpClient(false,
+                       resolver,
+                       SASEvent::HttpLogLevel::NONE,
+                       NULL)),
   _handler(handler),
   _replicator(replicator),
   _alarm(alarm),
@@ -477,7 +476,7 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
                                                 const std::string& body)
 {
   std::string path = "/timers/references";
-  HTTPCode rc = _http->send_delete(path, 0, body, server);
+  HTTPCode rc = _http->send_delete("http://" + server + path, 0, body);
   return rc;
 }
 
@@ -498,7 +497,7 @@ HTTPCode ChronosInternalConnection::send_get(const std::string& server,
   std::vector<std::string> headers;
   headers.push_back(range_header);
 
-  return _http->send_get(path, response, headers, server, 0);
+  return _http->send_get("http://" + server + path, response, headers, 0);
 }
 
 std::string ChronosInternalConnection::create_delete_body(std::map<TimerID, int> delete_map)
