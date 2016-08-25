@@ -37,7 +37,7 @@
 #ifndef CHRONOSINTERNALCONNECTION_H__
 #define CHRONOSINTERNALCONNECTION_H__
 
-#include "httpconnection.h"
+#include "httpclient.h"
 #include "timer.h"
 #include "timer_handler.h"
 #include "replicator.h"
@@ -65,7 +65,7 @@ public:
   virtual void resynchronize();
 
 private:
-  HttpConnection* _http;
+  HttpClient* _http;
   TimerHandler* _handler;
   Replicator* _replicator;
   Alarm* _alarm;
