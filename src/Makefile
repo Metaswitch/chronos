@@ -22,7 +22,9 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   utils.cpp \
                   health_checker.cpp \
                   exception_handler.cpp \
+                  httpclient.cpp \
                   httpconnection.cpp \
+                  http_connection_pool.cpp \
                   statistic.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
@@ -61,6 +63,7 @@ chronos_test_SOURCES := ${COMMON_SOURCES} \
                         test_interposer.cpp \
                         test_chronos_internal_connection.cpp \
                         test_gr_replicator.cpp \
+                        test_http_callback.cpp \
                         fakelogger.cpp \
                         mock_sas.cpp \
                         fakecurl.cpp \

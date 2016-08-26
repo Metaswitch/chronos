@@ -50,7 +50,7 @@ Timer* default_timer(TimerID id)
   timer->sites = std::vector<std::string>(1, "local_site_name");
   timer->sites.push_back("remote_site_1_name");
   timer->tags = std::map<std::string, uint32_t> {{"TAG" + std::to_string(id), 1}};
-  timer->callback_url = "localhost:80/callback" + std::to_string(id);
+  timer->callback_url = "http://localhost:80/callback" + std::to_string(id);
   timer->callback_body = "stuff stuff stuff";
   timer->_replica_tracker = 1;
   timer->_replication_factor = 1;
