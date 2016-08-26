@@ -61,7 +61,6 @@ protected:
 
   void TearDown()
   {
-    _callback->stop();
     delete _callback;
     delete _th;
     delete _resolver;
@@ -97,8 +96,7 @@ TEST_F(TestHTTPCallback, Success)
 
   EXPECT_LT(count, 10) << "No request was sent that matched the expected timer";
 
-  // Look at the body sent on the request. Check that it doesn't have any
-  // replica information, and that it makes a valid timer
+  // Check the body on the request is expected.
   Request& request = fakecurl_requests["http://10.42.42.42:80/callback1"];
   rapidjson::Document doc;
   EXPECT_EQ(request._body, "stuff stuff stuff");
@@ -109,25 +107,25 @@ TEST_F(TestHTTPCallback, Success)
 // Test failed timer callback
 TEST_F(TestHTTPCallback, Failure)
 {
-  fakecurl_responses["http://10.42.42.42:80/callback2"] = CURLE_REMOTE_FILE_NOT_FOUND;
-  Timer* timer2 = default_timer(2);
-  EXPECT_CALL(*_th, return_timer(timer2));
-  EXPECT_CALL(*_th, handle_failed_callback(2));
-  _callback->perform(timer2);
+  fakecurl_responses["http://10.42.42.42:80/callback1"] = CURLE_REMOTE_FILE_NOT_FOUND;
+  Timer* timer1 = default_timer(1);
+  EXPECT_CALL(*_th, return_timer(timer1));
+  EXPECT_CALL(*_th, handle_failed_callback(1));
+  _callback->perform(timer1);
 
   // The timer's been sent when fakecurl records the request. Sleep until then.
   std::map<std::string, Request>::iterator it =
-      fakecurl_requests.find("http://10.42.42.42:80/callback2");
+      fakecurl_requests.find("http://10.42.42.42:80/callback1");
   int count = 0;
   while (it == fakecurl_requests.end() && count < 10)
   {
     // Don't wait for more than 10 seconds
     count++;
     sleep(1);
-    it = fakecurl_requests.find("http://10.42.42.42:80/callback2");
+    it = fakecurl_requests.find("http://10.42.42.42:80/callback1");
   }
 
   EXPECT_LT(count, 10) << "No request was sent that matched the expected timer";
 
-  delete timer2; timer2 = NULL;
+  delete timer1; timer1 = NULL;
 }
