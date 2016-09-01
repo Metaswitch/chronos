@@ -133,6 +133,8 @@ void ChronosInternalConnection::resynchronize()
   TRC_DEBUG("Starting scaling operation");
 
   int nodes_remaining = cluster_nodes.size();
+  int default_port;
+  __globals->get_bind_port(default_port);
 
   for (std::vector<std::string>::iterator it = cluster_nodes.begin();
                                           it != cluster_nodes.end();
@@ -144,18 +146,8 @@ void ChronosInternalConnection::resynchronize()
       _remaining_nodes_scalar->value = nodes_remaining;
     }
 
-    std::string address;
-    int port;
-    if (!Utils::split_host_port(*it, address, port))
-    {
-      // Just use the server as the address.
-      // LCOV_EXCL_START - splitting code is tested elsewhere
-      address = *it;
-      __globals->get_bind_port(port);
-      // LCOV_EXCL_STOP
-    }
+    std::string server_to_sync = Utils::uri_address(*it, default_port);
 
-    std::string server_to_sync = address + ":" + std::to_string(port);
     HTTPCode rc = resynchronise_with_single_node(server_to_sync,
                                                  cluster_nodes,
                                                  localhost);

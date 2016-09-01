@@ -3,3 +3,6 @@ modules/cpp-common/scripts/stats-c/cw_stat usr/share/clearwater/chronos/bin
 usr/lib/*.so /usr/share/chronos/lib
 usr/lib/*.so.* /usr/share/chronos/lib
 chronos.root/* /
+
+# Install the etcd plugin
+modules/clearwater-etcd-plugins/chronos/chronos_plugin.py /usr/share/clearwater/clearwater-cluster-manager/plugins/

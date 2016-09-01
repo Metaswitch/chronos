@@ -466,7 +466,18 @@ TEST_F(TestTimer, URLWithoutReplicas)
   Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITHOUT_REPLICAS;
   __globals->set_timer_id_format(new_timer_id);
   EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname:9999"));
+}
+
+TEST_F(TestTimer, URLFormats)
+{
+  Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITHOUT_REPLICAS;
+  __globals->set_timer_id_format(new_timer_id);
+
   EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname"));
+  EXPECT_EQ("http://10.0.0.1:9999/timers/0000000100000009-2", t1->url("10.0.0.1"));
+  EXPECT_EQ("http://[::2]:9999/timers/0000000100000009-2", t1->url("::2"));
+  EXPECT_EQ("http://[::2]:9999/timers/0000000100000009-2", t1->url("[::2]"));
+  EXPECT_EQ("http://[::2]:9999/timers/0000000100000009-2", t1->url("[::2]:9999"));
 }
 
 TEST_F(TestTimer, URLWithReplicas)

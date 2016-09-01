@@ -166,16 +166,10 @@ std::string Timer::url(std::string host)
 
   if (host != "")
   {
-    std::string address;
-    int port;
-    if (!Utils::split_host_port(host, address, port))
-    {
-      // Just use the server as the address.
-      address = host;
-      __globals->get_bind_port(port);
-    }
+    int default_port;
+    __globals->get_bind_port(default_port);
 
-    ss << "http://" << address << ":" << port;
+    ss << "http://" << Utils::uri_address(host, default_port);
   }
 
   ss << "/timers/";
