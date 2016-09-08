@@ -6,3 +6,5 @@ chronos.root/* /
 
 # Install the etcd plugin
 modules/clearwater-etcd-plugins/chronos/chronos_plugin.py /usr/share/clearwater/clearwater-cluster-manager/plugins/
+modules/clearwater-etcd-plugins/chronos/apply_chronos_gr_config_plugin.py /usr/share/clearwater/clearwater-queue-manager/plugins/
+modules/clearwater-etcd-plugins/chronos/chronos_gr_config_plugin.py /usr/share/clearwater/clearwater-config-manager/plugins/
