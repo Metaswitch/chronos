@@ -4,7 +4,11 @@ usr/lib/*.so /usr/share/chronos/lib
 usr/lib/*.so.* /usr/share/chronos/lib
 chronos.root/* /
 
-# Install the etcd plugin
+# Install the etcd plugins
 modules/clearwater-etcd-plugins/chronos/chronos_plugin.py /usr/share/clearwater/clearwater-cluster-manager/plugins/
 modules/clearwater-etcd-plugins/chronos/apply_chronos_gr_config_plugin.py /usr/share/clearwater/clearwater-queue-manager/plugins/
 modules/clearwater-etcd-plugins/chronos/chronos_gr_config_plugin.py /usr/share/clearwater/clearwater-config-manager/plugins/
+
+# Install the etcd scripts
+modules/clearwater-etcd-plugins/chronos/scripts/check_chronos_gr_restart_queue_state /usr/share/clearwater/clearwater-queue-manager/scripts
+modules/clearwater-etcd-plugins/chronos/scripts/force_chronos_gr_restart_queue_state /usr/share/clearwater/clearwater-queue-manager/scripts
