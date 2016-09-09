@@ -12,3 +12,4 @@ modules/clearwater-etcd-plugins/chronos/chronos_gr_config_plugin.py /usr/share/c
 # Install the etcd scripts
 modules/clearwater-etcd-plugins/chronos/scripts/check_chronos_gr_restart_queue_state /usr/share/clearwater/clearwater-queue-manager/scripts
 modules/clearwater-etcd-plugins/chronos/scripts/force_chronos_gr_restart_queue_state /usr/share/clearwater/clearwater-queue-manager/scripts
+modules/clearwater-etcd-plugins/chronos/scripts/upload_chronos_gr_config /usr/share/clearwater/clearwater-config-manager/scripts
