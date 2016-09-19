@@ -200,34 +200,11 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
   delete added_timer; added_timer = NULL;
 }
 
-// Tests that a delete request for timer references that doesn't have any
-// entries returns a 202 and doesn't try to edit the store
-TEST_F(TestHandler, ValidTimerReferenceNoEntries)
+// Tests that a delete request for timer references always returns 202
+TEST_F(TestHandler, ValidTimerReference)
 {
   controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": []}", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  _task->run();
-}
-
-// Tests that a delete request for timer references that has a single
-// entry does one update to the store
-TEST_F(TestHandler, ValidTimerReferenceEntry)
-{
-  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}]}", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_th, update_replica_tracker_for_timer(123, 1));
-  _task->run();
-}
-
-// Tests a delete request for timer references that has multiple entries, some of
-// which are valid. Check that the request returns a 202 and only updates
-// the store for valid entries
-TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
-{
-  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": [{\"ID\": 123, \"ReplicaIndex\": 1}, {\"NotID\": 234, \"ReplicaIndex\": 2}, {\"ID\": 345, \"NotReplicaIndex\": 3}, {\"ID\": 456, \"ReplicaIndex\": 4}]}", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  EXPECT_CALL(*_th, update_replica_tracker_for_timer(123, 1));
-  EXPECT_CALL(*_th, update_replica_tracker_for_timer(456, 4));
   _task->run();
 }
 
@@ -339,33 +316,6 @@ TEST_F(TestHandler, InvalidMethodTimerReferences)
 {
   controller_request("/timers/references", htp_method_PUT, "", "");
   EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
-  _task->run();
-}
-
-// Invalid request: Tests that requests for timer references with an empty body
-// get rejected
-TEST_F(TestHandler, InvalidNoBodyTimerReference)
-{
-  controller_request("/timers/references", htp_method_DELETE, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
-}
-
-// Invalid request: Tests that requests for timer references with an invalid body
-// get rejected
-TEST_F(TestHandler, InvalidBodyTimerReferences)
-{
-  controller_request("/timers/references", htp_method_DELETE, "{\"}", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
-}
-
-// Invalid request: Tests that requests for timer references with an invalid body
-// get rejected
-TEST_F(TestHandler, InvalidBodyNoTopLevelEntryTimerReferences)
-{
-  controller_request("/timers/references", htp_method_DELETE, "{\"NotIDs\": []}", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
 

@@ -142,8 +142,6 @@ protected:
     // Create an out of the blue tombstone for timer one.
     tombstone = Timer::create_tombstone(1, 0);
     tombstone->start_time_mono_ms = timers[0]->start_time_mono_ms + 50;
-
-    tombstonepair.active_timer = tombstone;
   }
 
   // Since the Timer is not allowed to delete timers, we can clean them up here.
@@ -162,32 +160,10 @@ protected:
     Base::TearDown();
   }
 
-  void ts_insert_helper(TimerPair pair)
-  {
-    TimerID id = pair.active_timer->id;
-    uint32_t next_pop_time = pair.active_timer->next_pop_time();
-    std::vector<std::string> cluster_view_id_vector;
-    cluster_view_id_vector.push_back(pair.active_timer->cluster_view_id);
-    if (pair.information_timer)
-    {
-      cluster_view_id_vector.push_back(pair.information_timer->cluster_view_id);
-    }
-
-    ts->insert(pair, id, next_pop_time, cluster_view_id_vector);
-  }
-
-  void ts_insert_helper(Timer* timer)
-  {
-    TimerPair pair;
-    pair.active_timer = timer;
-    ts_insert_helper(pair);
-  }
-
   // Variables under test.
   TimerStore* ts;
   Timer* timers[3];
   Timer* tombstone;
-  TimerPair tombstonepair;
   HealthChecker* hc;
 };
 
@@ -202,9 +178,9 @@ TYPED_TEST_CASE(TestTimerStore, TimeTypes);
 
 TYPED_TEST(TestTimerStore, NearGetNextTimersTest)
 {
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
   ASSERT_EQ(0u, next_timers.size());
@@ -212,7 +188,7 @@ TYPED_TEST(TestTimerStore, NearGetNextTimersTest)
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[0] = (*next_timers.begin());
   EXPECT_EQ(1u, TestFixture::timers[0]->id);
 
 }
@@ -221,9 +197,9 @@ TYPED_TEST(TestTimerStore, NearGetNextTimersOffsetTest)
 {
   TestFixture::timers[0]->interval_ms = 1600;
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   cwtest_advance_time_ms(1500);
   TestFixture::ts->fetch_next_timers(next_timers);
@@ -241,8 +217,8 @@ TYPED_TEST(TestTimerStore, NearGetNextTimersOffsetTest)
 
 TYPED_TEST(TestTimerStore, MidGetNextTimersTest)
 {
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
-  std::unordered_set<TimerPair> next_timers;
+  TestFixture::ts->insert(TestFixture::timers[1]);
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
   ASSERT_EQ(0u, next_timers.size());
@@ -250,15 +226,15 @@ TYPED_TEST(TestTimerStore, MidGetNextTimersTest)
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
-  TestFixture::timers[1] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[1] = (*next_timers.begin());
   EXPECT_EQ(2u, TestFixture::timers[1]->id);
 
 }
 
 TYPED_TEST(TestTimerStore, LongGetNextTimersTest)
 {
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
-  std::unordered_set<TimerPair> next_timers;
+  TestFixture::ts->insert(TestFixture::timers[2]);
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
   ASSERT_EQ(0u, next_timers.size());
@@ -266,7 +242,7 @@ TYPED_TEST(TestTimerStore, LongGetNextTimersTest)
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size());
-  TestFixture::timers[2] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[2] = (*next_timers.begin());
   EXPECT_EQ(3u, TestFixture::timers[2]->id);
 
 }
@@ -276,10 +252,10 @@ TYPED_TEST(TestTimerStore, MultiNearGetNextTimersTest)
   // Shorten timer two to be under 1 second.
   TestFixture::timers[1]->interval_ms = 400;
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   cwtest_advance_time_ms(1000 + TIMER_GRANULARITY_MS);
 
@@ -298,15 +274,15 @@ TYPED_TEST(TestTimerStore, ClashingMultiMidGetNextTimersTest)
   TestFixture::timers[0]->interval_ms = 10000;
   TestFixture::timers[1]->interval_ms = 10000 + (TIMER_GRANULARITY_MS * 3);
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[0] = (*next_timers.begin());
   EXPECT_EQ(1u, TestFixture::timers[0]->id);
 
   next_timers.clear();
@@ -314,7 +290,7 @@ TYPED_TEST(TestTimerStore, ClashingMultiMidGetNextTimersTest)
   cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms - TestFixture::timers[0]->interval_ms);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[1] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[1] = (*next_timers.begin());
   EXPECT_EQ(2u, TestFixture::timers[1]->id);
 
   next_timers.clear();
@@ -326,15 +302,15 @@ TYPED_TEST(TestTimerStore, SeparateMultiMidGetNextTimersTest)
   // Lengthen timer one to be in a different second bucket than timer two.
   TestFixture::timers[0]->interval_ms = 9000 + 100;
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[0] = (*next_timers.begin());
   EXPECT_EQ(1u, TestFixture::timers[0]->id);
 
   next_timers.clear();
@@ -342,7 +318,7 @@ TYPED_TEST(TestTimerStore, SeparateMultiMidGetNextTimersTest)
   cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms - TestFixture::timers[0]->interval_ms);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[1] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[1] = (*next_timers.begin());
   EXPECT_EQ(2u, TestFixture::timers[1]->id);
 
 }
@@ -354,16 +330,16 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
   TestFixture::timers[1]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 4);
   TestFixture::timers[2]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 6);
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[0] = (*next_timers.begin());
   EXPECT_EQ(1u, TestFixture::timers[0]->id);
 
   next_timers.clear();
@@ -371,7 +347,7 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
   cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms - TestFixture::timers[0]->interval_ms);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[1] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[1] = (*next_timers.begin());
   EXPECT_EQ(2u, TestFixture::timers[1]->id);
 
   next_timers.clear();
@@ -379,7 +355,7 @@ TYPED_TEST(TestTimerStore, MultiLongGetTimersTest)
   cwtest_advance_time_ms(TestFixture::timers[2]->interval_ms - TestFixture::timers[1]->interval_ms);
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[2] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[2] = (*next_timers.begin());
   EXPECT_EQ(3u, TestFixture::timers[2]->id);
 }
 
@@ -387,7 +363,7 @@ TYPED_TEST(TestTimerStore, HeapPropertyTest)
 {
   // This test ensures that the heap is working properly - i.e. that the timer
   // which is next to pop is at the top of the heap.
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   // Set the timers (with IDs 1, 2 and 3) up so that:
   //  - the timer with ID 2 is the first one to pop
@@ -399,9 +375,9 @@ TYPED_TEST(TestTimerStore, HeapPropertyTest)
   TestFixture::timers[1]->interval_ms = (3600 * 1000) + (TIMER_GRANULARITY_MS * 4);
   TestFixture::timers[2]->interval_ms = (3600 * 1000 * 5) + (TIMER_GRANULARITY_MS * 6);
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
   // Advance time to when the timer with ID 2 should pop, and ask for the next
   // timer to pop. We should get one and it should be the timer with ID 2.
@@ -410,7 +386,7 @@ TYPED_TEST(TestTimerStore, HeapPropertyTest)
   TestFixture::ts->fetch_next_timers(next_timers);
   
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  const Timer* t = (*next_timers.begin()).active_timer;
+  const Timer* t = (*next_timers.begin());
   EXPECT_EQ(2u, t->id);
 }
 
@@ -418,9 +394,8 @@ TYPED_TEST(TestTimerStore, RemoveNonexistentTimer)
 {
   // Don't insert any timers into the store, but try and remove one. This won't
   // do anything - this test just checks it doesn't crash.
-  TimerPair tp;
-  tp.active_timer = TestFixture::timers[2];
-  TestFixture::ts->remove_timer_from_timer_wheel(tp);
+  Timer* t = TestFixture::timers[2];
+  TestFixture::ts->remove_timer_from_timer_wheel(t);
 }
 
 
@@ -428,9 +403,9 @@ TYPED_TEST(TestTimerStore, ReallyLongTimer)
 {
   // Lengthen timer three to really long (10 hours)
   TestFixture::timers[2]->interval_ms = (3600 * 1000) * 10;
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(0u, next_timers.size());
@@ -439,7 +414,7 @@ TYPED_TEST(TestTimerStore, ReallyLongTimer)
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
-  TestFixture::timers[2] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[2] = (*next_timers.begin());
   EXPECT_EQ(3u, TestFixture::timers[2]->id);
 }
 
@@ -447,12 +422,12 @@ TYPED_TEST(TestTimerStore, MultipleReallyLongTimers)
 {
   // Lengthen timers two and three to really long (10 hours)
   TestFixture::timers[1]->interval_ms = (3600 * 1000) * 10;
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
 
   TestFixture::timers[2]->interval_ms = (3600 * 1000) * 10;
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(0u, next_timers.size());
@@ -466,12 +441,12 @@ TYPED_TEST(TestTimerStore, MultipleReallyLongTimers)
 TYPED_TEST(TestTimerStore, DeleteNearTimer)
 {
   uint32_t interval_ms = TestFixture::timers[0]->interval_ms;
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
 
-  TimerPair to_delete;
-  TestFixture::ts->fetch(1, to_delete);
+  Timer* to_delete = NULL;
+  TestFixture::ts->fetch(1, &to_delete);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
 
@@ -481,12 +456,12 @@ TYPED_TEST(TestTimerStore, DeleteNearTimer)
 TYPED_TEST(TestTimerStore, DeleteMidTimer)
 {
   uint32_t interval_ms = TestFixture::timers[1]->interval_ms;
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
 
-  TimerPair to_delete;
-  TestFixture::ts->fetch(2, to_delete);
+  Timer* to_delete = NULL;
+  TestFixture::ts->fetch(2, &to_delete);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
 
@@ -496,15 +471,14 @@ TYPED_TEST(TestTimerStore, DeleteMidTimer)
 TYPED_TEST(TestTimerStore, DeleteLongTimer)
 {
   uint32_t interval_ms = TestFixture::timers[2]->interval_ms;
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
-  TimerPair to_delete;
-  bool succ = TestFixture::ts->fetch(3, to_delete);
-
-  EXPECT_TRUE(succ);
+  Timer* to_delete = NULL;
+  TestFixture::ts->fetch(3, &to_delete);
+  EXPECT_FALSE(to_delete == NULL);
 
   cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
   EXPECT_TRUE(next_timers.empty());
@@ -514,15 +488,14 @@ TYPED_TEST(TestTimerStore, DeleteHeapTimer)
 {
   TestFixture::timers[2]->interval_ms = (3600 * 1000) * 10;
   uint32_t interval_ms = TestFixture::timers[2]->interval_ms;
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
-  TimerPair to_delete;
-  bool succ = TestFixture::ts->fetch(3, to_delete);
-
-  EXPECT_TRUE(succ);
+  Timer* to_delete = NULL;
+  TestFixture::ts->fetch(3, &to_delete);
+  EXPECT_FALSE(to_delete == NULL);
 
   cwtest_advance_time_ms(interval_ms + TIMER_GRANULARITY_MS);
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
   EXPECT_TRUE(next_timers.empty());
@@ -530,21 +503,19 @@ TYPED_TEST(TestTimerStore, DeleteHeapTimer)
 
 TYPED_TEST(TestTimerStore, FetchNonExistentTimer)
 {
-  TimerPair to_delete;
-  bool succ = TestFixture::ts->fetch(4, to_delete);
-
-  EXPECT_FALSE(succ);
+  Timer* to_delete = NULL;
+  TestFixture::ts->fetch(4, &to_delete);
+  EXPECT_TRUE(to_delete == NULL);
 }
 
 TYPED_TEST(TestTimerStore, AddTombstone)
 {
-  TestFixture::ts_insert_helper(TestFixture::tombstonepair);
+  TestFixture::ts->insert(TestFixture::tombstone);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   cwtest_advance_time_ms(1000000);
   TestFixture::ts->fetch_next_timers(next_timers);
   EXPECT_EQ(1u, next_timers.size());
-
 }
 
 TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
@@ -552,12 +523,12 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
   // Add timers that all pop at the same time, but in such a way that one ends
   // up in the short wheel, one in the long wheel, and one in the heap.  Check
   // they pop at the same time.
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   // Timers all pop 1hr, 1s, 500ms from the start of the test.
   // Set timer 1.
   TestFixture::timers[0]->interval_ms = ((60 * 60 * 1000) + (1 * 1000) + 500);
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
 
   // Move on by 1hr. Nothing has popped.
   cwtest_advance_time_ms(60 * 60 * 1000);
@@ -568,7 +539,7 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 
   // Timer 2 pops in 1s, 500ms
   TestFixture::timers[1]->interval_ms = ((1 * 1000) + 500);
-  TestFixture::ts_insert_helper(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
 
   // Move on by 1s. Nothing has popped.
   cwtest_advance_time_ms(1 * 1000);
@@ -578,7 +549,7 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 
   // Timer 3 pops in 500ms.
   TestFixture::timers[2]->interval_ms = 500;
-  TestFixture::ts_insert_helper(TestFixture::timers[2]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
 
   // Move on by 500ms. All timers pop.
   cwtest_advance_time_ms(500 + TIMER_GRANULARITY_MS);
@@ -590,14 +561,14 @@ TYPED_TEST(TestTimerStore, MixtureOfTimerLengths)
 
 TYPED_TEST(TestTimerStore, TimerPopsOnTheHour)
 {
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   uint32_t pop_time_ms;
 
   pop_time_ms = (TestFixture::timers[0]->start_time_mono_ms / (60 * 60 * 1000));
   pop_time_ms += 2;
   pop_time_ms *= (60 * 60 * 1000);
   TestFixture::timers[0]->interval_ms = pop_time_ms - TestFixture::timers[0]->start_time_mono_ms;
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
 
   // Move on to the pop time. The timer pops correctly.
   cwtest_advance_time_ms(pop_time_ms - TestFixture::timers[0]->start_time_mono_ms + TIMER_GRANULARITY_MS);
@@ -610,14 +581,14 @@ TYPED_TEST(TestTimerStore, TimerPopsOnTheHour)
 TYPED_TEST(TestTimerStore, PopOverdueTimer)
 {
   cwtest_advance_time_ms(500);
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
   TestFixture::ts->fetch_next_timers(next_timers);
 
   ASSERT_EQ(1u, next_timers.size());
-  TestFixture::timers[0] = (*next_timers.begin()).active_timer;
+  TestFixture::timers[0] = (*next_timers.begin());
   EXPECT_EQ(1u, TestFixture::timers[0]->id);
 
 }
@@ -625,12 +596,12 @@ TYPED_TEST(TestTimerStore, PopOverdueTimer)
 TYPED_TEST(TestTimerStore, DeleteOverdueTimer)
 {
   cwtest_advance_time_ms(500);
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   TestFixture::ts->fetch_next_timers(next_timers);
 
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-  TimerPair to_delete;
-  TestFixture::ts->fetch(1, to_delete);
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  Timer* to_delete = NULL;
+  TestFixture::ts->fetch(1, &to_delete);
 
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(0u, next_timers.size());
@@ -639,19 +610,19 @@ TYPED_TEST(TestTimerStore, DeleteOverdueTimer)
 
 TYPED_TEST(TestTimerStore, AddClusterViewId)
 {
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[0]);
 
   std::map<std::string, std::unordered_set<TimerID>>::iterator map_it;
   map_it = TestFixture::ts->_timer_view_id_table.find("cluster-view-id");
   EXPECT_TRUE(map_it != TestFixture::ts->_timer_view_id_table.end());
   EXPECT_EQ(1u, map_it->second.size());
 
-  TimerPair pair = TestFixture::ts->_timer_lookup_id_table[*(map_it->second.begin())];
-  EXPECT_EQ(1u, pair.active_timer->id);
+  Timer* timer = TestFixture::ts->_timer_lookup_id_table[*(map_it->second.begin())];
+  EXPECT_EQ(1u, timer->id);
 
 
   // Get the timer out of the store to clean up properly
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
 }
@@ -659,41 +630,39 @@ TYPED_TEST(TestTimerStore, AddClusterViewId)
 // Check to see we can find timers by their cluster ID
 TYPED_TEST(TestTimerStore, GetByViewId)
 {
-  TimerPair pair1;
-  pair1.active_timer = TestFixture::timers[0];
-  TestFixture::ts_insert_helper(pair1);
+  Timer* timer1 = TestFixture::timers[0];
+  TestFixture::ts->insert(timer1);
 
   // This timer should exist in our mapping
   EXPECT_FALSE(TestFixture::ts->_timer_view_id_table.empty());
 
   // We should be able to find it by querying a difference cluster ID
   TimerStore::TSIterator it = TestFixture::ts->begin("updated-cluster-view-id");
-  EXPECT_EQ(pair1, *it);
+  EXPECT_EQ(timer1, *it);
   EXPECT_EQ(++it, TestFixture::ts->end());
 
   // Check this timer hasn't been removed by this operation
   it = TestFixture::ts->begin("updated-cluster-view-id");
-  EXPECT_EQ(pair1, *it);
+  EXPECT_EQ(timer1, *it);
   EXPECT_EQ(++it, TestFixture::ts->end());
 
   // Add another timer with the new cluster id
-  TimerPair pair2;
-  pair2.active_timer = TestFixture::timers[1];
+  Timer* timer2 = TestFixture::timers[1];
   TestFixture::timers[1]->cluster_view_id = "updated-cluster-view-id";
-  TestFixture::ts_insert_helper(pair2);
+  TestFixture::ts->insert(timer2);
 
   it = TestFixture::ts->begin("updated-cluster-view-id");
-  EXPECT_EQ(pair1, *it);
+  EXPECT_EQ(timer1, *it);
   EXPECT_EQ(++it, TestFixture::ts->end());
 
   // Get both timers
   it = TestFixture::ts->begin("updated-again-cluster-view-id");
-  EXPECT_EQ(pair1, *it);
-  EXPECT_EQ(pair2, *++it);
+  EXPECT_EQ(timer1, *it);
+  EXPECT_EQ(timer2, *++it);
   EXPECT_EQ(++it, TestFixture::ts->end());
 
   // Get the timers out of the store to clean up properly
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms +
                          TestFixture::timers[1]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
@@ -701,21 +670,20 @@ TYPED_TEST(TestTimerStore, GetByViewId)
 
 TYPED_TEST(TestTimerStore, UpdateViewId)
 {
-  TimerPair pair1;
-  pair1.active_timer = TestFixture::timers[0];
-  TestFixture::ts_insert_helper(pair1);
+  Timer* timer1 = TestFixture::timers[0];
+  TestFixture::ts->insert(timer1);
 
   EXPECT_FALSE(TestFixture::ts->_timer_view_id_table.empty());
 
   TimerStore::TSIterator it = TestFixture::ts->begin("updated-cluster-view-id");
-  EXPECT_EQ(*it, pair1);
+  EXPECT_EQ(*it, timer1);
   EXPECT_EQ(++it, TestFixture::ts->end());
 
   // Fetch the relevant timer (mimicking the Timer Handler)
-  TimerPair fetch_pair;
-  TestFixture::ts->fetch(1u, fetch_pair);
+  Timer* fetch_timer = NULL;
+  TestFixture::ts->fetch(1u, &fetch_timer);
 
-  EXPECT_TRUE(fetch_pair.active_timer);
+  EXPECT_TRUE(fetch_timer);
   EXPECT_TRUE(TestFixture::ts->_timer_view_id_table.empty());
 
   // Ensure it has been removed from view id index
@@ -723,8 +691,8 @@ TYPED_TEST(TestTimerStore, UpdateViewId)
   EXPECT_EQ(it2, TestFixture::ts->end());
 
   // Update view id and return to store
-  fetch_pair.active_timer->cluster_view_id = "updated-cluster-view-id";
-  TestFixture::ts_insert_helper(fetch_pair);
+  fetch_timer->cluster_view_id = "updated-cluster-view-id";
+  TestFixture::ts->insert(fetch_timer);
 
   // This should now not appear when we search in the same epoch
   it = TestFixture::ts->begin("updated-cluster-view-id");
@@ -732,197 +700,33 @@ TYPED_TEST(TestTimerStore, UpdateViewId)
 
   // If the epoch changes again we should be able to find it
   it = TestFixture::ts->begin("updated-again-cluster-view-id");
-  EXPECT_EQ(*it, fetch_pair);
+  EXPECT_EQ(*it, fetch_timer);
   EXPECT_EQ(++it, TestFixture::ts->end());
 
   // Get the timers out of the store to clean up properly
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
   cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms + TIMER_GRANULARITY_MS);
-  TestFixture::ts->fetch_next_timers(next_timers);
-}
-
-
-// A TimerPair with a different cluster view id on active timer and information
-// timer
-TYPED_TEST(TestTimerStore, MultipleViewId)
-{
-  TimerPair pair;
-
-  TestFixture::timers[1]->cluster_view_id = "updated-cluster-view-id";
-  TestFixture::timers[1]->id = TestFixture::timers[0]->id;
-
-  pair.active_timer = TestFixture::timers[0];
-  pair.information_timer = TestFixture::timers[1];
-
-  TestFixture::ts_insert_helper(pair);
-
-  // We should be able to get the TimerPair using the alternative timer to the
-  // one requested
-  TimerStore::TSIterator it = TestFixture::ts->begin("updated-cluster-view-id");
-  EXPECT_EQ(*it, pair);
-  EXPECT_EQ(++it, TestFixture::ts->end());
-
-  it = TestFixture::ts->begin("cluster-view-id");
-  EXPECT_EQ(*it, pair);
-  EXPECT_EQ(++it, TestFixture::ts->end());
-
-  // But we should only get each timer pair at most once
-  it = TestFixture::ts->begin("any-view-id");
-  EXPECT_EQ(*it, pair);
-  EXPECT_EQ(*(++it), pair);
-  EXPECT_EQ(++it, TestFixture::ts->end());
-
-  TimerPair return_pair;
-  TestFixture::ts->fetch(1u, return_pair);
-
-  EXPECT_EQ("cluster-view-id", return_pair.active_timer->cluster_view_id);
-  EXPECT_EQ("updated-cluster-view-id", return_pair.information_timer->cluster_view_id);
-
-  // Ensure it has been removed from both view id indices
-  it = TestFixture::ts->begin("any-cluster-view-id");
-  EXPECT_EQ(it, TestFixture::ts->end());
-
-  // Get the timers out of the store to clean up properly
-  std::unordered_set<TimerPair> next_timers;
-  cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
 }
 
 // When a timer pops the view ID should also be removed
 TYPED_TEST(TestTimerStore, RemovingViewIdOnPop)
 {
-  TimerPair pair;
+  Timer* timer = TestFixture::timers[0];
   TestFixture::timers[1]->id = 1;
   TestFixture::timers[1]->cluster_view_id = "updated-cluster-view-id";
-
-  pair.active_timer = TestFixture::timers[0];
-  pair.information_timer = TestFixture::timers[1];
-
-  TestFixture::ts_insert_helper(pair);
+  TestFixture::ts->insert(timer);
 
   cwtest_advance_time_ms(100 + TIMER_GRANULARITY_MS);
 
-  std::unordered_set<TimerPair> next_timers;
+  std::unordered_set<Timer*> next_timers;
 
   TestFixture::ts->fetch_next_timers(next_timers);
 
   EXPECT_EQ(1u, next_timers.size());
 
-  std::unordered_set<TimerPair> view_timers;
+  std::unordered_set<Timer*> view_timers;
 
   TimerStore::TSIterator it = TestFixture::ts->begin("any-cluster-id");
   EXPECT_EQ(it, TestFixture::ts->end());
-}
-
-// Test that updating a timer with a new cluster ID causes the original
-// timer to be saved off.
-//
-// WARNING: In this test we look directly in the timer store as there's no
-// other way to test what's in the timer map (when it's not also in the timer
-// wheel)
-TYPED_TEST(TestTimerStore, UpdateClusterViewID)
-{
-  // Add the first timer with ID 1
-  TestFixture::ts_insert_helper(TestFixture::timers[0]);
-
-  // Find this timer in the store, and check there's no saved timers
-  // associated with it
-  std::map<TimerID, TimerPair>::iterator map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
-  EXPECT_EQ(NULL, map_it->second.information_timer);
-  EXPECT_EQ(1u, map_it->second.active_timer->id);
-
-  // Add a new timer with the same ID, and an updated Cluster View ID
-  TestFixture::timers[1]->id = 1;
-  TestFixture::timers[1]->cluster_view_id = "updated-cluster-view-id";
-
-  TimerPair pair1;
-  pair1.active_timer = TestFixture::timers[1];
-  pair1.information_timer = TestFixture::timers[0];
-
-  TimerPair return_pair;
-  TestFixture::ts->fetch(pair1.active_timer->id, return_pair);
-  EXPECT_EQ(return_pair.active_timer, TestFixture::timers[0]);
-
-  TestFixture::ts_insert_helper(pair1);
-
-  // Find this timer in the store, and check there's a saved timer. The saved
-  // timer has the old cluster view ID, and the new timer has the new one.
-  map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
-  EXPECT_TRUE(map_it->second.information_timer);
-  EXPECT_EQ(1u, map_it->second.active_timer->id);
-  EXPECT_EQ("updated-cluster-view-id", map_it->second.active_timer->cluster_view_id);
-  EXPECT_EQ(1u, map_it->second.information_timer->id);
-  EXPECT_EQ("cluster-view-id", map_it->second.information_timer->cluster_view_id);
-
-  // Add a new timer with the same ID, an updated Cluster View ID,
-  // and make it a tombstone
-  TestFixture::timers[2]->id = 1;
-  TestFixture::timers[2]->cluster_view_id = "updated-again-cluster-view-id";
-  TestFixture::timers[2]->become_tombstone();
-
-  TimerPair pair2;
-  pair2.active_timer = TestFixture::timers[2];
-  pair2.information_timer = TestFixture::timers[1];
-
-  return_pair.active_timer = NULL;
-  return_pair.information_timer = NULL;
-  TestFixture::ts->fetch(pair2.active_timer->id, return_pair);
-  EXPECT_EQ(return_pair, pair1);
-
-  TestFixture::ts_insert_helper(pair2);
-
-  // Find this timer in the store, and check there's a saved timer. The saved
-  // timer has the old cluster view ID, and the new timer has the new one.
-  map_it = TestFixture::ts->_timer_lookup_id_table.find(1);
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_lookup_id_table.end());
-  EXPECT_TRUE(map_it->second.information_timer);
-  EXPECT_EQ(1u, map_it->second.active_timer->id);
-  EXPECT_EQ("updated-again-cluster-view-id", map_it->second.active_timer->cluster_view_id);
-  EXPECT_TRUE(map_it->second.active_timer->is_tombstone());
-  EXPECT_EQ(1u, map_it->second.information_timer->id);
-  EXPECT_EQ("updated-cluster-view-id", map_it->second.information_timer->cluster_view_id);
-  EXPECT_FALSE(map_it->second.information_timer->is_tombstone());
-
-  // Get the timers out of the store to clean up properly
-  std::unordered_set<TimerPair> next_timers;
-  cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms +
-                         TestFixture::timers[1]->interval_ms +
-                         TestFixture::timers[2]->interval_ms + TIMER_GRANULARITY_MS);
-  TestFixture::ts->fetch_next_timers(next_timers);
-}
-
-
-// Test that if there is an information timer with an old view,
-// we return it even if the active timer is current
-TYPED_TEST(TestTimerStore, SelectTimersTakeInformationalTimers)
-{
-  TestFixture::timers[0]->cluster_view_id = "old-cluster-view-id";
-  TestFixture::timers[1]->id = 1;
-
-  TimerPair insert_pair;
-  insert_pair.active_timer = TestFixture::timers[1];
-  insert_pair.information_timer = TestFixture::timers[0];
-
-  TestFixture::ts_insert_helper(insert_pair);
-
-  std::map<std::string, std::unordered_set<TimerID>>::iterator map_it;
-  map_it = TestFixture::ts->_timer_view_id_table.find("cluster-view-id");
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_view_id_table.end());
-  EXPECT_EQ(1u, map_it->second.size());
-
-  TimerPair pair = TestFixture::ts->_timer_lookup_id_table[*(map_it->second.begin())];
-  EXPECT_EQ(1u, pair.active_timer->id);
-
-  map_it = TestFixture::ts->_timer_view_id_table.find("old-cluster-view-id");
-  EXPECT_TRUE(map_it != TestFixture::ts->_timer_view_id_table.end());
-  EXPECT_EQ(1u, map_it->second.size());
-
-  // Get the timers out of the store to clean up properly
-  std::unordered_set<TimerPair> next_timers;
-  cwtest_advance_time_ms(TestFixture::timers[0]->interval_ms +
-                         TestFixture::timers[1]->interval_ms +
-                         TestFixture::timers[2]->interval_ms + TIMER_GRANULARITY_MS);
-  TestFixture::ts->fetch_next_timers(next_timers);
 }

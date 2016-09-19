@@ -71,8 +71,6 @@ public:
   virtual void return_timer(Timer*);
   virtual void handle_successful_callback(TimerID id);
   virtual void handle_failed_callback(TimerID id);
-  virtual void update_replica_tracker_for_timer(TimerID id,
-                                                int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
                                        int max_responses,
                                        std::string cluster_view_id,
@@ -90,7 +88,7 @@ private:
   // same. It should be bigger than the expected network lag
   static const int NETWORK_DELAY = 200;
 
-  void pop(std::unordered_set<TimerPair>&);
+  void pop(std::unordered_set<Timer*>&);
   void pop(Timer*);
 
   // Update a timer object with the current cluster configuration. Store off
@@ -110,7 +108,8 @@ private:
 
   // Report a statistics changed - called with empty maps if a timer has only
   // just been introduced, or is being permanently deleted/tombstoned
-  void update_statistics(std::map<std::string, uint32_t> new_tags, std::map<std::string, uint32_t> old_tags);
+  void update_statistics(std::map<std::string, uint32_t> new_tags,
+                         std::map<std::string, uint32_t> old_tags);
 
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);

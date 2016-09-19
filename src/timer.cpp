@@ -83,8 +83,7 @@ Timer::Timer(TimerID id, uint32_t interval_ms, uint32_t repeat_for) :
   tags(std::map<std::string, uint32_t>()),
   callback_url(""),
   callback_body(""),
-  _replication_factor(0),
-  _replica_tracker(0)
+  _replication_factor(0)
 {
   // Set the start time to now
   start_time_mono_ms = clock_gettime_ms(CLOCK_MONOTONIC);
@@ -932,8 +931,6 @@ Timer* Timer::from_json_obj(TimerID id,
       timer->_replication_factor = replication_factor ? replication_factor : 2;
     }
 
-    timer->_replica_tracker = pow(2, timer->_replication_factor) - 1;
-
     if (timer->replicas.empty())
     {
       // Replicas not determined above, determine them now. Note that this
@@ -1035,17 +1032,6 @@ Timer* Timer::from_json_obj(TimerID id,
   }
 
   return timer;
-}
-
-int Timer::update_replica_tracker(int replica_index)
-{
-  _replica_tracker = _replica_tracker % (int)pow(2,replica_index);
-  return _replica_tracker;
-}
-
-bool Timer::has_replica_been_informed(int replica_index)
-{
-  return ((_replica_tracker & (int)pow(2, replica_index)) == 0);
 }
 
 void Timer::update_cluster_information()

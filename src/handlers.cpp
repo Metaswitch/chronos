@@ -191,65 +191,9 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
 
 void ControllerTask::handle_delete()
 {
-  // Check the request has a valid JSON body
-  std::string body = _req.get_rx_body();
-  rapidjson::Document doc;
-  doc.Parse<0>(body.c_str());
-
-  if (doc.HasParseError())
-  {
-    TRC_INFO("Failed to parse document as JSON");
-    send_http_reply(HTTP_BAD_REQUEST);
-    return;
-  }
-
-  // Now loop through the body, pulling out the IDs/replica numbers
-  // The JSON body should have the format:
-  //  {"IDs": [{"ID": 123, "ReplicaIndex": 0},
-  //           {"ID": 456, "ReplicaIndex": 2},
-  //          ...]
-  // The replica_index is zero-indexed (so the primary replica has an
-  // index of 0).
-  try
-  {
-    JSON_ASSERT_CONTAINS(doc, JSON_IDS);
-    JSON_ASSERT_ARRAY(doc[JSON_IDS]);
-    const rapidjson::Value& ids_arr = doc[JSON_IDS];
-
-    // The request is valid, so respond with a 202. Now loop through the
-    // the body and update the replica trackers.
-    send_http_reply(HTTP_ACCEPTED);
-
-    for (rapidjson::Value::ConstValueIterator ids_it = ids_arr.Begin();
-         ids_it != ids_arr.End();
-         ++ids_it)
-    {
-      try
-      {
-        TimerID timer_id;
-        int replica_index;
-        JSON_GET_INT_64_MEMBER(*ids_it, JSON_ID, timer_id);
-        JSON_GET_INT_MEMBER(*ids_it, JSON_REPLICA_INDEX, replica_index);
-
-        // Update the timer's replica_tracker to show that the replicas
-        // at level 'replica_index' and higher have been informed
-        // about the timer. This will tombstone the timer if all
-        // replicas have been informed.
-        _cfg->_handler->update_replica_tracker_for_timer(timer_id,
-                                                         replica_index);
-      }
-      catch (JsonFormatError& err)
-      {
-        TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
-                  err._file, err._line);
-      }
-    }
-  }
-  catch (JsonFormatError& err)
-  {
-    TRC_INFO("JSON body didn't contain the IDs array");
-    send_http_reply(HTTP_BAD_REQUEST);
-  }
+  // We no longer need to handle deletes on resync.
+  // Return Accepted for backwards compatibility.
+  send_http_reply(HTTP_ACCEPTED);
 }
 
 void ControllerTask::handle_get()

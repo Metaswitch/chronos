@@ -123,12 +123,6 @@ public:
   // just popped
   void update_sites_on_timer_pop();
 
-  // Mark which replicas have been informed about the timer
-  int update_replica_tracker(int replica_index);
-
-  // Return whether a particular replica has been informed about a timer
-  bool has_replica_been_informed(int replica_index);
-
   // Update the cluster information stored in the timer (replica list and
   // cluster view ID)
   void update_cluster_information();
@@ -162,13 +156,6 @@ private:
   uint32_t delay_from_sequence_position() const;
 
   uint32_t _replication_factor;
-
-  // The replica tracker is used to track which replicas need to be informed
-  // if the replica is being moved off the current node (e.g. during scale
-  // down). Each bit corresponds to a replica in the timer's replica list,
-  // where the primary replica corresponds to the least significant bit,
-  // the second replica to the next least significant bit, and so on...
-  uint32_t _replica_tracker;
 
   // Class functions
 public:
