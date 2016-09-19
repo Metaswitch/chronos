@@ -98,8 +98,8 @@ private:
   // Sends a get request
   virtual HTTPCode send_get(const std::string& server,
                             const std::string& requesting_node,
-                            const std::string& sync_mode,
                             std::string cluster_view_id,
+                            uint64_t time_from,
                             int max_timers,
                             std::string& response);
 
