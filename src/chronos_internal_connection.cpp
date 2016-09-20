@@ -485,7 +485,6 @@ HTTPCode ChronosInternalConnection::send_get(const std::string& server,
 {
   std::string path = std::string("/timers?") +
                      PARAM_NODE_FOR_REPLICAS + "="  + node_for_replicas_param + ";" +
-                     PARAM_SYNC_MODE + "=" + PARAM_SYNC_MODE_VALUE_SCALE + ";" +
                      PARAM_CLUSTER_VIEW_ID + "="  + cluster_view_id_param + ";" +
                      PARAM_TIME_FROM + "=" + std::to_string(time_from_param);
 

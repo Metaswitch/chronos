@@ -212,7 +212,7 @@ TEST_F(TestHandler, ValidTimerReference)
 // lead to the store being queried, using the range header if set.
 TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000");
   EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 0, "cluster-view-id", 10000, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
@@ -222,7 +222,7 @@ TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 // lead to the store being queried, using the range header if set.
 TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000");
   _req->add_header_to_incoming_req("Range", "100");
   EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 100, _, _, _)).WillOnce(Return(206));
   EXPECT_CALL(*_httpstack, send_reply(_, 206, _));
@@ -261,7 +261,7 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   __globals->unlock();
 
-  controller_request("/timers?node-for-replicas=10.0.0.4:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000");
   EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
@@ -279,7 +279,7 @@ TEST_F(TestHandler, ValidTimerGetJoiningNode)
   __globals->set_cluster_joining_addresses(joining_cluster_addresses);
   __globals->unlock();
 
-  controller_request("/timers?node-for-replicas=10.0.0.4:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000");
   EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
@@ -343,7 +343,7 @@ TEST_F(TestHandler, InvalidMethodTimerReferences)
 // missing node-for-replicas parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetMissingRequestNode)
 {
-  controller_request("/timers?sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
+  controller_request("/timers?cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "cluster-view-id=cluster-view-id;time-from=10000");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
@@ -352,7 +352,7 @@ TEST_F(TestHandler, InvalidTimerGetMissingRequestNode)
 // missing cluster-view-id parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetMissingClusterID)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.1:9999;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;time-from=10000");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
@@ -361,7 +361,7 @@ TEST_F(TestHandler, InvalidTimerGetMissingClusterID)
 // invalid node-for-replicas parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetInvalidRequestNode)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.5:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.5:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.5:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.5:9999;cluster-view-id=cluster-view-id;time-from=10000");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
@@ -370,7 +370,7 @@ TEST_F(TestHandler, InvalidTimerGetInvalidRequestNode)
 // invalid cluster-view-id parameter gets rejected
 TEST_F(TestHandler, InvalidTimerGetInvalidClusterID)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=old-cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=old-cluster-view-id;time-from=10000");
+  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=old-cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=old-cluster-view-id;time-from=10000");
   EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
   _task->run();
 }
