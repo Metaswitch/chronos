@@ -71,13 +71,13 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _invalid_timers_processed_table(invalid_timers_processed_table)
 {
   // Create an updater to control when Chronos should resynchronise. This uses
-  // SIGUSR1 rather than the default SIGHUP, and we shouldn't resynchronise
-  // on start up (note this may change in future work)
+  // SIGUSR1 rather than the default SIGHUP, and we should resynchronise on
+  // start up
   _updater = new Updater<void, ChronosInternalConnection>
                    (this,
                    std::mem_fun(&ChronosInternalConnection::resynchronize),
                    &_sigusr1_handler,
-                   false);
+                   true);
 
   // Zero the statistic to start with
   if (_remaining_nodes_scalar)

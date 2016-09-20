@@ -78,6 +78,7 @@ protected:
     _resolver = new FakeHttpResolver("10.42.42.42");
     _replicator = new MockReplicator();
     _th = new MockTimerHandler();
+    fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=0"] = "{\"Timers\":[]}";
     _chronos = new ChronosInternalConnection(_resolver,
                                              _th,
                                              _replicator,
