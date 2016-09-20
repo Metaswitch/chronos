@@ -248,7 +248,7 @@ int main(int argc, char** argv)
                           options.gr_config_file);
 
   AlarmManager* alarm_manager = NULL;
-  Alarm* scale_operation_alarm = NULL;
+  Alarm* resync_operation_alarm = NULL;
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
@@ -279,14 +279,15 @@ int main(int argc, char** argv)
   // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
   // in the alarm definition JSON file exactly.
   alarm_manager = new AlarmManager();
-  scale_operation_alarm = new Alarm(alarm_manager,
-                                    "chronos",
-                                    AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
-                                    AlarmDef::MINOR);
+  resync_operation_alarm = new Alarm(alarm_manager,
+                                     "chronos",
+                                     AlarmDef::CHRONOS_RESYNC_IN_PROGRESS,
+                                     AlarmDef::MINOR);
 
-  // Explicitly clear scaling alarm in case we died while the alarm was still active,
-  // to ensure that the alarm is not then stuck in a set state.
-  scale_operation_alarm->clear();
+  // Explicitly clear resynchronization alarm in case we died while the alarm
+  // was still active, to ensure that the alarm is not then stuck in a set
+  // state.
+  resync_operation_alarm->clear();
 
   // Now create the Chronos components
   HealthChecker* hc = new HealthChecker();
@@ -335,12 +336,12 @@ int main(int argc, char** argv)
                                            scalar_timers_table);
   callback->start(handler);
 
-  // Create a Chronos internal connection class for scaling operations.
+  // Create a Chronos internal connection class for resynchronization operations.
   ChronosInternalConnection* chronos_internal_connection =
             new ChronosInternalConnection(http_resolver,
                                           handler,
                                           handler_rep,
-                                          scale_operation_alarm,
+                                          resync_operation_alarm,
                                           remaining_nodes_scalar,
                                           timers_processed_table,
                                           invalid_timers_processed_table);
@@ -428,7 +429,7 @@ int main(int argc, char** argv)
   delete hc; hc = NULL;
 
   // Delete Chronos's alarm object
-  delete scale_operation_alarm;
+  delete resync_operation_alarm;
   delete alarm_manager;
 
   sem_destroy(&term_sem);

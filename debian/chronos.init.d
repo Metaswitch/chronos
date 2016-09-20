@@ -121,9 +121,9 @@ do_abort()
 }
 
 #
-# Send Chronos a SIGUSR1 (used in scale operations)
+# Send Chronos a SIGUSR1 (used in resync operations)
 #
-do_scale_operation()
+do_resync_operation()
 {
   start-stop-daemon --stop --signal 10 --quiet --pidfile $PIDFILE --name $EXECNAME
   return 0
@@ -190,7 +190,7 @@ case "$1" in
         do_reload
         ;;
   resync)
-        do_scale_operation
+        do_resync_operation
         ;;
   wait-sync)
         log_daemon_msg "Waiting for synchronization - $DESC"

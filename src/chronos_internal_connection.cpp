@@ -123,14 +123,14 @@ void ChronosInternalConnection::resynchronize()
                                   localhost),
                       cluster_nodes.end());
 
-  // Start the scaling operation. Update the logs/stats/alarms
+  // Start the resync operation. Update the logs/stats/alarms
   if (_alarm)
   {
     _alarm->set();  // LCOV_EXCL_LINE - No alarms in UT
   }
 
-  CL_CHRONOS_START_SCALE.log();
-  TRC_DEBUG("Starting scaling operation");
+  CL_CHRONOS_START_RESYNC.log();
+  TRC_DEBUG("Starting resynchronization operation");
 
   int nodes_remaining = cluster_nodes.size();
   int default_port;
@@ -160,10 +160,10 @@ void ChronosInternalConnection::resynchronize()
     }
   }
 
-  // The scaling operation is now complete. Update the logs/stats/alarms
-  TRC_DEBUG("Finished scaling operation");
+  // The resync operation is now complete. Update the logs/stats/alarms
+  TRC_DEBUG("Finished resynchronization operation");
 
-  CL_CHRONOS_COMPLETE_SCALE.log();
+  CL_CHRONOS_COMPLETE_RESYNC.log();
 
   if (_alarm)
   {
@@ -443,7 +443,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
           {
             // We've received an error response to the DELETE request. There's
             // not much more we can do here (a timeout will have already
-            // been retried). A failed DELETE won't prevent the scaling operation
+            // been retried). A failed DELETE won't prevent the resync operation
             // from finishing, it just means that we'll tell other nodes
             // about timers inefficiently.
             TRC_INFO("Error response (%d) to DELETE request to %s",
