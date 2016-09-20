@@ -198,18 +198,15 @@ void ControllerTask::handle_delete()
 
 void ControllerTask::handle_get()
 {
-  // Check the request is valid. It must have the node-for-replicas,
-  // sync-mode and cluster-view-id parameters set, the sync-mode parameter
-  // must be SCALE (this will be extended later), the request-node
+  // Check the request is valid. It must have the node-for-replicas
+  // and cluster-view-id parameters set, the request-node
   // must correspond to a node in the Chronos cluster (it can be a
   // leaving node), and the cluster-view-id request must correspond to
   // the receiving nodes view of the cluster configuration
   std::string node_for_replicas = _req.param(PARAM_NODE_FOR_REPLICAS);
-  std::string sync_mode = _req.param(PARAM_SYNC_MODE);
   std::string cluster_view_id = _req.param(PARAM_CLUSTER_VIEW_ID);
 
   if ((node_for_replicas == "") ||
-      (sync_mode == "") ||
       (cluster_view_id == ""))
   {
     TRC_INFO("GET request doesn't have mandatory parameters");
@@ -237,31 +234,28 @@ void ControllerTask::handle_get()
     return;
   }
 
-  if (sync_mode == PARAM_SYNC_MODE_VALUE_SCALE)
+  std::string max_timers_from_req = _req.header(HEADER_RANGE);
+  int max_timers_to_get = atoi(max_timers_from_req.c_str());
+  TRC_DEBUG("Range value is %d", max_timers_to_get);
+
+  std::string time_from_str = _req.param(PARAM_TIME_FROM);
+  uint64_t time_from = atoi(time_from_str.c_str());
+  TRC_DEBUG("Time-from value is %d", time_from);
+
+  std::string get_response;
+  HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas,
+                                                    max_timers_to_get,
+                                                    cluster_view_id,
+                                                    time_from,
+                                                    get_response);
+  _req.add_content(get_response);
+
+  if (rc == HTTP_PARTIAL_CONTENT)
   {
-    std::string max_timers_from_req = _req.header(HEADER_RANGE);
-    int max_timers_to_get = atoi(max_timers_from_req.c_str());
-    TRC_DEBUG("Range value is %d", max_timers_to_get);
-
-    std::string get_response;
-    HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas,
-                                                      max_timers_to_get,
-                                                      cluster_view_id,
-                                                      get_response);
-    _req.add_content(get_response);
-
-    if (rc == HTTP_PARTIAL_CONTENT)
-    {
-      _req.add_header(HEADER_CONTENT_RANGE, max_timers_from_req);
-    }
-
-    send_http_reply(rc);
+    _req.add_header(HEADER_CONTENT_RANGE, max_timers_from_req);
   }
-  else
-  {
-    TRC_DEBUG("Sync mode is unsupported: %s", sync_mode.c_str());
-    send_http_reply(HTTP_BAD_REQUEST);
-  }
+
+  send_http_reply(rc);
 }
 
 bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)

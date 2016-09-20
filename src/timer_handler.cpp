@@ -309,8 +309,13 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            int max_responses,
                                            std::string cluster_view_id,
+                                           uint64_t time_from,
                                            std::string& get_response)
 {
+  // We pass in the time_from parameter from the handlers. We will use this
+  // parameter in the future to help with resynchronisation operations. We
+  // pass it into the timer handler now to help with UTing the handler code
+
   pthread_mutex_lock(&_mutex);
 
   // Create the JSON doc for the Timer information

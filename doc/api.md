@@ -184,11 +184,14 @@ Resynchronizing timers between nodes is carried out by each Chronos node sending
 
 This URL requests information about timers that are on the receiving node that the requesting node will be a replica for under new cluster configuration.
 
-It takes three mandatory parameters
+It takes two mandatory parameters
 
 * `node-for-replicas=<address>` - The address of the node to check for replica status (typically the requesting node). This must match a node in the Chronos cluster
-* `sync-mode=<sync-mode>` - The synchronization mode. The only currently supported value is SCALE.
 * `cluster-view-id=<cluster-view-id>` - The requesting node's view of the current cluster configuration.
+
+There is one optional parameter
+
+* `time-from=<time-from>` - The receiving node should only send information about timers that are due to pop after this time (absolute time, in microseconds since the epoch).
 
 The request should also include a `Range` header, holding how many timers should be returned in one response, e.g.:
 
@@ -200,7 +203,6 @@ If the GET is missing any of the mandatory parameters or any of the mandatory pa
 
 * Any of the mandatory parameters are missing - `400 Bad Request`
 * The requesting-node address doesn't correspond to a Chronos node in the cluster - `404 Not Found`
-* The sync-mode requested is isn't a supported mode - `400 Bad Request`
 * The cluster-view-id supplied by the requesting node doesn't match the receiving node's view of the cluster ID - `400 Bad Request`
 
 The response to a valid GET request is a `200 OK` or a `206 Partial Content`, with a JSON body containing timer information. A `206` is sent instead of a `200` if there are more timers that could be sent, but aren't because of the maximum timer limit. The 206 response includes a `Content-Range` header that shows how many timers were included (e.g. `Content-Range: 100`)
