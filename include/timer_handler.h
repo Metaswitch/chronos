@@ -74,6 +74,7 @@ public:
   virtual HTTPCode get_timers_for_node(std::string node,
                                        int max_responses,
                                        std::string cluster_view_id,
+                                       uint64_t time_from,
                                        std::string& get_response);
   void run();
 
