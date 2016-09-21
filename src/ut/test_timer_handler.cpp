@@ -1483,7 +1483,7 @@ TEST_F(TestTimerHandlerRealStore, TimeFromHeapTimers)
 
   // Check that only one timer is returned
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 150000000, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 15000000, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);

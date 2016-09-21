@@ -472,6 +472,10 @@ TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
     _bucket = (time_from / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
     next_bucket();
   }
+  else
+  {
+    _bucket = SHORT_WHEEL_NUM_BUCKETS;
+  }
 }
 
 TimerStore::TSShortWheelIterator& TimerStore::TSShortWheelIterator::operator++()
@@ -555,6 +559,10 @@ TimerStore::TSLongWheelIterator::TSLongWheelIterator(TimerStore* ts,
   {
     _bucket = (time_from / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
     next_bucket();
+  }
+  else
+  {
+    _bucket = LONG_WHEEL_NUM_BUCKETS;
   }
 }
 
