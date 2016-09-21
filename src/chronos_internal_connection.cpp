@@ -187,7 +187,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
   std::string cluster_view_id;
   __globals->get_cluster_view_id(cluster_view_id);
 
-  uint64_t time_from = 0;
+  uint32_t time_from = 0;
   std::string response;
   HTTPCode rc;
 
@@ -479,7 +479,7 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
 HTTPCode ChronosInternalConnection::send_get(const std::string& server,
                                              const std::string& node_for_replicas_param,
                                              std::string cluster_view_id_param,
-                                             uint64_t time_from_param,
+                                             uint32_t time_from_param,
                                              int max_timers,
                                              std::string& response)
 {

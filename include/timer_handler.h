@@ -74,7 +74,7 @@ public:
   virtual HTTPCode get_timers_for_node(std::string node,
                                        int max_responses,
                                        std::string cluster_view_id,
-                                       uint64_t time_from,
+                                       uint32_t time_from,
                                        std::string& get_response);
   void run();
 
@@ -96,7 +96,6 @@ private:
   // the old set of replicas, and return whether the requesting node is
   // one of the new replicas
   bool timer_is_on_node(std::string request_node,
-                        std::string cluster_view_id,
                         Timer* timer,
                         std::vector<std::string>& old_replicas);
 

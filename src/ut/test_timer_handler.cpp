@@ -1157,9 +1157,12 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
 // (up to the maximum requested)
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 {
-  // Add a single timer to the store
+  // Add two timers to the store. Extend the length of the first timer
+  // to ensure that we should always pick the second timer
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
+  timer1->interval_ms = 200000;
+  timer1->repeat_for = 200000;
 
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
@@ -1183,4 +1186,305 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 206);
+}
+
+// Test that getting timers from the overdue timers orders by time correctly
+TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromOverdue)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add three timers to the overdue timers. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(3);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(3);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(3);
+
+  Timer* timer1 = default_timer(1);
+  timer1->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
+  timer1->interval_ms = 0;
+  timer1->repeat_for = 0;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->start_time_mono_ms = (ts.tv_sec * 1000) - 2000;
+  timer2->interval_ms = 0;
+  timer2->repeat_for = 0;
+  _th->add_timer(timer2);
+
+  Timer* timer3 = default_timer(3);
+  timer3->start_time_mono_ms = (ts.tv_sec * 1000) - 3000;
+  timer3->interval_ms = 0;
+  timer3->repeat_for = 0;
+  _th->add_timer(timer3);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // There should be three timers - they should be ordered by the time to pop
+  // (3,2,1), not ordered by time they were added.
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
+
+  // We don't check the contents of the timers in this test - only check the
+  // timer IDs so we can be sure that the timers were returned in the right
+  // order
+  std::string exp_timer1 = "\\\{\"TimerID\":1,.*}";
+  std::string exp_timer2 = "\\\{\"TimerID\":2,.*}";
+  std::string exp_timer3 = "\\\{\"TimerID\":3,.*}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[" + exp_timer3 + "," +
+                                                exp_timer2 + "," +
+                                                exp_timer1 +
+                         "]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers for a node returns the set of timers, where the
+// timers are spread out over all the data structures
+TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
+{
+  // Add a single timer that will end up in the long wheel
+  Timer* timer1 = default_timer(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
+  _th->add_timer(timer1);
+
+  // Add a single timer that will end up in the short wheel
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 0;
+  timer2->repeat_for = 0;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG2", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG2", 1)).Times(1);
+  _th->add_timer(timer2);
+
+  // Add a single timer to the store that will end up in the overdue timers
+  Timer* timer3 = default_timer(3);
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  timer3->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
+  timer3->interval_ms = 0;
+  timer3->repeat_for = 0;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG3", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG3", 1)).Times(1);
+  _th->add_timer(timer3);
+
+  // Add a single timer that will end up in the heap
+  Timer* timer4 = default_timer(4);
+  timer4->interval_ms = 30000000;
+  timer4->repeat_for = 30000000;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG4", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG4", 1)).Times(1);
+  _th->add_timer(timer4);
+
+  // Add a single timer that will end up in the heap
+  Timer* timer5 = default_timer(5);
+  timer5->interval_ms = 10000000;
+  timer5->repeat_for = 10000000;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG5", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG5", 1)).Times(1);
+  _th->add_timer(timer5);
+
+  // Add a single timer that will end up in the heap
+  Timer* timer6 = default_timer(6);
+  timer6->interval_ms = 20000000;
+  timer6->repeat_for = 20000000;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG6", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG6", 1)).Times(1);
+  _th->add_timer(timer6);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // There should be six timers - they should be ordered by the time to pop
+  // (3,2,1,5,6,4), not ordered by time they were added.
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
+
+  // We don't check the contents of the timers in this test - only check the
+  // timer IDs so we can be sure that the timers were returned in the right
+  // order
+  std::string exp_timer1 = "\\\{\"TimerID\":1,.*}";
+  std::string exp_timer2 = "\\\{\"TimerID\":2,.*}";
+  std::string exp_timer3 = "\\\{\"TimerID\":3,.*}";
+  std::string exp_timer4 = "\\\{\"TimerID\":4,.*}";
+  std::string exp_timer5 = "\\\{\"TimerID\":5,.*}";
+  std::string exp_timer6 = "\\\{\"TimerID\":6,.*}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[" + exp_timer3 + "," +
+                                                exp_timer2 + "," +
+                                                exp_timer1 + "," +
+                                                exp_timer5 + "," +
+                                                exp_timer6 + "," +
+                                                exp_timer4 +
+                         "]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the overdue timers honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromOverdueTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add a timer to the overdue timers. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  timer1->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
+  timer1->interval_ms = 0;
+  timer1->repeat_for = 0;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->start_time_mono_ms = (ts.tv_sec * 1000) - 2000;
+  timer2->interval_ms = 0;
+  timer2->repeat_for = 0;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 - 1500, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the short wheel honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromShortWheelTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add a timer to the short wheel. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 0;
+  timer1->repeat_for = 0;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 10;
+  timer2->repeat_for = 10;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 5, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the long wheel honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromLongWheelTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add timers to the long wheel. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 200000;
+  timer2->repeat_for = 200000;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 150000, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the heap honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromHeapTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add timers to the heap. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 10000000;
+  timer1->repeat_for = 10000000;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 20000000;
+  timer2->repeat_for = 20000000;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 150000000, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
 }

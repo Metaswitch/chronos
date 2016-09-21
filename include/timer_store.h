@@ -103,27 +103,91 @@ public:
   static const int SHORT_WHEEL_RESOLUTION_MS = 256;
 #endif
 
+  class TSOverdueIterator
+  {
+  public:
+    TSOverdueIterator(TimerStore* ts, uint32_t time_from);
+    TSOverdueIterator& operator++();
+    Timer* operator*();
+    bool end() const;
+
+  private:
+    std::vector<Timer*> _ordered_timers;
+    std::vector<Timer*>::iterator _iterator;
+    TimerStore* _ts;
+    uint32_t _time_from;
+  };
+
+  class TSShortWheelIterator
+  {
+  public:
+    TSShortWheelIterator(TimerStore* ts, uint32_t time_from);
+    TSShortWheelIterator& operator++();
+    Timer* operator*();
+    bool end() const;
+
+  private:
+    int _bucket;
+    std::vector<Timer*> _ordered_timers;
+    std::vector<Timer*>::iterator _iterator;
+    TimerStore* _ts;
+    uint32_t _time_from;
+
+    void next_bucket();
+  };
+
+  class TSLongWheelIterator
+   {
+   public:
+    TSLongWheelIterator(TimerStore* ts, uint32_t time_from);
+    TSLongWheelIterator& operator++();
+    Timer* operator*();
+    bool end() const;
+
+  private:
+    int _bucket;
+    std::vector<Timer*> _ordered_timers;
+    std::vector<Timer*>::iterator _iterator;
+    TimerStore* _ts;
+    uint32_t _time_from;
+
+    void next_bucket();
+  };
+
+class TSHeapIterator
+  {
+  public:
+    TSHeapIterator(TimerStore* ts, uint32_t time_from);
+    TSHeapIterator& operator++();
+    Timer* operator*();
+    bool end() const;
+
+  private:
+    TimerStore* _ts;
+    uint32_t _time_from;
+    TimerHeap::ordered_iterator _iterator;
+  };
+
   class TSIterator
   {
   public:
-    TSIterator(TimerStore* ts, std::string cluster_view_id);
-    TSIterator(TimerStore* ts);
-
+    TSIterator(TimerStore* ts, uint32_t time_from);
     TSIterator& operator++();
     Timer* operator*();
-    bool operator==(const TSIterator& other) const;
-    bool operator!=(const TSIterator& other) const;
+    bool end() const;
 
   private:
-    std::map<std::string, std::unordered_set<TimerID>>::iterator outer_iterator;
-    std::unordered_set<TimerID>::iterator inner_iterator;
     TimerStore* _ts;
-    std::string _cluster_view_id;
-    void inner_next();
+    uint32_t _time_from;
+    TSOverdueIterator _overdue_it;
+    TSShortWheelIterator _short_wheel_it;
+    TSLongWheelIterator _long_wheel_it;
+    TSHeapIterator _heap_it;
+
+    void next_iterator();
   };
 
-  TSIterator begin(std::string cluster_view_id);
-  TSIterator end();
+  TSIterator begin(uint32_t time_from);
 
 private:
   // The timer store uses 4 data structures to ensure timers pop on time:
@@ -178,9 +242,6 @@ private:
   // This does mean that when removing a timer, the overdue set, both wheels and
   // the heap may need to be searched, although the timer is guaranteed to be in
   // only one of them (and the heap is searched last for efficiency).
-
-  // A table of all know timers indexed by cluster view id.
-  std::map<std::string, std::unordered_set<TimerID>> _timer_view_id_table;
 
   // Health checker, which is notified when a timer is successfully added.
   HealthChecker* _health_checker;
@@ -265,9 +326,6 @@ private:
 
   // Delete a timer from the timer wheel
   void remove_timer_from_timer_wheel(Timer* timer);
-
-  // Delete a timer from the cluster view ID index
-  void remove_timer_from_cluster_view_id(Timer* timer);
 };
 
 

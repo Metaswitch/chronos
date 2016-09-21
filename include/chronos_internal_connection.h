@@ -99,7 +99,7 @@ private:
   virtual HTTPCode send_get(const std::string& server,
                             const std::string& requesting_node,
                             std::string cluster_view_id,
-                            uint64_t time_from,
+                            uint32_t time_from,
                             int max_timers,
                             std::string& response);
 

@@ -175,6 +175,12 @@ public:
                               bool& replicated,
                               bool& gr_replicated,
                               rapidjson::Value& doc);
+
+  // Sort timers by their pop time
+  static bool compare_timer_pop_times(Timer* t1, Timer* t2)
+  {
+    return (t1->next_pop_time() < t2->next_pop_time());
+  }
 };
 
 #endif

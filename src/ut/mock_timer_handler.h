@@ -51,7 +51,7 @@ public:
   MOCK_METHOD5(get_timers_for_node, HTTPCode(std::string request_node,
                                              int max_responses,
                                              std::string cluster_view_id,
-                                             uint64_t time_from,
+                                             uint32_t time_from,
                                              std::string& get_response));
 };
 
