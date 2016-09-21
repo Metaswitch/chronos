@@ -84,11 +84,19 @@ case "$1" in
     install $MONIT_SRC_CONF_FILE $MONIT_CONF_FILE
     reload clearwater-monit || true
 
-    # Stop the cluster manager, so that it is restarted by Monit and picks
-    # up the new Chronos scaling plugin. We check whether the process is
+    # Stop the cluster/queue/config manager, so that it is restarted by Monit
+    # and picks up the new Chronos plugins. We check whether the process is
     # installed to avoid warning logs when etcd isn't being used
     if [ -x "/etc/init.d/clearwater-cluster-manager" ]; then
       service clearwater-cluster-manager stop || /bin/true
+    fi
+
+    if [ -x "/etc/init.d/clearwater-config-manager" ]; then
+      service clearwater-config-manager stop || /bin/true
+    fi
+
+    if [ -x "/etc/init.d/clearwater-queue-manager" ]; then
+      service clearwater-queue-manager stop || /bin/true
     fi
 
     # Restart Chronos.  Always do this by terminating chronos so monit will
