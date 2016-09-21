@@ -191,81 +191,22 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
 
 void ControllerTask::handle_delete()
 {
-  // Check the request has a valid JSON body
-  std::string body = _req.get_rx_body();
-  rapidjson::Document doc;
-  doc.Parse<0>(body.c_str());
-
-  if (doc.HasParseError())
-  {
-    TRC_INFO("Failed to parse document as JSON");
-    send_http_reply(HTTP_BAD_REQUEST);
-    return;
-  }
-
-  // Now loop through the body, pulling out the IDs/replica numbers
-  // The JSON body should have the format:
-  //  {"IDs": [{"ID": 123, "ReplicaIndex": 0},
-  //           {"ID": 456, "ReplicaIndex": 2},
-  //          ...]
-  // The replica_index is zero-indexed (so the primary replica has an
-  // index of 0).
-  try
-  {
-    JSON_ASSERT_CONTAINS(doc, JSON_IDS);
-    JSON_ASSERT_ARRAY(doc[JSON_IDS]);
-    const rapidjson::Value& ids_arr = doc[JSON_IDS];
-
-    // The request is valid, so respond with a 202. Now loop through the
-    // the body and update the replica trackers.
-    send_http_reply(HTTP_ACCEPTED);
-
-    for (rapidjson::Value::ConstValueIterator ids_it = ids_arr.Begin();
-         ids_it != ids_arr.End();
-         ++ids_it)
-    {
-      try
-      {
-        TimerID timer_id;
-        int replica_index;
-        JSON_GET_INT_64_MEMBER(*ids_it, JSON_ID, timer_id);
-        JSON_GET_INT_MEMBER(*ids_it, JSON_REPLICA_INDEX, replica_index);
-
-        // Update the timer's replica_tracker to show that the replicas
-        // at level 'replica_index' and higher have been informed
-        // about the timer. This will tombstone the timer if all
-        // replicas have been informed.
-        _cfg->_handler->update_replica_tracker_for_timer(timer_id,
-                                                         replica_index);
-      }
-      catch (JsonFormatError& err)
-      {
-        TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
-                  err._file, err._line);
-      }
-    }
-  }
-  catch (JsonFormatError& err)
-  {
-    TRC_INFO("JSON body didn't contain the IDs array");
-    send_http_reply(HTTP_BAD_REQUEST);
-  }
+  // We no longer need to handle deletes on resync.
+  // Return Accepted for backwards compatibility.
+  send_http_reply(HTTP_ACCEPTED);
 }
 
 void ControllerTask::handle_get()
 {
-  // Check the request is valid. It must have the node-for-replicas,
-  // sync-mode and cluster-view-id parameters set, the sync-mode parameter
-  // must be SCALE (this will be extended later), the request-node
+  // Check the request is valid. It must have the node-for-replicas
+  // and cluster-view-id parameters set, the request-node
   // must correspond to a node in the Chronos cluster (it can be a
   // leaving node), and the cluster-view-id request must correspond to
   // the receiving nodes view of the cluster configuration
   std::string node_for_replicas = _req.param(PARAM_NODE_FOR_REPLICAS);
-  std::string sync_mode = _req.param(PARAM_SYNC_MODE);
   std::string cluster_view_id = _req.param(PARAM_CLUSTER_VIEW_ID);
 
   if ((node_for_replicas == "") ||
-      (sync_mode == "") ||
       (cluster_view_id == ""))
   {
     TRC_INFO("GET request doesn't have mandatory parameters");
@@ -293,31 +234,28 @@ void ControllerTask::handle_get()
     return;
   }
 
-  if (sync_mode == PARAM_SYNC_MODE_VALUE_SCALE)
+  std::string max_timers_from_req = _req.header(HEADER_RANGE);
+  int max_timers_to_get = atoi(max_timers_from_req.c_str());
+  TRC_DEBUG("Range value is %d", max_timers_to_get);
+
+  std::string time_from_str = _req.param(PARAM_TIME_FROM);
+  uint32_t time_from = atoi(time_from_str.c_str());
+  TRC_DEBUG("Time-from value is %d", time_from);
+
+  std::string get_response;
+  HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas,
+                                                    max_timers_to_get,
+                                                    cluster_view_id,
+                                                    time_from,
+                                                    get_response);
+  _req.add_content(get_response);
+
+  if (rc == HTTP_PARTIAL_CONTENT)
   {
-    std::string max_timers_from_req = _req.header(HEADER_RANGE);
-    int max_timers_to_get = atoi(max_timers_from_req.c_str());
-    TRC_DEBUG("Range value is %d", max_timers_to_get);
-
-    std::string get_response;
-    HTTPCode rc = _cfg->_handler->get_timers_for_node(node_for_replicas,
-                                                      max_timers_to_get,
-                                                      cluster_view_id,
-                                                      get_response);
-    _req.add_content(get_response);
-
-    if (rc == HTTP_PARTIAL_CONTENT)
-    {
-      _req.add_header(HEADER_CONTENT_RANGE, max_timers_from_req);
-    }
-
-    send_http_reply(rc);
+    _req.add_header(HEADER_CONTENT_RANGE, max_timers_from_req);
   }
-  else
-  {
-    TRC_DEBUG("Sync mode is unsupported: %s", sync_mode.c_str());
-    send_http_reply(HTTP_BAD_REQUEST);
-  }
+
+  send_http_reply(rc);
 }
 
 bool ControllerTask::node_is_in_cluster(std::string node_for_replicas)

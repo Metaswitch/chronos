@@ -60,7 +60,7 @@ public:
                             SNMP::CounterTable* _invalid_timers_processed_table = NULL);
   virtual ~ChronosInternalConnection();
 
-  // Performs a scale-up/down operation by resynchronising
+  // Performs a resynchronization operation
   // the timers on this node with all the other Chronos nodes
   virtual void resynchronize();
 
@@ -98,13 +98,12 @@ private:
   // Sends a get request
   virtual HTTPCode send_get(const std::string& server,
                             const std::string& requesting_node,
-                            const std::string& sync_mode,
                             std::string cluster_view_id,
+                            uint32_t time_from,
                             int max_timers,
                             std::string& response);
 
-  // Resynchronises with a single Chronos node (used in scale
-  // operations).
+  // Resynchronises with a single Chronos node (used in resync operations).
   virtual HTTPCode resynchronise_with_single_node(
                             const std::string& server_to_sync,
                             std::vector<std::string> cluster_nodes,

@@ -117,24 +117,22 @@ protected:
 TEST_F(TestTimerHandlerFetchAndPop, StartUpAndShutDown)
 {
   EXPECT_CALL(*_store, fetch_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 }
 
 TEST_F(TestTimerHandlerFetchAndPop, PopOneTimer)
 {
-  std::unordered_set<TimerPair> timers;
+  std::unordered_set<Timer*> timers;
   Timer* timer = default_timer(1);
-  TimerPair pair;
-  pair.active_timer = timer;
-  timers.insert(pair);
+  timers.insert(timer);
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   EXPECT_CALL(*_callback, perform(timer));
 
@@ -145,18 +143,16 @@ TEST_F(TestTimerHandlerFetchAndPop, PopOneTimer)
 
 TEST_F(TestTimerHandlerFetchAndPop, PopRepeatedTimer)
 {
-  std::unordered_set<TimerPair> timers;
+  std::unordered_set<Timer*> timers;
   Timer* timer = default_timer(1);
-  TimerPair pair;
-  pair.active_timer = timer;
   timer->repeat_for = timer->interval_ms * 2;
-  timers.insert(pair);
+  timers.insert(timer);
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
@@ -167,20 +163,16 @@ TEST_F(TestTimerHandlerFetchAndPop, PopRepeatedTimer)
 
 TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSimultaneously)
 {
-  std::unordered_set<TimerPair> timers;
+  std::unordered_set<Timer*> timers;
   Timer* timer1 = default_timer(1);
-  TimerPair pair1;
-  pair1.active_timer = timer1;
   Timer* timer2 = default_timer(2);
-  TimerPair pair2;
-  pair2.active_timer = timer2;
-  timers.insert(pair1);
-  timers.insert(pair2);
+  timers.insert(timer1);
+  timers.insert(timer2);
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
@@ -193,22 +185,18 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSimultaneously)
 
 TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSeries)
 {
-  std::unordered_set<TimerPair> timers1;
-  std::unordered_set<TimerPair> timers2;
+  std::unordered_set<Timer*> timers1;
+  std::unordered_set<Timer*> timers2;
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
-  TimerPair pair1;
-  TimerPair pair2;
-  pair1.active_timer = timer1;
-  pair2.active_timer = timer2;
-  timers1.insert(pair1);
-  timers2.insert(pair2);
+  timers1.insert(timer1);
+  timers2.insert(timer2);
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers1)).
                        WillOnce(SetArgReferee<0>(timers2)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
@@ -221,26 +209,22 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSeries)
 
 TEST_F(TestTimerHandlerFetchAndPop, PopMultipleRepeatingTimers)
 {
-  std::unordered_set<TimerPair> timers1;
-  std::unordered_set<TimerPair> timers2;
+  std::unordered_set<Timer*> timers1;
+  std::unordered_set<Timer*> timers2;
   Timer* timer1 = default_timer(1);
   timer1->repeat_for = timer1->interval_ms * 2;
   Timer* timer2 = default_timer(2);
   timer2->repeat_for = timer2->interval_ms * 2;
-  TimerPair pair1;
-  TimerPair pair2;
-  pair1.active_timer = timer1;
-  pair2.active_timer = timer2;
-  timers1.insert(pair1);
-  timers2.insert(pair2);
+  timers1.insert(timer1);
+  timers2.insert(timer2);
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers1)).
                        WillOnce(SetArgReferee<0>(timers2)).
                        WillOnce(SetArgReferee<0>(timers2)).
                        WillOnce(SetArgReferee<0>(timers1)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
@@ -253,23 +237,19 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleRepeatingTimers)
 
 TEST_F(TestTimerHandlerFetchAndPop, EmptyStore)
 {
-  std::unordered_set<TimerPair> timers1;
-  std::unordered_set<TimerPair> timers2;
+  std::unordered_set<Timer*> timers1;
+  std::unordered_set<Timer*> timers2;
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
-  TimerPair pair1;
-  TimerPair pair2;
-  pair1.active_timer = timer1;
-  pair2.active_timer = timer2;
-  timers1.insert(pair1);
-  timers2.insert(pair2);
+  timers1.insert(timer1);
+  timers2.insert(timer2);
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers1)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(timers2)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
 
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
@@ -287,16 +267,14 @@ TEST_F(TestTimerHandlerFetchAndPop, EmptyStore)
 
 TEST_F(TestTimerHandlerFetchAndPop, LeakTest)
 {
-  std::unordered_set<TimerPair> timers;
+  std::unordered_set<Timer*> timers;
   Timer* timer = default_timer(1);
-  TimerPair pair;
-  pair.active_timer = timer;
-  timers.insert(pair);
+  timers.insert(timer);
 
   // Make sure that the final call to fetch_next_timers actually returns some.  This
   // test should still pass valgrind's checking without leaking the timer.
   EXPECT_CALL(*_store, fetch_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(timers));
 
   _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
@@ -306,8 +284,6 @@ TEST_F(TestTimerHandlerFetchAndPop, LeakTest)
 TEST_F(TestTimerHandlerFetchAndPop, FutureTimerPop)
 {
   Timer* timer = default_timer(1);
-  TimerPair pair;
-  pair.active_timer = timer;
   timer->interval_ms = 100;
   timer->repeat_for = 100;
 
@@ -320,16 +296,16 @@ TEST_F(TestTimerHandlerFetchAndPop, FutureTimerPop)
   // time down to a millisecond.
   ts.tv_nsec = ts.tv_nsec - (ts.tv_nsec % (1000 * 1000));
 
-  std::unordered_set<TimerPair> timers;
-  timers.insert(pair);
+  std::unordered_set<Timer*> timers;
+  timers.insert(timer);
 
   // After the timer pops, we'd expect to get a call back to get the next set of timers.
   // Then the standard one more check during termination.
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(timers)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_callback, perform(_));
 
   _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
@@ -349,8 +325,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopTombstoneTimer)
   timer1->become_tombstone();
 
   EXPECT_CALL(*_store, fetch_next_timers(_)).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                       WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                       WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
@@ -384,8 +360,8 @@ protected:
 
     // Set up the Timer Handler
     EXPECT_CALL(*_store, fetch_next_timers(_)).
-                         WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>())).
-                         WillOnce(SetArgReferee<0>(std::unordered_set<TimerPair>()));
+                         WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                         WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
     _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
     _cond()->block_till_waiting();
   }
@@ -428,18 +404,17 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTimer)
   // Add the timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
   Timer* timer = default_timer(1);
-  TimerPair insert_pair;
+  Timer* insert_timer;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
+  EXPECT_EQ(insert_timer, timer);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
@@ -452,7 +427,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   // Add the first timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
   Timer* timer = default_timer(1);
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // Add more tags, to test that update_stats correctly calculates tag changes
   timer->tags["REG"] = 1;
@@ -471,33 +446,31 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_mock_scalar_table, increment("BIND", 7)).Times(1);
 
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
   // start time
   Timer* timer2 = default_timer(1);
-  timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
+  timer2->start_time_mono_ms = insert_timer->start_time_mono_ms + 100;
   // Add tags of different count values
   timer2->tags["REG"] = 1;
   timer2->tags["SUB"] = 3;
   timer2->tags["BIND"] = 10;
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+                       WillOnce(SetArgPointee<1>(insert_timer));
   // Expect correct tag increments and decrements
   EXPECT_CALL(*_mock_tag_table, decrement("SUB", 2)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("SUB", 2)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("BIND", 3)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("BIND", 3)).Times(1);
 
-  EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer2);
 
   // The timer is successfully updated
-  EXPECT_EQ(insert_pair.active_timer, timer2);
+  EXPECT_EQ(insert_timer, timer2);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
   // sequence number
@@ -513,13 +486,12 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_mock_scalar_table, decrement("BIND", 10)).Times(1);
 
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer3);
 
   // The timer is successfully updated
-  EXPECT_EQ(insert_pair.active_timer, timer3);
+  EXPECT_EQ(insert_timer, timer3);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
@@ -532,33 +504,31 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   // Add the first timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
   Timer* timer = default_timer(1);
-  TimerPair insert_pair;
+  Timer* insert_timer;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
   // start time.
   Timer* timer2 = default_timer(1);
-  timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
+  timer2->start_time_mono_ms = insert_timer->start_time_mono_ms + 100;
   timer2->tags.clear();
   timer2->tags["NEWTAG"]++;
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+                       WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_mock_tag_table, increment("NEWTAG", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("NEWTAG", 1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer2);
 
   // The timer is successfully updated
-  EXPECT_EQ(insert_pair.active_timer, timer2);
+  EXPECT_EQ(insert_timer, timer2);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
@@ -572,22 +542,21 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSites)
   Timer* timer = default_timer(1);
   timer->tags.clear();
   timer->sites.push_back("remote_site_2_name");
-  TimerPair insert_pair;
+  Timer* insert_timer;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
-  ASSERT_EQ(insert_pair.active_timer->sites.size(), 3);
-  EXPECT_EQ(insert_pair.active_timer->sites[0], "local_site_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_1_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[2], "remote_site_2_name");
+  ASSERT_EQ(insert_timer->sites.size(), 3);
+  EXPECT_EQ(insert_timer->sites[0], "local_site_name");
+  EXPECT_EQ(insert_timer->sites[1], "remote_site_1_name");
+  EXPECT_EQ(insert_timer->sites[2], "remote_site_2_name");
 
   // Update the site information. Make sure the newer timer is picked by
   // giving it a later start time.
   Timer* timer2 = default_timer(1);
-  timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
+  timer2->start_time_mono_ms = insert_timer->start_time_mono_ms + 100;
   timer2->tags.clear();
   timer2->sites.clear();
   timer2->sites.push_back("remote_site_4_name");
@@ -596,18 +565,17 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSites)
   timer2->sites.push_back("remote_site_3_name");
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer2->id, _, _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer2);
 
   // The timer is successfully updated, and the site ordering uses the existing
   // site ordering for any existing sites
-  ASSERT_EQ(insert_pair.active_timer->sites.size(), 4);
-  EXPECT_EQ(insert_pair.active_timer->sites[0], "local_site_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_1_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[2], "remote_site_4_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[3], "remote_site_3_name");
+  ASSERT_EQ(insert_timer->sites.size(), 4);
+  EXPECT_EQ(insert_timer->sites[0], "local_site_name");
+  EXPECT_EQ(insert_timer->sites[1], "remote_site_1_name");
+  EXPECT_EQ(insert_timer->sites[2], "remote_site_4_name");
+  EXPECT_EQ(insert_timer->sites[3], "remote_site_3_name");
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
@@ -622,22 +590,21 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSiteOrdering)
   Timer* timer = default_timer(1);
   timer->tags.clear();
   timer->sites.push_back("remote_site_2_name");
-  TimerPair insert_pair;
+  Timer* insert_timer;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
-  ASSERT_EQ(insert_pair.active_timer->sites.size(), 3);
-  EXPECT_EQ(insert_pair.active_timer->sites[0], "local_site_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_1_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[2], "remote_site_2_name");
+  ASSERT_EQ(insert_timer->sites.size(), 3);
+  EXPECT_EQ(insert_timer->sites[0], "local_site_name");
+  EXPECT_EQ(insert_timer->sites[1], "remote_site_1_name");
+  EXPECT_EQ(insert_timer->sites[2], "remote_site_2_name");
 
   // Update the site information. Make sure the newer timer is picked by
   // giving it a later start time.
   Timer* timer2 = default_timer(1);
-  timer2->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
+  timer2->start_time_mono_ms = insert_timer->start_time_mono_ms + 100;
   timer2->tags.clear();
   timer2->sites.clear();
   timer2->sites.push_back("remote_site_2_name");
@@ -645,78 +612,20 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSiteOrdering)
   timer2->sites.push_back("local_site_name");
 
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer2->id, _, _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer2);
 
   // The timer is successfully updated, and the site ordering uses the existing
   // site ordering
-  ASSERT_EQ(insert_pair.active_timer->sites.size(), 3);
-  EXPECT_EQ(insert_pair.active_timer->sites[0], "local_site_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_1_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[2], "remote_site_2_name");
+  ASSERT_EQ(insert_timer->sites.size(), 3);
+  EXPECT_EQ(insert_timer->sites[0], "local_site_name");
+  EXPECT_EQ(insert_timer->sites[1], "remote_site_1_name");
+  EXPECT_EQ(insert_timer->sites[2], "remote_site_2_name");
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
   delete timer2;
-}
-
-// Test that if there is already an information timer for this timer
-// we overwrite it with a new information timer
-TEST_F(TestTimerHandlerAddAndReturn, OverrideInformationTimer)
-{
-  // Add the first timer. This is a new timer, so should cause the stats to
-  // increment (counts and tags)
-  Timer* timer = default_timer(1);
-  TimerPair insert_pair;
-  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(timer);
-
-  // The first timer has the current cluster view ID and no informational
-  // timer
-  EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "cluster-view-id");
-  ASSERT_TRUE(insert_pair.information_timer == NULL);
-
-  // Change the cluster view ID, and update the timer. This is an update, so the
-  // counts/tags don't change. The added timer gains an informational timer
-  Timer* timer2 = default_timer(1);
-  timer2->cluster_view_id = "updated-cluster-view-id";
-  __globals->set_cluster_view_id(timer2->cluster_view_id);
-
-  EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer2->id, timer2->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(timer2);
-
-  EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "updated-cluster-view-id");
-  EXPECT_EQ(insert_pair.information_timer->cluster_view_id, "cluster-view-id");
-
-  // Change the cluster view ID, and update the timer again. The previous
-  // informational timer is discarded.
-  Timer* timer3 = default_timer(1);
-  timer3->cluster_view_id = "updated-again-cluster-view-id";
-  __globals->set_cluster_view_id(timer3->cluster_view_id);
-
-  EXPECT_CALL(*_store, fetch(timer3->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(timer3);
-
-  EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "updated-again-cluster-view-id");
-  EXPECT_EQ(insert_pair.information_timer->cluster_view_id, "updated-cluster-view-id");
-
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
-  delete insert_pair.active_timer;
-  delete insert_pair.information_timer;
 }
 
 // Test that attempting to add an older timer doesn't update the stored
@@ -730,7 +639,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddOlderTimer)
   timer->start_time_mono_ms = timer2->start_time_mono_ms + 100;
   timer->interval_ms = 10000;
   timer2->interval_ms = 20000;
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // Add the first timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
@@ -738,138 +647,68 @@ TEST_F(TestTimerHandlerAddAndReturn, AddOlderTimer)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // Add an older timer. This doesn't change the stored timer
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+                       WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
-  EXPECT_CALL(*_store, insert(_, _, _, _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
 
   _th->add_timer(timer2);
 
-  EXPECT_EQ(insert_pair.active_timer->interval_ms, (unsigned)10000);
+  EXPECT_EQ(insert_timer->interval_ms, (unsigned)10000);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
-// This tests checks when we add a timer to the store and there is already a
-// complete TimerPair that exists, and the new timer and the existing active
-// have the same cluster view, we should preserve the information timer
-TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimers)
+// Test that adding a timer with an up-to-date cluster ID always wins
+// over an existing timer
+TEST_F(TestTimerHandlerAddAndReturn, AddUpToDateTimer)
 {
+  // Set up the timers. Make timer2 older than timer 1. Give them different
+  // intervals (so we can easily tell what timer we have).
+  Timer* timer = default_timer(1);
+  Timer* timer2 = default_timer(1);
+  timer->start_time_mono_ms = timer2->start_time_mono_ms + 100;
+  timer->interval_ms = 10000;
+  timer2->interval_ms = 20000;
+  timer2->cluster_view_id = "updated-cluster-view-id";
+  Timer* insert_timer;
+
   // Add the first timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
-  Timer* timer = default_timer(1);
-  timer->cluster_view_id = "information-timer-view-id";
-  TimerPair insert_pair;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
-  // Add the second timer. This causes the first timer to move to an
-  // informational timer
-  Timer* timer2 = default_timer(1);
+  // Now update the current cluster view ID
+  std::string updated_cluster_view_id = "updated-cluster-view-id";
+  __globals->lock();
+  __globals->set_cluster_view_id(updated_cluster_view_id);
+  __globals->unlock();
+
+  // Now add the older timer. This wouldn't normally update the timer, but
+  // it does because the cluster ID is up to date.
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
 
   _th->add_timer(timer2);
-  EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "cluster-view-id");
-  EXPECT_EQ(insert_pair.information_timer->cluster_view_id, "information-timer-view-id");
 
-  // Update the active timer. This shouldn't change the informational timer
-  Timer* timer3 = default_timer(1);
-  timer3->start_time_mono_ms = insert_pair.active_timer->start_time_mono_ms + 100;
-  EXPECT_CALL(*_store, fetch(timer3->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer3->id, timer3->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-
-  _th->add_timer(timer3);
-
-  EXPECT_EQ(insert_pair.active_timer->cluster_view_id, "cluster-view-id");
-  EXPECT_EQ(insert_pair.information_timer->cluster_view_id, "information-timer-view-id");
+  // Check that the timer time was updated.
+  EXPECT_EQ(insert_timer->interval_ms, (unsigned)20000);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
-  delete insert_pair.information_timer;
-}
-
-// Test that the information timers are preserved when adding a timer if the
-// existing timer is re-added (because it is newer)
-TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimersNoUpdateStartTime)
-{
-  // Set up the timers. The new timer has a lower sequence number than the
-  // existing timer
-  Timer* timer_active = default_timer(1);
-  Timer* timer_info = default_timer(1);
-  timer_info->cluster_view_id = "different-id";
-  TimerPair insert_pair;
-  insert_pair.active_timer = timer_active;
-  insert_pair.information_timer = timer_info;
-  Timer* new_timer = default_timer(1);
-  timer_active->start_time_mono_ms = new_timer->start_time_mono_ms + 1000;
-
-  // Update the replica tracker. This should only change the information
-  // timer
-  EXPECT_CALL(*_store, fetch(timer_active->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(new_timer);
-
-  // Check that the informational timer is preserved
-  ASSERT_EQ("different-id", insert_pair.information_timer->cluster_view_id);
-
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
-  delete insert_pair.active_timer;
-  delete insert_pair.information_timer;
-}
-
-// Test that the information timers are preserved when adding a timer if the
-// existing timer is re-added (because it has a higher sequence number)
-TEST_F(TestTimerHandlerAddAndReturn, PreserveInformationTimersNoUpdateSeqNum)
-{
-  // Set up the timers. The new timer has a lower sequence number than the
-  // existing timer
-  Timer* timer_active = default_timer(1);
-  timer_active->sequence_number = 3;
-  Timer* timer_info = default_timer(1);
-  timer_info->cluster_view_id = "different-id";
-  TimerPair insert_pair;
-  insert_pair.active_timer = timer_active;
-  insert_pair.information_timer = timer_info;
-  Timer* new_timer = default_timer(1);
-  new_timer->sequence_number = 2;
-
-  // Update the replica tracker. This should only change the information
-  // timer
-  EXPECT_CALL(*_store, fetch(timer_active->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(new_timer);
-
-  // Check that the informational timer is preserved
-  ASSERT_EQ("different-id", insert_pair.information_timer->cluster_view_id);
-
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
-  delete insert_pair.active_timer;
-  delete insert_pair.information_timer;
+  delete insert_timer;
 }
 
 // Add a tombstone with the same id as a timer in the store. The new tombstone
@@ -884,7 +723,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   timer->repeat_for = tombstone->repeat_for * 10;
   tombstone->tags["NEWTAG"]++;
   tombstone->become_tombstone();
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // Add the first timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
@@ -892,16 +731,14 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // Now add the tombstone. This should decrement the tags/counts from the
   // removed timer, not from the tombstone tags
   EXPECT_CALL(*_store, fetch(tombstone->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, tombstone->id, _, _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
@@ -910,13 +747,13 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   _th->add_timer(tombstone);
 
   // Check that the new tombstone has the correct interval
-  EXPECT_EQ(insert_pair.active_timer->interval_ms, (unsigned)1000000);
-  EXPECT_EQ(insert_pair.active_timer->repeat_for, (unsigned)1000000);
-  EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
+  EXPECT_EQ(insert_timer->interval_ms, (unsigned)1000000);
+  EXPECT_EQ(insert_timer->repeat_for, (unsigned)1000000);
+  EXPECT_TRUE(insert_timer->is_tombstone());
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
 // Add a tombstone with a new ID (mimicking the case where a resync can cause deletes
@@ -925,24 +762,23 @@ TEST_F(TestTimerHandlerAddAndReturn, AddNewTombstone)
 {
   Timer* tombstone = default_timer(1);
   tombstone->become_tombstone();
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // Add the tombstone - this shouldn't affect the statistics
   EXPECT_CALL(*_store, fetch(tombstone->id, _)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(0);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(0);
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(0);
-  EXPECT_CALL(*_store, insert(_, tombstone->id, _, _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
 
   _th->add_timer(tombstone);
 
   // Check that the added timer is the tombstone
-  EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
+  EXPECT_TRUE(insert_timer->is_tombstone());
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
 // Test that a new, similar, timer with a sequence number lower than the
@@ -954,7 +790,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   Timer* timer2 = default_timer(1);
   timer1->sequence_number=2;
   timer2->sequence_number=1;
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // Add the first timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
@@ -962,47 +798,44 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer1->id, timer1->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer1);
-  EXPECT_EQ(insert_pair.active_timer->sequence_number, (unsigned)2);
+  EXPECT_EQ(insert_timer->sequence_number, (unsigned)2);
 
   // Add a timer with a lower sequence number - this timer should not replace
   // the existing timer
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer2->id, _, _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer2);
 
   // Check that the sequence number hasn't changed
-  EXPECT_EQ(insert_pair.active_timer->sequence_number, (unsigned)2);
+  EXPECT_EQ(insert_timer->sequence_number, (unsigned)2);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
 // Return a timer to the handler as if it has been passed back from HTTPCallback and will pop again.
 TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWillPopAgain)
 {
   Timer* timer = default_timer(1);
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // The timer is being returned from a callback. This shouldn't change any
   // counts/tags
-  EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, fetch(timer->id, _));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->return_timer(timer);
 
   // The timer is successfully added. As it's a new timer (as the pop would have
   // removed it from the store) it's passed through to the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
+  EXPECT_EQ(insert_timer, timer);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
 // Return a timer to the handler as if it has been passed back from HTTPCallback and wont pop again.
@@ -1015,26 +848,25 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
   timer->interval_ms = 100;
   timer->repeat_for = 100;
 
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // The timer is being returned from a callback, and won't pop again.
   // This should update statistics, and be returned to the store as a tombstone.
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, fetch(timer->id, _));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->return_timer(timer);
 
   // The timer is successfully added. As it's a new timer (as the pop would have
   // removed it from the store) it's passed through to the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
-  EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
+  EXPECT_EQ(insert_timer, timer);
+  EXPECT_TRUE(insert_timer->is_tombstone());
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
 // Return a timer to the handler as if it has been passed back from
@@ -1049,26 +881,25 @@ TEST_F(TestTimerHandlerAddAndReturn, TombstoneZeroIntervalAndRepeatForTimer)
   timer->interval_ms = 0;
   timer->repeat_for = 0;
 
-  TimerPair insert_pair;
+  Timer* insert_timer;
 
   // The timer is being returned from a callback, and won't pop again.
   // This should update statistics, and be returned to the store as a tombstone.
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_store, fetch(timer->id, _)).WillOnce(Return(false));
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, fetch(timer->id, _));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->return_timer(timer);
 
   // The timer is successfully added. As it's a new timer (as the pop would have
   // removed it from the store) it's passed through to the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
-  EXPECT_TRUE(insert_pair.active_timer->is_tombstone());
+  EXPECT_EQ(insert_timer, timer);
+  EXPECT_TRUE(insert_timer->is_tombstone());
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
-  delete insert_pair.active_timer;
+  delete insert_timer;
 }
 
 // Test that the handle_callback_success function fetches the timer specified,
@@ -1078,37 +909,29 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
   // Add a timer. This is a new timer, so should cause the stats to
   // increment (counts and tags).
   Timer* timer = default_timer(1);
-  Timer* info_timer = default_timer(1);
-  TimerPair insert_pair;
   TimerID id = timer->id;
+  Timer* insert_timer;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                              WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
-
+  EXPECT_EQ(insert_timer, timer);
   timer = NULL;
-
-  // Add an info timer to the pair, to check that the cluster view id vector can be built correctly.
-  insert_pair.information_timer = info_timer;
 
   // Now call handle_successful_callback as if called from http_callback
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
-              WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_replicator, replicate(insert_pair.active_timer));
-  EXPECT_CALL(*_gr_replicator, replicate(insert_pair.active_timer));
-  EXPECT_CALL(*_store, insert(_, insert_pair.active_timer->id, insert_pair.active_timer->next_pop_time(), _)).
-                              WillOnce(SaveArg<0>(&insert_pair));
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_replicator, replicate(insert_timer));
+  EXPECT_CALL(*_gr_replicator, replicate(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->handle_successful_callback(id);
 
-  delete insert_pair.active_timer;
-  delete insert_pair.information_timer;
+  delete insert_timer;
 }
 
 // Test that the handle_callback_success function updates the site information
@@ -1118,16 +941,16 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccessSiteChanges)
   // Add a timer. Clear out any tags as we don't care about them for this test
   Timer* timer = default_timer(1);
   timer->tags.clear();
-  TimerPair insert_pair;
+  Timer* insert_timer;
   TimerID id = timer->id;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, _, _, _)).WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
+  EXPECT_EQ(insert_timer, timer);
 
   timer = NULL;
 
@@ -1144,19 +967,18 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccessSiteChanges)
 
   // Now call handle_successful_callback as if called from http_callback
   EXPECT_CALL(*_store, fetch(_, _)).Times(1).
-              WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+                       WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_store, insert(_, _, _, _)).WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->handle_successful_callback(id);
 
   // Check that the sites have been changed correctly
-  ASSERT_EQ(insert_pair.active_timer->sites.size(), 2);
-  EXPECT_EQ(insert_pair.active_timer->sites[0], "new_local_site_name");
-  EXPECT_EQ(insert_pair.active_timer->sites[1], "remote_site_2_name");
+  ASSERT_EQ(insert_timer->sites.size(), 2);
+  EXPECT_EQ(insert_timer->sites[0], "new_local_site_name");
+  EXPECT_EQ(insert_timer->sites[1], "remote_site_2_name");
 
-  delete insert_pair.active_timer;
-  delete insert_pair.information_timer;
+  delete insert_timer;
 }
 
 // Test that the handle_failed_callback function correctly handles updating statistics,
@@ -1166,19 +988,18 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
   // Add a timer. This is a new timer, so should cause the stats to
   // increment (counts and tags)
   Timer* timer = default_timer(1);
-  TimerPair insert_pair;
+  Timer* insert_timer;
   TimerID id = timer->id;
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                              WillOnce(SaveArg<0>(&insert_pair));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->add_timer(timer);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
-  EXPECT_EQ(insert_pair.active_timer, timer);
+  EXPECT_EQ(insert_timer, timer);
 
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
@@ -1186,135 +1007,16 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
 
   // Now call handle_failed_callback as if called from http_callback
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
-              WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_replicator, replicate(insert_pair.active_timer)).Times(0);
-  EXPECT_CALL(*_gr_replicator, replicate(insert_pair.active_timer)).Times(0);
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_replicator, replicate(insert_timer)).Times(0);
+  EXPECT_CALL(*_gr_replicator, replicate(insert_timer)).Times(0);
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, id, _, _)).Times(0);
+  EXPECT_CALL(*_store, insert(_)).Times(0);
 
   _th->handle_failed_callback(id);
   // Do not delete timer as this is already done in the function
-}
-
-// Test that marking some of the replicas as being informed
-// doesn't change the timer if it's got an up-to-date
-// cluster view ID
-TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForNewTimer)
-{
-  // Add the timer. This is a new timer, so should cause the stats to
-  // increment (counts and tags)
-  Timer* timer = default_timer(1);
-  timer->_replica_tracker = 15;
-  TimerPair insert_pair;
-  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(timer);
-
-  // Try to update the replica tracker value. This shouldn't change the timer
-  EXPECT_CALL(*_store, fetch(timer->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->update_replica_tracker_for_timer(1u, 1);
-
-  // Check that the replica tracker hasn't changed
-  EXPECT_EQ(15u, insert_pair.active_timer->_replica_tracker);
-
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
-  delete insert_pair.active_timer;
-}
-
-// Test that marking some of the replicas as being informed
-// changes the replica tracker if the cluster view ID is
-// different
-TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimer)
-{
-  // Add the timer. This is a new timer, so should cause the stats to
-  // increment (counts and tags)
-  Timer* timer = default_timer(1);
-  timer->_replica_tracker = 15;
-  timer->cluster_view_id = "different-id";
-  TimerPair insert_pair;
-  EXPECT_CALL(*_store, fetch(timer->id, _));
-  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_store, insert(_, timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->add_timer(timer);
-
-  // Try to update the replica tracker value. This should change the timer
-  EXPECT_CALL(*_store, fetch(timer->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_,timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->update_replica_tracker_for_timer(1u, 3);
-
-  // Check that the tracker value has updated
-  ASSERT_EQ(7u, insert_pair.active_timer->_replica_tracker);
-  ASSERT_EQ("different-id", insert_pair.active_timer->cluster_view_id);
-
-  // Now mark all replicas as being informed. This mimics a window condition
-  // where the timer hasn't been replaced by a new timer/tombstone. The timer
-  // should not be deleted in this case
-  EXPECT_CALL(*_store, fetch(timer->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_,timer->id, timer->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->update_replica_tracker_for_timer(1u, 0);
-
-  ASSERT_EQ(0u, insert_pair.active_timer->_replica_tracker);
-  ASSERT_EQ("different-id", insert_pair.active_timer->cluster_view_id);
-
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
-  delete insert_pair.active_timer;
-}
-
-// Test that marking some of the replicas as being informed
-// changes the replica tracker if there's an informational timer
-TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForInformationTimer)
-{
-  // Set up the timers
-  Timer* timer_active = default_timer(1);
-  timer_active->_replica_tracker = 15;
-  Timer* timer_info = default_timer(1);
-  timer_info->_replica_tracker = 15;
-  timer_info->cluster_view_id = "different-id";
-  TimerPair insert_pair;
-  insert_pair.active_timer = timer_active;
-  insert_pair.information_timer = timer_info;
-
-  // Update the replica tracker. This should only change the information
-  // timer
-  EXPECT_CALL(*_store, fetch(timer_active->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->update_replica_tracker_for_timer(1u, 2);
-  ASSERT_EQ(15u, insert_pair.active_timer->_replica_tracker);
-  ASSERT_EQ(3u, insert_pair.information_timer->_replica_tracker);
-
-  // Now mark all replicas as being informed. This causes the information timer
-  // to be deleted, but doesn't change the active timer.
-  EXPECT_CALL(*_store, fetch(timer_active->id, _)).
-                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
-                       WillOnce(SaveArg<0>(&insert_pair));
-  _th->update_replica_tracker_for_timer(1u, 0);
-  ASSERT_EQ(15u, insert_pair.active_timer->_replica_tracker);
-  ASSERT_TRUE(insert_pair.information_timer == NULL);
-
-  // Delete the timer (this is normally done by the insert call, but this
-  // is mocked out)
-  delete insert_pair.active_timer;
 }
 
 // Timer handler tests with a real timer store. This allows better tests of resync
@@ -1395,8 +1097,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
 
   // There should be one returned timer. We check this by matching the JSON
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, 0, get_response);
+ std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
 }
@@ -1424,7 +1126,7 @@ TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
   // Now just call get_timers_for_node (as if someone had done a resync without
   // changing the cluster configuration). No timers should be returned
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.4:9999", 2, updated_cluster_view_id, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.4:9999", 2, updated_cluster_view_id, 0, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
@@ -1445,7 +1147,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
   // Now just call get_timers_for_node (as if someone had done a resync without
   // changing the cluster configuration). No timers should be returned
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, "cluster-view-id", get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, "cluster-view-id", 0, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
@@ -1455,9 +1157,12 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
 // (up to the maximum requested)
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 {
-  // Add a single timer to the store
+  // Add two timers to the store. Extend the length of the first timer
+  // to ensure that we should always pick the second timer
   Timer* timer1 = default_timer(1);
   Timer* timer2 = default_timer(2);
+  timer1->interval_ms = 200000;
+  timer1->repeat_for = 200000;
 
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
@@ -1477,49 +1182,309 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
   __globals->unlock();
 
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, 0, get_response);
+ std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 206);
 }
 
-// Test that getting timers for a node returns the set of timers
-// (up to the maximum requested)
-TEST_F(TestTimerHandlerRealStore, GetTimersForNodeInformationalTimers)
+// Test that getting timers from the overdue timers orders by time correctly
+TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromOverdue)
 {
-  // Add a single timer to the store
-  Timer* timer1 = default_timer(1);
-  timer1->_replica_tracker = 3;
-  timer1->cluster_view_id = "cluster-view-id";
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
 
+  // Add three timers to the overdue timers. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(3);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(3);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(3);
+
+  Timer* timer1 = default_timer(1);
+  timer1->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
+  timer1->interval_ms = 0;
+  timer1->repeat_for = 0;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->start_time_mono_ms = (ts.tv_sec * 1000) - 2000;
+  timer2->interval_ms = 0;
+  timer2->repeat_for = 0;
+  _th->add_timer(timer2);
+
+  Timer* timer3 = default_timer(3);
+  timer3->start_time_mono_ms = (ts.tv_sec * 1000) - 3000;
+  timer3->interval_ms = 0;
+  timer3->repeat_for = 0;
+  _th->add_timer(timer3);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // There should be three timers - they should be ordered by the time to pop
+  // (3,2,1), not ordered by time they were added.
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
+
+  // We don't check the contents of the timers in this test - only check the
+  // timer IDs so we can be sure that the timers were returned in the right
+  // order
+  std::string exp_timer1 = "\\\{\"TimerID\":1,.*}";
+  std::string exp_timer2 = "\\\{\"TimerID\":2,.*}";
+  std::string exp_timer3 = "\\\{\"TimerID\":3,.*}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[" + exp_timer3 + "," +
+                                                exp_timer2 + "," +
+                                                exp_timer1 +
+                         "]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers for a node returns the set of timers, where the
+// timers are spread out over all the data structures
+TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
+{
+  // Add a single timer that will end up in the long wheel
+  Timer* timer1 = default_timer(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   _th->add_timer(timer1);
 
-  // Now update the current cluster view ID
-  std::string updated_cluster_view_id = "updated-cluster-view-id";
+  // Add a single timer that will end up in the short wheel
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 0;
+  timer2->repeat_for = 0;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG2", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG2", 1)).Times(1);
+  _th->add_timer(timer2);
+
+  // Add a single timer to the store that will end up in the overdue timers
+  Timer* timer3 = default_timer(3);
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  timer3->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
+  timer3->interval_ms = 0;
+  timer3->repeat_for = 0;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG3", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG3", 1)).Times(1);
+  _th->add_timer(timer3);
+
+  // Add a single timer that will end up in the heap
+  Timer* timer4 = default_timer(4);
+  timer4->interval_ms = 30000000;
+  timer4->repeat_for = 30000000;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG4", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG4", 1)).Times(1);
+  _th->add_timer(timer4);
+
+  // Add a single timer that will end up in the heap
+  Timer* timer5 = default_timer(5);
+  timer5->interval_ms = 10000000;
+  timer5->repeat_for = 10000000;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG5", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG5", 1)).Times(1);
+  _th->add_timer(timer5);
+
+  // Add a single timer that will end up in the heap
+  Timer* timer6 = default_timer(6);
+  timer6->interval_ms = 20000000;
+  timer6->repeat_for = 20000000;
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG6", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG6", 1)).Times(1);
+  _th->add_timer(timer6);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
   std::vector<std::string> cluster_addresses;
   cluster_addresses.push_back("10.0.0.1:9999");
   __globals->lock();
   __globals->set_cluster_staying_addresses(cluster_addresses);
-  __globals->set_cluster_view_id(updated_cluster_view_id);
   __globals->unlock();
 
-  // Update the timer in the store (by making it a tombstone)
-  Timer* timer2 = default_timer(1);
-  timer2->become_tombstone();
-  timer2->cluster_view_id = "updated-cluster-view-id";
-  EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
+  // There should be six timers - they should be ordered by the time to pop
+  // (3,2,1,5,6,4), not ordered by time they were added.
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
+
+  // We don't check the contents of the timers in this test - only check the
+  // timer IDs so we can be sure that the timers were returned in the right
+  // order
+  std::string exp_timer1 = "\\\{\"TimerID\":1,.*}";
+  std::string exp_timer2 = "\\\{\"TimerID\":2,.*}";
+  std::string exp_timer3 = "\\\{\"TimerID\":3,.*}";
+  std::string exp_timer4 = "\\\{\"TimerID\":4,.*}";
+  std::string exp_timer5 = "\\\{\"TimerID\":5,.*}";
+  std::string exp_timer6 = "\\\{\"TimerID\":6,.*}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[" + exp_timer3 + "," +
+                                                exp_timer2 + "," +
+                                                exp_timer1 + "," +
+                                                exp_timer5 + "," +
+                                                exp_timer6 + "," +
+                                                exp_timer4 +
+                         "]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the overdue timers honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromOverdueTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add a timer to the overdue timers. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  timer1->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
+  timer1->interval_ms = 0;
+  timer1->repeat_for = 0;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->start_time_mono_ms = (ts.tv_sec * 1000) - 2000;
+  timer2->interval_ms = 0;
+  timer2->repeat_for = 0;
   _th->add_timer(timer2);
 
-  // Now call get_timers_for_node. This returns the informational timer
-  // (so there's still a body)
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 - 1500, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the short wheel honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromShortWheelTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add a timer to the short wheel. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 0;
+  timer1->repeat_for = 0;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 10;
+  timer2->repeat_for = 10;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 5, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the long wheel honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromLongWheelTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add timers to the long wheel. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 200000;
+  timer2->repeat_for = 200000;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 150000, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
+  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
+  EXPECT_EQ(rc, 200);
+}
+
+// Test that getting timers from the heap honours the time-from
+TEST_F(TestTimerHandlerRealStore, TimeFromHeapTimers)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  // Add timers to the heap. We don't care about stats/tags in
+  // this test.
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
+  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
+
+  Timer* timer1 = default_timer(1);
+  timer1->interval_ms = 10000000;
+  timer1->repeat_for = 10000000;
+  _th->add_timer(timer1);
+
+  Timer* timer2 = default_timer(2);
+  timer2->interval_ms = 20000000;
+  timer2->repeat_for = 20000000;
+  _th->add_timer(timer2);
+
+  // Now update the current cluster nodes (to ensure that we're also picked
+  // as a replica in the tests
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->unlock();
+
+  // Check that only one timer is returned
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 15000000, get_response);
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
 }

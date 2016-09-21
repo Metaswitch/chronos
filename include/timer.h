@@ -123,12 +123,6 @@ public:
   // just popped
   void update_sites_on_timer_pop();
 
-  // Mark which replicas have been informed about the timer
-  int update_replica_tracker(int replica_index);
-
-  // Return whether a particular replica has been informed about a timer
-  bool has_replica_been_informed(int replica_index);
-
   // Update the cluster information stored in the timer (replica list and
   // cluster view ID)
   void update_cluster_information();
@@ -163,13 +157,6 @@ private:
 
   uint32_t _replication_factor;
 
-  // The replica tracker is used to track which replicas need to be informed
-  // if the replica is being moved off the current node (e.g. during scale
-  // down). Each bit corresponds to a replica in the timer's replica list,
-  // where the primary replica corresponds to the least significant bit,
-  // the second replica to the next least significant bit, and so on...
-  uint32_t _replica_tracker;
-
   // Class functions
 public:
   static TimerID generate_timer_id();
@@ -188,6 +175,12 @@ public:
                               bool& replicated,
                               bool& gr_replicated,
                               rapidjson::Value& doc);
+
+  // Sort timers by their pop time
+  static bool compare_timer_pop_times(Timer* t1, Timer* t2)
+  {
+    return (t1->next_pop_time() < t2->next_pop_time());
+  }
 };
 
 #endif
