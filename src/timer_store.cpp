@@ -73,7 +73,6 @@ TimerStore::TimerStore(HealthChecker* hc) :
 void TimerStore::clear()
 {
   _timer_lookup_id_table.clear();
-  _timer_view_id_table.clear();
 
   for (int ii = 0; ii < SHORT_WHEEL_NUM_BUCKETS; ++ii)
   {
@@ -148,9 +147,6 @@ void TimerStore::insert(Timer* timer)
     _extra_heap.insert(timer);
   }
 
-  // Add to the view specific mapping for easy retrieval on resync
-  _timer_view_id_table[timer->cluster_view_id].insert(timer->id);
-
   // Finally, add the timer to the lookup table.
   _timer_lookup_id_table[timer->id] = timer;
 
@@ -172,7 +168,6 @@ void TimerStore::fetch(TimerID id, Timer** timer)
 
     TRC_DEBUG("Removing timer from wheel");
     remove_timer_from_timer_wheel(*timer);
-    remove_timer_from_cluster_view_id(*timer);
     _timer_lookup_id_table.erase(id);
 
     TRC_DEBUG("Successfully found an existing timer");
@@ -188,7 +183,7 @@ void TimerStore::fetch_next_timers(std::unordered_set<Timer*>& set)
   // necessary rounding for us.
   uint32_t current_timestamp = timestamp_ms();
   uint32_t num_ticks = ((current_timestamp - _tick_timestamp) /
-                   SHORT_WHEEL_RESOLUTION_MS);
+                        SHORT_WHEEL_RESOLUTION_MS);
 
   for (int ii = 0; ii < (int)(num_ticks); ++ii)
   {
@@ -270,7 +265,6 @@ void TimerStore::pop_bucket(TimerStore::Bucket* bucket,
                                    ++it)
   {
     _timer_lookup_id_table.erase((*it)->id);
-    remove_timer_from_cluster_view_id(*it);
     set.insert(*it);
   }
   bucket->clear();
@@ -384,16 +378,6 @@ void TimerStore::remove_timer_from_timer_wheel(Timer* timer)
   }
 }
 
-void TimerStore::remove_timer_from_cluster_view_id(Timer* timer)
-{
-  // Remove from cluster structure
-  _timer_view_id_table[timer->cluster_view_id].erase(timer->id);
-  if (_timer_view_id_table[timer->cluster_view_id].empty())
-  {
-    _timer_view_id_table.erase(timer->cluster_view_id);
-  }
-}
-
 // Remove the timer from all the timer buckets.  This is a fallback that is only
 // used when we're deleting a timer that should be in the store, but that we
 // couldn't find in the buckets and the heap.  It's an expensive operation but
@@ -421,73 +405,318 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
 }
 // LCOV_EXCL_STOP
 
-TimerStore::TSIterator TimerStore::begin(std::string new_cluster_view_id)
-{
-  return TimerStore::TSIterator(this, new_cluster_view_id);
-}
-
-TimerStore::TSIterator TimerStore::end()
-{
-  return TimerStore::TSIterator(this);
-}
-
-TimerStore::TSIterator::TSIterator(TimerStore* ts, std::string cluster_view_id) :
+TimerStore::TSOrderedTimerIterator::TSOrderedTimerIterator(TimerStore* ts,
+                                                           uint32_t time_from) :
   _ts(ts),
-  _cluster_view_id(cluster_view_id)
-{
-  outer_iterator = _ts->_timer_view_id_table.begin();
-  inner_next();
-}
+  _time_from(time_from)
+{}
 
-TimerStore::TSIterator::TSIterator(TimerStore* ts) :
-  _ts(ts)
+void TimerStore::TSOrderedTimerIterator::iterate_through_ordered_timers()
 {
-  outer_iterator = _ts->_timer_view_id_table.end();
-}
+  std::sort(_ordered_timers.begin(),
+            _ordered_timers.end(),
+            Timer::compare_timer_pop_times);
 
-TimerStore::TSIterator& TimerStore::TSIterator::operator++()
-{
-  ++inner_iterator;
-  if (inner_iterator == outer_iterator->second.end())
+  _iterator = _ordered_timers.begin();
+
+  while (_iterator != _ordered_timers.end())
   {
-    ++outer_iterator;
-    inner_next();
+    if ((*_iterator)->next_pop_time() >= _time_from)
+    {
+      break;
+    }
+    else
+    {
+      ++_iterator;
+    }
+  }
+}
+
+TimerStore::TSOverdueIterator::TSOverdueIterator(TimerStore* ts,
+                                                 uint32_t time_from) :
+  TSOrderedTimerIterator(ts, time_from)
+{
+  _iterator = _ordered_timers.end();
+
+  if (Utils::overflow_less_than(_time_from, _ts->_tick_timestamp))
+  {
+    for (Timer* timer : _ts->_overdue_timers)
+    {
+      _ordered_timers.push_back(timer);
+    }
+
+    if (_ordered_timers.size() != 0)
+    {
+      iterate_through_ordered_timers();
+    }
+  }
+}
+
+TimerStore::TSOverdueIterator& TimerStore::TSOverdueIterator::operator++()
+{
+  ++_iterator;
+  return *this;
+}
+
+Timer* TimerStore::TSOverdueIterator::operator*()
+{
+  return *_iterator;
+}
+
+bool TimerStore::TSOverdueIterator::end() const
+{
+  return (_iterator == _ordered_timers.end());
+}
+
+TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
+                                                       uint32_t time_from) :
+  TSOrderedTimerIterator(ts, time_from)
+{
+  _bucket = 0;
+  _iterator = _ordered_timers.end();
+
+  if (Utils::overflow_less_than(to_short_wheel_resolution(time_from),
+                                to_short_wheel_resolution(
+                                   _ts->_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
+  {
+    _bucket = (time_from / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
+    next_bucket();
+  }
+  else
+  {
+    _bucket = SHORT_WHEEL_NUM_BUCKETS;
+  }
+}
+
+TimerStore::TSShortWheelIterator& TimerStore::TSShortWheelIterator::operator++()
+{
+  ++_iterator;
+  if (_iterator == _ordered_timers.end())
+  {
+    ++_bucket;
+    next_bucket();
   }
   return *this;
 }
 
-// While the same TimerID may exist under two different cluster view ID
-// indices, they will never exist under the same cluster index, so we are safe
-// to look for a TimerID a second time, as if it has been deleted, the
-// second cluster index will have removed its reference to that TimerID
+Timer* TimerStore::TSShortWheelIterator::operator*()
+{
+  return *_iterator;
+}
+
+bool TimerStore::TSShortWheelIterator::end() const
+{
+  return ((_iterator == _ordered_timers.end()) &&
+          (_bucket == SHORT_WHEEL_NUM_BUCKETS));
+}
+
+void TimerStore::TSShortWheelIterator::next_bucket()
+{
+  _ordered_timers.clear();
+  _iterator = _ordered_timers.end();
+
+  while ((_bucket < SHORT_WHEEL_NUM_BUCKETS) &&
+         (_ordered_timers.size() == 0))
+  {
+    for (Timer* timer : _ts->_short_wheel[_bucket])
+    {
+      _ordered_timers.push_back(timer);
+    }
+
+    if (_ordered_timers.size() != 0)
+    {
+      iterate_through_ordered_timers();
+
+      // LCOV_EXCL_START
+      if (_iterator == _ordered_timers.end())
+      {
+        _ordered_timers.clear();
+        ++_bucket;
+      }
+      // LCOV_EXCL_STOP
+    }
+    else
+    {
+      ++_bucket;
+    }
+  }
+}
+
+TimerStore::TSLongWheelIterator::TSLongWheelIterator(TimerStore* ts,
+                                                     uint32_t time_from) :
+  TSOrderedTimerIterator(ts, time_from)
+{
+  _bucket = 0;
+  _iterator = _ordered_timers.end();
+
+  if (Utils::overflow_less_than(to_long_wheel_resolution(time_from),
+                                to_long_wheel_resolution(
+                                   _ts->_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
+  {
+    _bucket = (time_from / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
+    next_bucket();
+  }
+  else
+  {
+    _bucket = LONG_WHEEL_NUM_BUCKETS;
+  }
+}
+
+TimerStore::TSLongWheelIterator& TimerStore::TSLongWheelIterator::operator++()
+{
+  ++_iterator;
+  if (_iterator == _ordered_timers.end())
+  {
+    ++_bucket;
+    next_bucket();
+  }
+  return *this;
+}
+
+Timer* TimerStore::TSLongWheelIterator::operator*()
+{
+  return *_iterator;
+}
+
+bool TimerStore::TSLongWheelIterator::end() const
+{
+  return ((_iterator == _ordered_timers.end()) &&
+          (_bucket == LONG_WHEEL_NUM_BUCKETS));
+}
+
+void TimerStore::TSLongWheelIterator::next_bucket()
+{
+  _ordered_timers.clear();
+  _iterator = _ordered_timers.end();
+
+  while ((_bucket < LONG_WHEEL_NUM_BUCKETS) &&
+         (_ordered_timers.size() == 0))
+  {
+    for (Timer* timer : _ts->_long_wheel[_bucket])
+    {
+      _ordered_timers.push_back(timer);
+    }
+
+    if (_ordered_timers.size() != 0)
+    {
+      iterate_through_ordered_timers();
+
+      // LCOV_EXCL_START
+      if (_iterator == _ordered_timers.end())
+      {
+        _ordered_timers.clear();
+        ++_bucket;
+      }
+      // LCOV_EXCL_STOP
+    }
+    else
+    {
+      ++_bucket;
+    }
+  }
+}
+
+TimerStore::TSHeapIterator::TSHeapIterator(TimerStore* ts,
+                                           uint32_t time_from) :
+  _ts(ts),
+  _time_from(time_from),
+  _iterator(_ts->_extra_heap.ordered_begin())
+{
+  while (!this->end())
+  {
+    if (static_cast<Timer*>(*_iterator)->next_pop_time() >= time_from)
+    {
+      break;
+    }
+    else
+    {
+      ++_iterator;
+    }
+  }
+}
+
+TimerStore::TSHeapIterator& TimerStore::TSHeapIterator::operator++()
+{
+  ++_iterator;
+  return *this;
+}
+
+Timer* TimerStore::TSHeapIterator::operator*()
+{
+  return static_cast<Timer*>(*_iterator);
+}
+
+bool TimerStore::TSHeapIterator::end() const
+{
+  return (_iterator == _ts->_extra_heap.ordered_end());
+}
+
+TimerStore::TSIterator::TSIterator(TimerStore* ts,
+                                   uint32_t time_from) :
+  _ts(ts),
+  _time_from(time_from),
+  _overdue_it(ts, time_from),
+  _short_wheel_it(ts, time_from),
+  _long_wheel_it(ts, time_from),
+  _heap_it(ts, time_from)
+{
+}
+
+TimerStore::TSIterator& TimerStore::TSIterator::operator++()
+{
+  next_iterator();
+  return *this;
+}
+
 Timer* TimerStore::TSIterator::operator*()
 {
-  std::map<TimerID, Timer*>::iterator it = _ts->_timer_lookup_id_table.find(*inner_iterator);
-  return it->second;
-}
-
-bool TimerStore::TSIterator::operator==(const TimerStore::TSIterator& other) const
-{
-  return (this->outer_iterator == other.outer_iterator &&
-    (other.outer_iterator == _ts->_timer_view_id_table.end() ||
-     this->inner_iterator == other.inner_iterator));
-}
-
-bool TimerStore::TSIterator::operator!=(const TimerStore::TSIterator& other) const
-{
-  return !(*this == other);
-}
-
-void TimerStore::TSIterator::inner_next()
-{
-  while (outer_iterator != _ts->_timer_view_id_table.end() &&
-         outer_iterator->first == _cluster_view_id)
+  if (!_overdue_it.end())
   {
-    ++outer_iterator;
+    return (Timer*)(*_overdue_it);
   }
-
-  if (outer_iterator != _ts->_timer_view_id_table.end())
+  else if (!_short_wheel_it.end())
   {
-    inner_iterator = outer_iterator->second.begin();
+    return (Timer*)(*_short_wheel_it);
   }
+  else if (!_long_wheel_it.end())
+  {
+    return (Timer*)(*_long_wheel_it);
+  }
+  else
+  {
+    return (Timer*)(*_heap_it);
+  }
+}
+
+bool TimerStore::TSIterator::end() const
+{
+  return ((_overdue_it.end()) &&
+          (_short_wheel_it.end()) &&
+          (_long_wheel_it.end()) &&
+          (_heap_it.end()));
+}
+
+void TimerStore::TSIterator::next_iterator()
+{
+  if (!_overdue_it.end())
+  {
+    ++_overdue_it;
+  }
+  else if (!_short_wheel_it.end())
+  {
+    ++_short_wheel_it;
+  }
+  else if (!_long_wheel_it.end())
+  {
+    ++_long_wheel_it;
+  }
+  else if (!_heap_it.end())
+  {
+    ++_heap_it;
+  }
+}
+
+TimerStore::TSIterator TimerStore::begin(uint32_t time_from)
+{
+  return TimerStore::TSIterator(this, time_from);
 }

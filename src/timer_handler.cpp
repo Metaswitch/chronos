@@ -309,7 +309,7 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            int max_responses,
                                            std::string cluster_view_id,
-                                           uint64_t time_from,
+                                           uint32_t time_from,
                                            std::string& get_response)
 {
   // We pass in the time_from parameter from the handlers. We will use this
@@ -330,28 +330,16 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
 
   int retrieved_timers = 0;
 
-  for (TimerStore::TSIterator it = _store->begin(cluster_view_id);
-       it != _store->end();
+  for (TimerStore::TSIterator it = _store->begin(time_from);
+       !(it.end());
        ++it)
   {
-    Timer* timer_copy = NULL;
-
-    if (!(*it)->is_matching_cluster_view_id(cluster_view_id))
-    {
-      timer_copy = new Timer(**it);
-    }
-    else
-    {
-      // LCOV_EXCL_START - Logic error to end up here
-      continue;
-      // LCOV_EXCL_STOP
-    }
+    Timer* timer_copy = new Timer(**it);
 
     if (!timer_copy->is_tombstone())
     {
       std::vector<std::string> old_replicas;
       if (timer_is_on_node(request_node,
-                           cluster_view_id,
                            timer_copy,
                            old_replicas))
       {
@@ -380,9 +368,8 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
           timer_copy->to_json_obj(&writer);
         }
         writer.EndObject();
+        retrieved_timers++;
       }
-
-      retrieved_timers++;
     }
 
     // Tidy up the copy
@@ -407,33 +394,29 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
-                                    std::string cluster_view_id,
                                     Timer* timer,
                                     std::vector<std::string>& old_replicas)
 {
   bool timer_is_on_requesting_node = false;
 
-  if (!timer->is_matching_cluster_view_id(cluster_view_id))
+  // Store the old replica list
+  std::string localhost;
+  __globals->get_cluster_local_ip(localhost);
+  old_replicas = timer->replicas;
+
+  // Calculate whether the new request node is interested in the timer. This
+  // updates the replica list in the timer object to be the new replica list
+  timer->update_cluster_information();
+
+  int index = 0;
+  for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                          it != timer->replicas.end();
+                                          ++it, ++index)
   {
-    // Store the old replica list
-    std::string localhost;
-    __globals->get_cluster_local_ip(localhost);
-    old_replicas = timer->replicas;
-
-    // Calculate whether the new request node is interested in the timer. This
-    // updates the replica list in the timer object to be the new replica list
-    timer->update_cluster_information();
-
-    int index = 0;
-    for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                            it != timer->replicas.end();
-                                            ++it, ++index)
+    if (*it == request_node)
     {
-      if (*it == request_node)
-      {
-        timer_is_on_requesting_node = true;
-        break;
-      }
+      timer_is_on_requesting_node = true;
+      break;
     }
   }
 

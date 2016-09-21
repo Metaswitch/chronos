@@ -239,7 +239,7 @@ void ControllerTask::handle_get()
   TRC_DEBUG("Range value is %d", max_timers_to_get);
 
   std::string time_from_str = _req.param(PARAM_TIME_FROM);
-  uint64_t time_from = atoi(time_from_str.c_str());
+  uint32_t time_from = atoi(time_from_str.c_str());
   TRC_DEBUG("Time-from value is %d", time_from);
 
   std::string get_response;
