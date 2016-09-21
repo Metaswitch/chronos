@@ -405,14 +405,40 @@ void TimerStore::purge_timer_from_wheels(Timer* t)
 }
 // LCOV_EXCL_STOP
 
-TimerStore::TSOverdueIterator::TSOverdueIterator(TimerStore* ts,
-                                                 uint32_t time_from) :
+TimerStore::TSOrderedTimerIterator::TSOrderedTimerIterator(TimerStore* ts,
+                                                           uint32_t time_from) :
   _ts(ts),
   _time_from(time_from)
+{}
+
+void TimerStore::TSOrderedTimerIterator::iterate_through_ordered_timers()
+{
+  std::sort(_ordered_timers.begin(),
+            _ordered_timers.end(),
+            Timer::compare_timer_pop_times);
+
+  _iterator = _ordered_timers.begin();
+
+  while (_iterator != _ordered_timers.end())
+  {
+    if ((*_iterator)->next_pop_time() >= _time_from)
+    {
+      break;
+    }
+    else
+    {
+      ++_iterator;
+    }
+  }
+}
+
+TimerStore::TSOverdueIterator::TSOverdueIterator(TimerStore* ts,
+                                                 uint32_t time_from) :
+  TSOrderedTimerIterator(ts, time_from)
 {
   _iterator = _ordered_timers.end();
 
-  if (Utils::overflow_less_than(time_from, _ts->_tick_timestamp))
+  if (Utils::overflow_less_than(_time_from, _ts->_tick_timestamp))
   {
     for (Timer* timer : _ts->_overdue_timers)
     {
@@ -421,22 +447,7 @@ TimerStore::TSOverdueIterator::TSOverdueIterator(TimerStore* ts,
 
     if (_ordered_timers.size() != 0)
     {
-      std::sort(_ordered_timers.begin(),
-                _ordered_timers.end(),
-                Timer::compare_timer_pop_times);
-      _iterator = _ordered_timers.begin();
-
-      while (_iterator != _ordered_timers.end())
-      {
-        if ((*_iterator)->next_pop_time() >= time_from)
-        {
-          break;
-        }
-        else
-        {
-          ++_iterator;
-        }
-      }
+      iterate_through_ordered_timers();
     }
   }
 }
@@ -459,8 +470,7 @@ bool TimerStore::TSOverdueIterator::end() const
 
 TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
                                                        uint32_t time_from) :
-  _ts(ts),
-  _time_from(time_from)
+  TSOrderedTimerIterator(ts, time_from)
 {
   _bucket = 0;
   _iterator = _ordered_timers.end();
@@ -515,28 +525,15 @@ void TimerStore::TSShortWheelIterator::next_bucket()
 
     if (_ordered_timers.size() != 0)
     {
-      std::sort(_ordered_timers.begin(),
-                _ordered_timers.end(),
-                Timer::compare_timer_pop_times);
+      iterate_through_ordered_timers();
 
-      _iterator = _ordered_timers.begin();
-
-      while (_iterator != _ordered_timers.end())
-      {
-        if ((*_iterator)->next_pop_time() >= _time_from)
-        {
-          break;
-        }
-        else
-        {
-          ++_iterator;
-        }
-      }
-
+      // LCOV_EXCL_START
       if (_iterator == _ordered_timers.end())
       {
         _ordered_timers.clear();
+        ++_bucket;
       }
+      // LCOV_EXCL_STOP
     }
     else
     {
@@ -547,8 +544,7 @@ void TimerStore::TSShortWheelIterator::next_bucket()
 
 TimerStore::TSLongWheelIterator::TSLongWheelIterator(TimerStore* ts,
                                                      uint32_t time_from) :
-  _ts(ts),
-  _time_from(time_from)
+  TSOrderedTimerIterator(ts, time_from)
 {
   _bucket = 0;
   _iterator = _ordered_timers.end();
@@ -603,28 +599,15 @@ void TimerStore::TSLongWheelIterator::next_bucket()
 
     if (_ordered_timers.size() != 0)
     {
-      std::sort(_ordered_timers.begin(),
-                _ordered_timers.end(),
-                Timer::compare_timer_pop_times);
+      iterate_through_ordered_timers();
 
-      _iterator = _ordered_timers.begin();
-
-      while (_iterator != _ordered_timers.end())
-      {
-        if ((*_iterator)->next_pop_time() >= _time_from)
-        {
-          break;
-        }
-        else
-        {
-          ++_iterator;
-        }
-      }
-
+      // LCOV_EXCL_START
       if (_iterator == _ordered_timers.end())
       {
         _ordered_timers.clear();
+        ++_bucket;
       }
+      // LCOV_EXCL_STOP
     }
     else
     {

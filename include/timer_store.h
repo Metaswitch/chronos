@@ -103,22 +103,29 @@ public:
   static const int SHORT_WHEEL_RESOLUTION_MS = 256;
 #endif
 
-  class TSOverdueIterator
+  class TSOrderedTimerIterator
   {
-  public:
-    TSOverdueIterator(TimerStore* ts, uint32_t time_from);
-    TSOverdueIterator& operator++();
-    Timer* operator*();
-    bool end() const;
+  protected:
+    TSOrderedTimerIterator(TimerStore* ts, uint32_t time_from);
 
-  private:
+    void iterate_through_ordered_timers();
+
     std::vector<Timer*> _ordered_timers;
     std::vector<Timer*>::iterator _iterator;
     TimerStore* _ts;
     uint32_t _time_from;
   };
 
-  class TSShortWheelIterator
+  class TSOverdueIterator : public TSOrderedTimerIterator
+  {
+  public:
+    TSOverdueIterator(TimerStore* ts, uint32_t time_from);
+    TSOverdueIterator& operator++();
+    Timer* operator*();
+    bool end() const;
+  };
+
+  class TSShortWheelIterator : public TSOrderedTimerIterator
   {
   public:
     TSShortWheelIterator(TimerStore* ts, uint32_t time_from);
@@ -128,15 +135,10 @@ public:
 
   private:
     int _bucket;
-    std::vector<Timer*> _ordered_timers;
-    std::vector<Timer*>::iterator _iterator;
-    TimerStore* _ts;
-    uint32_t _time_from;
-
     void next_bucket();
   };
 
-  class TSLongWheelIterator
+  class TSLongWheelIterator : public TSOrderedTimerIterator
    {
    public:
     TSLongWheelIterator(TimerStore* ts, uint32_t time_from);
@@ -146,11 +148,6 @@ public:
 
   private:
     int _bucket;
-    std::vector<Timer*> _ordered_timers;
-    std::vector<Timer*>::iterator _iterator;
-    TimerStore* _ts;
-    uint32_t _time_from;
-
     void next_bucket();
   };
 
