@@ -30,7 +30,7 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   dnscachedresolver.cpp \
                   dnsparser.cpp \
                   zmq_lvc.cpp \
-                  httpresolver.cpp \
+                  a_record_resolver.cpp \
                   counter.cpp \
                   snmp_scalar.cpp \
                   snmp_agent.cpp \
