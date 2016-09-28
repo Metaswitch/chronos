@@ -180,7 +180,7 @@ TEST_F(TestChronosInternalConnection, RepeatedTimers)
 {
   // Get the current time (time is controlled in this test so we know it won't
   // move on unless we tell it).
-  uint64_t current_time = Utils::get_time();
+  uint32_t current_time = Utils::get_time();
 
   // The first request has the time-from set to 0. Respond with a single timer
   // that has a delta of -235ms, and an interval of 100ms. Set the response
