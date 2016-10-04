@@ -190,6 +190,7 @@ int main(int argc, char** argv)
   options.config_file = "/etc/chronos/chronos.conf";
   options.cluster_config_file = "/etc/chronos/chronos_cluster.conf";
   options.pidfile = "";
+  options.daemon = false;
 
   if (init_options(argc, argv, options) != 0)
   {
