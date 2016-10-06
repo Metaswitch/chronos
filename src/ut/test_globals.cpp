@@ -205,10 +205,11 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 
   // Site C will be stripped as it doesn't have an address, so we only expect
   // to see two entries. Site mysite will be stripped as it's the same as the
-  // local site.
+  // local site. Site b with have the bind port added to its URI as there's no
+  // existing port.
   EXPECT_EQ(remote_sites.size(), 2);
   EXPECT_EQ(remote_sites["a"], "foo.com:800");
-  EXPECT_EQ(remote_sites["b"], "bar.com");
+  EXPECT_EQ(remote_sites["b"], "bar.com:7254");
   EXPECT_EQ(remote_site_names.size(), 2);
   std::vector<std::string> expected_remote_site_names;
   expected_remote_site_names.push_back("a");
@@ -217,7 +218,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   EXPECT_EQ(remote_site_dns_records.size(), 2);
   std::vector<std::string> expected_remote_site_dns_records;
   expected_remote_site_dns_records.push_back("foo.com:800");
-  expected_remote_site_dns_records.push_back("bar.com");
+  expected_remote_site_dns_records.push_back("bar.com:7254");
   EXPECT_THAT(expected_remote_site_dns_records, UnorderedElementsAreArray(remote_site_dns_records));
 
   delete test_global; test_global = NULL;

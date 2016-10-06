@@ -294,10 +294,13 @@ void Globals::update_config()
     }
     else
     {
-      TRC_STATUS("Configured remote site: %s", it->c_str());
-      remote_sites[site_details[0]] = site_details[1];
+      std::string remote_uri = Utils::uri_address(site_details[1], bind_port);
+      TRC_STATUS("Configured remote site: %s=%s",
+                 site_details[0].c_str(),
+                 remote_uri.c_str());
+      remote_sites[site_details[0]] = remote_uri;
       remote_site_names.push_back(site_details[0]);
-      remote_site_dns_records.push_back(site_details[1]);
+      remote_site_dns_records.push_back(remote_uri);
     }
   }
 
