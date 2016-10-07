@@ -97,7 +97,7 @@ do_run()
   install -m 755 -o $NAME -g root -d /var/run/$NAME && chown -R $NAME /var/run/$NAME
 
   setup_environment
-  $start_prefix start-stop-daemon --start --quiet --exec $DAEMON --chuid $NAME || return 2
+  $start_prefix start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid $NAME -- --pidfile=$PIDFILE || return 2
 }
 
 do_reload()

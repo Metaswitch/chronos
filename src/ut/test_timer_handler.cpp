@@ -1044,6 +1044,7 @@ protected:
                            _mock_increment_table,
                            _mock_tag_table,
                            _mock_scalar_table);
+    _cond()->block_till_waiting();
   }
 
   void TearDown()
