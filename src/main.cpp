@@ -348,12 +348,16 @@ int main(int argc, char** argv)
                                               min_token_rate);
 
   // Finally, set up the HTTPStack and handlers
-  HttpStack* http_stack = HttpStack::get_instance();
   int bind_port;
   int http_threads;
   __globals->get_bind_port(bind_port);
   __globals->get_threads(http_threads);
 
+  HttpStack* http_stack = new HttpStack(http_threads,
+                                        exception_handler,
+                                        NULL,
+                                        load_monitor,
+                                        NULL);
   HttpStackUtils::PingHandler ping_handler;
   ControllerTask::Config controller_config(controller_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
@@ -362,7 +366,7 @@ int main(int argc, char** argv)
   try
   {
     http_stack->initialize();
-    http_stack->configure(bind_address, bind_port, http_threads, exception_handler, NULL, load_monitor, NULL);
+    http_stack->bind_tcp_socket(bind_address, bind_port);
     http_stack->register_handler((char*)"^/ping$", &ping_handler);
     http_stack->register_handler((char*)"^/timers", &controller_handler);
     http_stack->start();
@@ -412,6 +416,7 @@ int main(int argc, char** argv)
   // Delete Chronos's alarm object
   delete scale_operation_alarm;
   delete alarm_manager;
+  delete http_stack; http_stack = NULL;
 
   sem_destroy(&term_sem);
 
