@@ -73,6 +73,7 @@ struct options
   std::string gr_config_file;
   std::string pidfile;
   bool daemon;
+  std::string dns_config_file;
 };
 
 // Enum for option types not assigned short-forms
@@ -83,7 +84,8 @@ enum OptionTypes
   GR_CONFIG_FILE,
   PIDFILE,
   DAEMON,
-  HELP
+  HELP,
+  DNS_CONFIG_FILE
 };
 
 const static struct option long_opt[] =
@@ -94,6 +96,7 @@ const static struct option long_opt[] =
   {"pidfile", required_argument, NULL, PIDFILE},
   {"daemon", no_argument, NULL, DAEMON},
   {"help", no_argument, NULL, HELP},
+  {"dns-config-file", required_argument, NULL, DNS_CONFIG_FILE},
   {NULL, 0, NULL, 0},
 };
 
@@ -106,6 +109,7 @@ void usage(void)
        " --gr-config-file <filename>      Specify the GR configuration file\n"
        " --pidfile <filename>             Specify the pidfile\n"
        " --daemon                         Run in the background as a daemon\n"
+       " --dns-config-file <filename>     Specify the dns config file\n"
        " --help                           Show this help screen\n");
 }
 
@@ -136,6 +140,10 @@ int init_options(int argc, char**argv, struct options& options)
 
     case DAEMON:
       options.daemon = true;
+      break;
+
+    case DNS_CONFIG_FILE:
+      options.dns_config_file = std::string(optarg);
       break;
 
     case HELP:
@@ -201,6 +209,7 @@ int main(int argc, char** argv)
   options.gr_config_file = "/etc/chronos/chronos_gr.conf";
   options.pidfile = "";
   options.daemon = false;
+  options.dns_config_file = "/etc/clearwater/dns_config";
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -307,7 +316,8 @@ int main(int argc, char** argv)
   std::vector<std::string> dns_servers;
   __globals->get_dns_servers(dns_servers);
 
-  DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers);
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
+                                                          options.dns_config_file);
 
   int af = AF_INET;
   struct in6_addr dummy_addr;
