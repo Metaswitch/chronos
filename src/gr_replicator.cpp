@@ -112,7 +112,7 @@ void GRReplicator::replicate(Timer* timer)
 
 void GRReplicator::worker_thread_entry_point()
 {
-  GRReplicationRequest* replication_request;
+  GRReplicationRequest* replication_request = NULL;
 
   while(_q.pop(replication_request))
   {

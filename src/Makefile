@@ -81,7 +81,7 @@ COMMON_CPPFLAGS := -I../include \
 chronos_CPPFLAGS := ${COMMON_CPPFLAGS}
 chronos_test_CPPFLAGS := ${COMMON_CPPFLAGS} -I../modules/cpp-common/test_utils -Iut -DGTEST_USE_OWN_TR1_TUPLE=0
 
-COMMON_LDFLAGS := -L../usr/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -levhtp -levent_pthreads -lcares $(shell net-snmp-config --netsnmp-agent-libs)
+COMMON_LDFLAGS := -L../usr/lib -lrt -lpthread -lcurl -levent -lboost_program_options -lboost_regex -lzmq -lc -lboost_filesystem -lboost_system -lboost_thread -levhtp -levent_pthreads -lcares $(shell net-snmp-config --netsnmp-agent-libs)
 
 # Only use the real SAS library in the production build.
 chronos_LDFLAGS := ${COMMON_LDFLAGS} -lsas -lz

@@ -60,6 +60,7 @@
 #include "snmp_counter_table.h"
 #include "snmp_scalar.h"
 #include "snmp_agent.h"
+#include "updater.h"
 
 #include <iostream>
 #include <cassert>
@@ -319,6 +320,15 @@ int main(int argc, char** argv)
   DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
                                                           options.dns_config_file);
 
+
+  // Create an Updater that listens for SIGUSR2 and, in response, reloads the
+  // static DNS records
+  Updater<void, DnsCachedResolver>* dns_updater =
+    new Updater<void, DnsCachedResolver>(dns_resolver,
+                                         std::mem_fun(&DnsCachedResolver::reload_static_records),
+                                         &_sigusr2_handler,
+                                         false);
+
   int af = AF_INET;
   struct in6_addr dummy_addr;
   std::string bind_address;
@@ -430,6 +440,7 @@ int main(int argc, char** argv)
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
   delete http_resolver; http_resolver = NULL;
+  delete dns_updater; dns_updater = NULL;
   delete dns_resolver; dns_resolver = NULL;
 
   delete scalar_timers_table; scalar_timers_table = NULL;
