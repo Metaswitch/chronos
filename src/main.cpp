@@ -327,7 +327,7 @@ int main(int argc, char** argv)
     new Updater<void, DnsCachedResolver>(dns_resolver,
                                          std::mem_fun(&DnsCachedResolver::reload_static_records),
                                          &_sigusr2_handler,
-                                         false);
+                                         true);
 
   int af = AF_INET;
   struct in6_addr dummy_addr;
