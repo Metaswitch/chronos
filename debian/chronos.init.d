@@ -106,6 +106,13 @@ do_reload()
   return 0
 }
 
+do_reload_dns()
+{
+  # Send a SIGUSR2 (12)
+  start-stop-daemon --stop --signal 12 --quiet --pidfile $PIDFILE --name $EXECNAME
+  return 0
+}
+
 #
 # Function that aborts chronos
 #
@@ -189,6 +196,9 @@ case "$1" in
   reload|force-reload)
         do_reload
         ;;
+  reload-dns)
+        do_reload_dns
+        ;;
   resync)
         do_resync_operation
         ;;
@@ -223,7 +233,7 @@ case "$1" in
         esac
         ;;
   *)
-        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload|resync|wait-sync}" >&2
+        echo "Usage: $SCRIPTNAME {start|stop|run|status|restart|force-reload|reload-dns|resync|wait-sync}" >&2
         exit 3
         ;;
 esac
