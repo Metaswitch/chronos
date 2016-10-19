@@ -437,7 +437,7 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
                                            int max_responses,
                                            std::string cluster_view_id,
-                                           uint64_t time_from,
+                                           uint32_t time_from,
                                            std::string& get_response)
 {
   // We pass in the time_from parameter from the handlers. We will use this

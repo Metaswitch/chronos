@@ -44,6 +44,7 @@
 #include "mock_timer_handler.h"
 #include "globals.h"
 #include "fakesnmp.hpp"
+#include "test_interposer.hpp"
 
 using namespace std;
 using ::testing::_;
@@ -71,6 +72,8 @@ protected:
   {
     Base::SetUp();
 
+    cwtest_completely_control_time();
+
     _fake_counter_table = SNMP::CounterTable::create("","");
     _resolver = new FakeHttpResolver("10.42.42.42");
     _replicator = new MockReplicator();
@@ -95,6 +98,8 @@ protected:
     delete _replicator;
     delete _resolver;
     delete _fake_counter_table;
+
+    cwtest_reset_time();
 
     Base::TearDown();
   }
@@ -168,6 +173,37 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
   _cluster_addresses.pop_back();
   leaving_cluster_addresses.clear();
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
+
+  delete added_timer; added_timer = NULL;
+}
+
+// Test that multiple requests are sent when the response indicates there are
+// more timers available. This also checks the time-from parameter.
+TEST_F(TestChronosInternalConnection, RepeatedTimers)
+{
+  // Get the current time (time is controlled in this test so we know it won't
+  // move on unless we tell it).
+  uint32_t current_time = Utils::get_time();
+
+  // The first request has the time-from set to 0. Respond with a single timer
+  // that has a delta of -235ms, and an interval of 100ms. Set the response
+  // code to 206 so that we'll make another request
+  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=0"] = Response(HTTP_PARTIAL_CONTENT, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {\"timing\": { \"start-time-delta\": -235, \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\" ] }}}]}");
+
+  // The time-from in the second request should be based on the time of the
+  // timer we received before. Use an empty body as we don't care about any
+  // other timers in this test
+  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=" + std::to_string(current_time - 235 + 100000)] = Response(HTTP_OK, "{\"Timers\":[]}");
+  fakecurl_responses["http://10.42.42.42:9999/timers/references"] = HTTP_ACCEPTED;
+
+  // Save off the added timer so we can delete it (the add_timer call normally
+  // deletes the timer but it's mocked out)
+  Timer* added_timer;
+
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(_, _));
+  HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
+  EXPECT_EQ(status, 200);
 
   delete added_timer; added_timer = NULL;
 }
