@@ -205,7 +205,6 @@ TEST_F(TestChronosInternalConnection, RepeatedTimers)
   delete added_timer; added_timer = NULL;
 }
 
-
 TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
 {
   std::vector<std::string> leaving_cluster_addresses;
