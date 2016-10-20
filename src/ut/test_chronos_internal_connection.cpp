@@ -183,10 +183,6 @@ TEST_F(TestChronosInternalConnection, SendTriggerOneTimerWithTombstoneAndLeaving
 // more timers available. This also checks the time-from parameter.
 TEST_F(TestChronosInternalConnection, RepeatedTimers)
 {
-  // Get the current time (time is controlled in this test so we know it won't
-  // move on unless we tell it).
-  uint32_t current_time = Utils::get_time();
-
   // The first request has the time-from set to 0. Respond with a single timer
   // that has a delta of -235ms, and an interval of 100ms. Set the response
   // code to 206 so that we'll make another request
@@ -195,7 +191,7 @@ TEST_F(TestChronosInternalConnection, RepeatedTimers)
   // The time-from in the second request should be based on the time of the
   // timer we received before. Use an empty body as we don't care about any
   // other timers in this test
-  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=" + std::to_string(current_time - 235 + 100000)] = Response(HTTP_OK, "{\"Timers\":[]}");
+  fakecurl_responses["http://10.42.42.42:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=" + std::to_string(100000 - 235)] = Response(HTTP_OK, "{\"Timers\":[]}");
   fakecurl_responses["http://10.42.42.42:9999/timers/references"] = HTTP_ACCEPTED;
 
   // Save off the added timer so we can delete it (the add_timer call normally

@@ -188,6 +188,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
   std::string cluster_view_id;
   __globals->get_cluster_view_id(cluster_view_id);
 
+  uint32_t current_time = Utils::get_time();
   uint32_t time_from = 0;
   bool use_time_from_param = false;
   std::string response;
@@ -287,7 +288,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             }
 
             // Update our view of the newest timer we've processed
-            time_from = timer->next_pop_time();
+            time_from = timer->next_pop_time() - current_time;
 
             // Decide what we're going to do with this timer.
             int old_level = 0;
