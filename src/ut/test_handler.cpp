@@ -59,6 +59,8 @@ protected:
   {
     Base::SetUp();
 
+    cwtest_completely_control_time();
+
     _replicator = new MockReplicator();
     _th = new MockTimerHandler();
     _httpstack = new MockHttpStack();
@@ -72,6 +74,8 @@ protected:
     delete _httpstack;
     delete _th;
     delete _replicator;
+
+    cwtest_reset_time();
 
     Base::TearDown();
   }
@@ -242,8 +246,12 @@ TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
 // lead to the store being queried with a 0 time-from value
 TEST_F(TestHandler, ValidTimerGetNoTimeFromParameter)
 {
+  // Get the current time (time is controlled in this test so we know it won't
+  // move on unless we tell it).
+  uint32_t current_time = Utils::get_time();
+
   controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, 0, _)).WillOnce(Return(200));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 }

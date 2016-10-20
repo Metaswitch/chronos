@@ -95,11 +95,15 @@ private:
   virtual HTTPCode send_delete(const std::string& server,
                                const std::string& body);
 
+  // Creates the path to send a request to
+  std::string create_path(const std::string& node_for_replicas_param,
+                          std::string cluster_view_id_param,
+                          uint32_t time_from_param,
+                          bool& use_time_from_param);
+
   // Sends a get request
   virtual HTTPCode send_get(const std::string& server,
-                            const std::string& requesting_node,
-                            std::string cluster_view_id,
-                            uint32_t time_from,
+                            const std::string& path,
                             int max_timers,
                             std::string& response);
 
