@@ -60,7 +60,7 @@ The geographic redundancy configuration file has the following format:
 
 To update the geographic redundancy configuration, make the desired changes in `/etc/chronos/chronos_gr.conf` and restart the Chronos service (e.g. run `service chronos stop` and allow monit to restart Chronos).
 
-In addition, when setting up a geographically redundant Chronos deployment, you should set up local DNS config so that Chronos callbacks can be redirected to a server running in the local site. Details of how to do so are [here](http://clearwater.readthedocs.io/en/latest/Modifying_Clearwater_settings.html#modifying-dns-config)
+In addition, when setting up a geographically redundant Chronos deployment, you should set up local DNS config so that Chronos callbacks can be redirected to a server running in the local site. Details of how to do so are [here](http://clearwater.readthedocs.io/en/stable/Modifying_Clearwater_settings.html#modifying-dns-config)
 
 ### Migration
 
