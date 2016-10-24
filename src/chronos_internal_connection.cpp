@@ -207,6 +207,8 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
                   MAX_TIMERS_IN_RESPONSE,
                   response);
 
+    use_time_from_param = true;
+
     if ((rc == HTTP_PARTIAL_CONTENT) ||
         (rc == HTTP_OK))
     {
@@ -481,7 +483,7 @@ std::string ChronosInternalConnection::create_path(
                                      const std::string& node_for_replicas_param,
                                      std::string cluster_view_id_param,
                                      uint32_t time_from_param,
-                                     bool& use_time_from_param)
+                                     bool use_time_from_param)
 {
   std::string path = std::string("/timers?") +
                      PARAM_NODE_FOR_REPLICAS + "="  + node_for_replicas_param + ";" +
@@ -490,14 +492,8 @@ std::string ChronosInternalConnection::create_path(
 
   if (use_time_from_param)
   {
-    path.append(";")
-        .append(PARAM_TIME_FROM)
-        .append("=")
-        .append(std::to_string(time_from_param));
-  }
-  else
-  {
-    use_time_from_param = true;
+    path += std::string(";") +
+            PARAM_TIME_FROM + "=" + std::to_string(time_from_param);
   }
 
   return path;

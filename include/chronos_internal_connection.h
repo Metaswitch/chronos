@@ -99,7 +99,7 @@ private:
   std::string create_path(const std::string& node_for_replicas_param,
                           std::string cluster_view_id_param,
                           uint32_t time_from_param,
-                          bool& use_time_from_param);
+                          bool use_time_from_param);
 
   // Sends a get request
   virtual HTTPCode send_get(const std::string& server,
