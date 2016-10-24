@@ -1080,6 +1080,8 @@ protected:
 // Test that getting timers for a node returns the set of timers
 TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
 {
+  uint32_t current_time = Utils::get_time();
+
   // Add a single timer to the store
   Timer* timer1 = default_timer(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
@@ -1098,7 +1100,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
 
   // There should be one returned timer. We check this by matching the JSON
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, updated_cluster_view_id, current_time, get_response);
  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback1\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG1\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
@@ -1108,6 +1110,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
 // that trying to get the timers returns an empty list
 TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
 {
+  uint32_t current_time = Utils::get_time();
+
   // Add a single timer to the store
   Timer* timer1 = default_timer(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
@@ -1127,7 +1131,7 @@ TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
   // Now just call get_timers_for_node (as if someone had done a resync without
   // changing the cluster configuration). No timers should be returned
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.4:9999", 2, updated_cluster_view_id, 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.4:9999", 2, updated_cluster_view_id, current_time, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
@@ -1137,6 +1141,8 @@ TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
 // (up to the maximum requested)
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
 {
+  uint32_t current_time = Utils::get_time();
+
   // Add a single timer to the store
   Timer* timer1 = default_timer(1);
   timer1->interval_ms = 100;
@@ -1148,7 +1154,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
   // Now just call get_timers_for_node (as if someone had done a resync without
   // changing the cluster configuration). No timers should be returned
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, "cluster-view-id", 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 2, "cluster-view-id", current_time, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
@@ -1158,6 +1164,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
 // (up to the maximum requested)
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 {
+  uint32_t current_time = Utils::get_time();
+
   // Add two timers to the store. Extend the length of the first timer
   // to ensure that we should always pick the second timer
   Timer* timer1 = default_timer(1);
@@ -1183,7 +1191,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
   __globals->unlock();
 
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, current_time, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 206);
@@ -1194,6 +1202,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 // getting stuck in a loop).
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeMaxResponsesAndSamePopTime)
 {
+  uint32_t current_time = Utils::get_time();
+
   // Add three timers to the store with the same pop time, three that have
   // different pop times, and three tombstones.
   Timer* same_timer1 = default_timer(1);
@@ -1244,7 +1254,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeMaxResponsesAndSamePopTime)
   // same pop time. It shouldn't return any tombstones, even though they have
   // the same pop time.
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, current_time, get_response);
 
   // Parse the response
   rapidjson::Document doc;
@@ -1274,6 +1284,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeMaxResponsesAndSamePopTime)
 // Test that getting timers from the long wheel orders by time correctly
 TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromLongWheel)
 {
+  uint32_t current_time = Utils::get_time();
+
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
 
@@ -1307,7 +1319,7 @@ TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromLongWheel)
   // There should be three timers - they should be ordered by the time to pop
   // (3,2,1), not ordered by time they were added.
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", current_time, get_response);
 
   // We don't check the contents of the timers in this test - only check the
   // timer IDs so we can be sure that the timers were returned in the right
@@ -1327,6 +1339,8 @@ TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromLongWheel)
 // timers are spread out over all the data structures
 TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
 {
+  uint32_t current_time = Utils::get_time();
+
   // Add a single timer that will end up in the long wheel
   Timer* timer1 = default_timer(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
@@ -1381,7 +1395,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   // There should be five timers - they should be ordered by the time to pop
   // (2,1,5,3,4), not ordered by time they were added.
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", current_time, get_response);
 
   // We don't check the contents of the timers in this test - only check the
   // timer IDs so we can be sure that the timers were returned in the right
