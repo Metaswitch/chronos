@@ -59,6 +59,8 @@ protected:
   {
     Base::SetUp();
 
+    cwtest_completely_control_time();
+
     _replicator = new MockReplicator();
     _th = new MockTimerHandler();
     _httpstack = new MockHttpStack();
@@ -72,6 +74,8 @@ protected:
     delete _httpstack;
     delete _th;
     delete _replicator;
+
+    cwtest_reset_time();
 
     Base::TearDown();
   }
@@ -222,7 +226,7 @@ TEST_F(TestHandler, ValidTimerReferenceNoTopLevelMixOfValidInvalidEntries)
 TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 {
   controller_request("/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 0, "cluster-view-id", 10000, _)).WillOnce(Return(200));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 0, "cluster-view-id", _, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 }
@@ -238,22 +242,45 @@ TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
   _task->run();
 }
 
+// Tests that get requests for timer resync with a time-from parameter
+// lead to the store being queried with the correct time-from value
+TEST_F(TestHandler, ValidTimerValidTimeFromParameter)
+{
+  // Get the current time (time is controlled in this test so we know it won't
+  // move on unless we tell it).
+  uint32_t current_time = Utils::get_time();
+
+  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=12345", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=12345");
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time + 12345, _)).WillOnce(Return(200));
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  _task->run();
+}
+
 // Tests that get requests for timer references with no time-from parameter
-// lead to the store being queried with a 0 time-from value
+// lead to the store being queried with time-from value of the current time
 TEST_F(TestHandler, ValidTimerGetNoTimeFromParameter)
 {
+  // Get the current time (time is controlled in this test so we know it won't
+  // move on unless we tell it).
+  uint32_t current_time = Utils::get_time();
+
   controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, 0, _)).WillOnce(Return(200));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(200));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 }
 
 // Tests that get requests for timer references with an invalid time-from
-// parameter leads to the store being queried with a 0 time-from value
+// parameter leads to the store being queried with the time-from value being
+// the current value
 TEST_F(TestHandler, ValidTimerGetInvalidTimeFromParameter)
 {
+  // Get the current time (time is controlled in this test so we know it won't
+  // move on unless we tell it).
+  uint32_t current_time = Utils::get_time();
+
   controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=notanumber", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=notanumber");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, 0, _)).WillOnce(Return(206));
+  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(206));
   EXPECT_CALL(*_httpstack, send_reply(_, 206, _));
   _task->run();
 }

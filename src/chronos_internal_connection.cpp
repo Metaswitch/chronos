@@ -188,7 +188,9 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
   std::string cluster_view_id;
   __globals->get_cluster_view_id(cluster_view_id);
 
+  uint32_t current_time = Utils::get_time();
   uint32_t time_from = 0;
+  bool use_time_from_param = false;
   std::string response;
   HTTPCode rc;
 
@@ -196,13 +198,16 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
   do
   {
     std::map<TimerID, int> delete_map;
-
+    std::string path = create_path(localhost,
+                                   cluster_view_id,
+                                   time_from,
+                                   use_time_from_param);
     rc = send_get(server_to_sync,
-                  localhost,
-                  cluster_view_id,
-                  time_from,
+                  path,
                   MAX_TIMERS_IN_RESPONSE,
                   response);
+
+    use_time_from_param = true;
 
     if ((rc == HTTP_PARTIAL_CONTENT) ||
         (rc == HTTP_OK))
@@ -285,7 +290,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             }
 
             // Update our view of the newest timer we've processed
-            time_from = timer->next_pop_time();
+            time_from = timer->next_pop_time() - current_time;
 
             // Decide what we're going to do with this timer.
             int old_level = 0;
@@ -474,19 +479,31 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
   return rc;
 }
 
-HTTPCode ChronosInternalConnection::send_get(const std::string& server,
-                                             const std::string& node_for_replicas_param,
-                                             std::string cluster_view_id_param,
-                                             uint32_t time_from_param,
-                                             int max_timers,
-                                             std::string& response)
+std::string ChronosInternalConnection::create_path(
+                                     const std::string& node_for_replicas_param,
+                                     std::string cluster_view_id_param,
+                                     uint32_t time_from_param,
+                                     bool use_time_from_param)
 {
   std::string path = std::string("/timers?") +
                      PARAM_NODE_FOR_REPLICAS + "="  + node_for_replicas_param + ";" +
                      PARAM_SYNC_MODE + "=" + PARAM_SYNC_MODE_VALUE_SCALE + ";" +
-                     PARAM_CLUSTER_VIEW_ID + "="  + cluster_view_id_param + ";" +
-                     PARAM_TIME_FROM + "=" + std::to_string(time_from_param);
+                     PARAM_CLUSTER_VIEW_ID + "="  + cluster_view_id_param;
 
+  if (use_time_from_param)
+  {
+    path += std::string(";") +
+            PARAM_TIME_FROM + "=" + std::to_string(time_from_param);
+  }
+
+  return path;
+}
+
+HTTPCode ChronosInternalConnection::send_get(const std::string& server,
+                                             const std::string& path,
+                                             int max_timers,
+                                             std::string& response)
+{
   std::string range_header = std::string(HEADER_RANGE) + ":" +
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
   std::vector<std::string> headers;
