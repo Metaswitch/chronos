@@ -1184,13 +1184,95 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
 
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, 0, get_response);
- std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
+  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,\"OldReplicas\":\\\[\"10.0.0.1:9999\"],\"Timer\":\\\{\"timing\":\\\{\"start-time\".*,\"start-time-delta\".*,\"sequence-number\":0,\"interval\":100,\"repeat-for\":100},\"callback\":\\\{\"http\":\\\{\"uri\":\"http://localhost:80/callback2\",\"opaque\":\"stuff stuff stuff\"}},\"reliability\":\\\{\"cluster-view-id\":\"updated-cluster-view-id\",\"replicas\":\\\[\"10.0.0.1:9999\"],\"sites\":\\\[\"local_site_name\",\"remote_site_1_name\"]},\"statistics\":\\\{\"tag-info\":\\\[\\\{\"type\":\"TAG2\",\"count\":1}]}}}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 206);
 }
 
-// Test that getting timers from the overdue timers orders by time correctly
-TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromOverdue)
+// Test that getting timers for a node returns a set of timers greater
+// than the maximum requested if they've got the same pop time (to prevent
+// getting stuck in a loop).
+TEST_F(TestTimerHandlerRealStore, GetTimersForNodeMaxResponsesAndSamePopTime)
+{
+  // Add three timers to the store with the same pop time, three that have
+  // different pop times, and three tombstones.
+  Timer* same_timer1 = default_timer(1);
+  Timer* same_timer2 = default_timer(2);
+  Timer* same_timer3 = default_timer(3);
+  Timer* tombstone1 = default_timer(11);
+  Timer* tombstone2 = default_timer(22);
+  Timer* tombstone3 = default_timer(33);
+  Timer* diff_timer1 = default_timer(111);
+  Timer* diff_timer2 = default_timer(222);
+  Timer* diff_timer3 = default_timer(333);
+
+  diff_timer1->interval_ms = 200000;
+  diff_timer1->repeat_for = 200000;
+  diff_timer2->interval_ms = 200000;
+  diff_timer2->repeat_for = 200000;
+  diff_timer3->interval_ms = 200000;
+  diff_timer3->repeat_for = 200000;
+
+  tombstone1->become_tombstone();
+  tombstone2->become_tombstone();
+  tombstone3->become_tombstone();
+
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(6);
+  EXPECT_CALL(*_mock_tag_table, increment(_, 1)).Times(6);
+  EXPECT_CALL(*_mock_scalar_table, increment(_, 1)).Times(6);
+
+  _th->add_timer(diff_timer1);
+  _th->add_timer(diff_timer2);
+  _th->add_timer(diff_timer3);
+  _th->add_timer(tombstone1);
+  _th->add_timer(tombstone2);
+  _th->add_timer(tombstone3);
+  _th->add_timer(same_timer1);
+  _th->add_timer(same_timer2);
+  _th->add_timer(same_timer3);
+
+  // Now update the current cluster view ID
+  std::string updated_cluster_view_id = "updated-cluster-view-id";
+  std::vector<std::string> cluster_addresses;
+  cluster_addresses.push_back("10.0.0.1:9999");
+  __globals->lock();
+  __globals->set_cluster_staying_addresses(cluster_addresses);
+  __globals->set_cluster_view_id(updated_cluster_view_id);
+  __globals->unlock();
+
+  // Ask for one timer - it should return timers 1, 2 and 3 as they have the
+  // same pop time. It shouldn't return any tombstones, even though they have
+  // the same pop time.
+  std::string get_response;
+  int rc = _th->get_timers_for_node("10.0.0.1:9999", 1, updated_cluster_view_id, 0, get_response);
+
+  // Parse the response
+  rapidjson::Document doc;
+  doc.Parse<0>(get_response.c_str());
+  EXPECT_FALSE(doc.HasParseError());
+  const rapidjson::Value& ids_arr = doc["Timers"];
+  EXPECT_EQ(ids_arr.Size(), 3);
+  std::vector<uint64_t> timer_ids;
+  for (rapidjson::Value::ConstValueIterator ids_it = ids_arr.Begin();
+       ids_it != ids_arr.End();
+       ++ids_it)
+  {
+    const rapidjson::Value& id_arr = *ids_it;
+    uint64_t timer_id = id_arr["TimerID"].GetInt64();
+    timer_ids.push_back(timer_id);
+  }
+
+  std::vector<uint64_t> expected_timer_ids;
+  expected_timer_ids.push_back(1);
+  expected_timer_ids.push_back(2);
+  expected_timer_ids.push_back(3);
+  EXPECT_THAT(expected_timer_ids, UnorderedElementsAreArray(timer_ids));
+
+  EXPECT_EQ(rc, 206);
+}
+
+// Test that getting timers from the long wheel orders by time correctly
+TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromLongWheel)
 {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -1202,21 +1284,16 @@ TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromOverdue)
   EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(3);
 
   Timer* timer1 = default_timer(1);
-  timer1->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
-  timer1->interval_ms = 0;
-  timer1->repeat_for = 0;
+  timer1->interval_ms += 3000;
+  timer1->repeat_for += 3000;
   _th->add_timer(timer1);
 
   Timer* timer2 = default_timer(2);
-  timer2->start_time_mono_ms = (ts.tv_sec * 1000) - 2000;
-  timer2->interval_ms = 0;
-  timer2->repeat_for = 0;
+  timer2->interval_ms += 2000;
+  timer2->repeat_for += 2000;
   _th->add_timer(timer2);
 
   Timer* timer3 = default_timer(3);
-  timer3->start_time_mono_ms = (ts.tv_sec * 1000) - 3000;
-  timer3->interval_ms = 0;
-  timer3->repeat_for = 0;
   _th->add_timer(timer3);
 
   // Now update the current cluster nodes (to ensure that we're also picked
@@ -1266,13 +1343,10 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG2", 1)).Times(1);
   _th->add_timer(timer2);
 
-  // Add a single timer to the store that will end up in the overdue timers
+  // Add a single timer that will end up in the heap
   Timer* timer3 = default_timer(3);
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  timer3->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
-  timer3->interval_ms = 0;
-  timer3->repeat_for = 0;
+  timer3->interval_ms = 20000000;
+  timer3->repeat_for = 20000000;
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG3", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG3", 1)).Times(1);
@@ -1296,15 +1370,6 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG5", 1)).Times(1);
   _th->add_timer(timer5);
 
-  // Add a single timer that will end up in the heap
-  Timer* timer6 = default_timer(6);
-  timer6->interval_ms = 20000000;
-  timer6->repeat_for = 20000000;
-  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, increment("TAG6", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, increment("TAG6", 1)).Times(1);
-  _th->add_timer(timer6);
-
   // Now update the current cluster nodes (to ensure that we're also picked
   // as a replica in the tests
   std::vector<std::string> cluster_addresses;
@@ -1313,8 +1378,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   __globals->set_cluster_staying_addresses(cluster_addresses);
   __globals->unlock();
 
-  // There should be six timers - they should be ordered by the time to pop
-  // (3,2,1,5,6,4), not ordered by time they were added.
+  // There should be five timers - they should be ordered by the time to pop
+  // (2,1,5,3,4), not ordered by time they were added.
   std::string get_response;
   int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", 0, get_response);
 
@@ -1326,54 +1391,12 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   std::string exp_timer3 = "\\\{\"TimerID\":3,.*}";
   std::string exp_timer4 = "\\\{\"TimerID\":4,.*}";
   std::string exp_timer5 = "\\\{\"TimerID\":5,.*}";
-  std::string exp_timer6 = "\\\{\"TimerID\":6,.*}";
-  std::string exp_rsp = "\\\{\"Timers\":\\\[" + exp_timer3 + "," +
-                                                exp_timer2 + "," +
+  std::string exp_rsp = "\\\{\"Timers\":\\\[" + exp_timer2 + "," +
                                                 exp_timer1 + "," +
                                                 exp_timer5 + "," +
-                                                exp_timer6 + "," +
+                                                exp_timer3 + "," +
                                                 exp_timer4 +
                          "]}";
-  EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
-  EXPECT_EQ(rc, 200);
-}
-
-// Test that getting timers from the overdue timers honours the time-from
-TEST_F(TestTimerHandlerRealStore, TimeFromOverdueTimers)
-{
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-
-  // Add a timer to the overdue timers. We don't care about stats/tags in
-  // this test.
-  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(2);
-  EXPECT_CALL(*_mock_tag_table, increment(_, _)).Times(2);
-  EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
-
-  Timer* timer1 = default_timer(1);
-  timer1->start_time_mono_ms = (ts.tv_sec * 1000) - 1000;
-  timer1->interval_ms = 0;
-  timer1->repeat_for = 0;
-  _th->add_timer(timer1);
-
-  Timer* timer2 = default_timer(2);
-  timer2->start_time_mono_ms = (ts.tv_sec * 1000) - 2000;
-  timer2->interval_ms = 0;
-  timer2->repeat_for = 0;
-  _th->add_timer(timer2);
-
-  // Now update the current cluster nodes (to ensure that we're also picked
-  // as a replica in the tests
-  std::vector<std::string> cluster_addresses;
-  cluster_addresses.push_back("10.0.0.1:9999");
-  __globals->lock();
-  __globals->set_cluster_staying_addresses(cluster_addresses);
-  __globals->unlock();
-
-  // Check that only one timer is returned
-  std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.1:9999", 7, "cluster_view_id", ts.tv_sec * 1000 - 1500, get_response);
-  std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":1,.*}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
 }

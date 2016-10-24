@@ -116,15 +116,6 @@ public:
     uint32_t _time_from;
   };
 
-  class TSOverdueIterator : public TSOrderedTimerIterator
-  {
-  public:
-    TSOverdueIterator(TimerStore* ts, uint32_t time_from);
-    TSOverdueIterator& operator++();
-    Timer* operator*();
-    bool end() const;
-  };
-
   class TSShortWheelIterator : public TSOrderedTimerIterator
   {
   public:
@@ -176,7 +167,6 @@ class TSHeapIterator
   private:
     TimerStore* _ts;
     uint32_t _time_from;
-    TSOverdueIterator _overdue_it;
     TSShortWheelIterator _short_wheel_it;
     TSLongWheelIterator _long_wheel_it;
     TSHeapIterator _heap_it;
