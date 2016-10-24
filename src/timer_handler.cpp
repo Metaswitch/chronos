@@ -343,7 +343,6 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
     // timers to collect, and we know that the next timer doesn't
     // have the same pop time as our last timer
     if ((retrieved_timers >= max_responses) &&
-        (last_time_from != 0) &&
         (last_time_from != current_time_from))
     {
       TRC_DEBUG("Reached the max number of timers to collect");
