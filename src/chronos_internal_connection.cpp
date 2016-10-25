@@ -437,11 +437,15 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
       if (!delete_map.empty())
       {
         std::string delete_body = create_delete_body(delete_map);
+        int default_port;
+        __globals->get_bind_port(default_port);
+
         for (std::vector<std::string>::iterator it = cluster_nodes.begin();
                                                 it != cluster_nodes.end();
                                                 ++it)
         {
-          HTTPCode delete_rc = send_delete(*it, delete_body);
+          std::string delete_server = Utils::uri_address(*it, default_port);
+          HTTPCode delete_rc = send_delete(delete_server, delete_body);
           if (delete_rc != HTTP_ACCEPTED)
           {
             // We've received an error response to the DELETE request. There's
