@@ -197,9 +197,6 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  // Initialise ENT logging before making "Started" log
-  PDLogStatic::init(argv[0]);
-
   CL_CHRONOS_STARTED.log();
 
   if (options.daemon)
