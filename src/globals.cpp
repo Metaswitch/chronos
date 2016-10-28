@@ -126,17 +126,6 @@ void Globals::update_config()
 
   lock();
 
-  // Copy the program name to a string so that we can be sure of its lifespan -
-  // the memory passed to openlog must be valid for the duration of the program.
-  //
-  // Note that we don't save syslog_identity here, and so we're technically leaking
-  // this object. However, its effectively part of static initialisation of
-  // the process - it'll be freed on process exit - so it's not leaked in practice.
-  std::string* syslog_identity = new std::string("chronos");
-
-  // Open a connection to syslog. This is used for ENT logs.
-  openlog(syslog_identity->c_str(), LOG_PID, LOG_LOCAL7);
-
   // Set up the per node configuration. Set up logging early so we can 
   // log the other settings
 #ifndef UNIT_TEST
