@@ -477,7 +477,7 @@ TEST_F(TestTimer, URLWithReplicas)
   __globals->get_timer_id_format(stored_timer_id);
 
   __globals->set_timer_id_format(new_timer_id);
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
+  EXPECT_EQ("http://hostname:9999/timers/00000001000000090000010000010001", t1->url("hostname:9999"));
   __globals->set_timer_id_format(stored_timer_id);
 }
 
