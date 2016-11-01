@@ -307,7 +307,7 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
 }
 
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
-                                           int max_responses,
+                                           int max_rsps_with_unique_pop_time,
                                            std::string cluster_view_id,
                                            uint32_t time_from,
                                            std::string& get_response)
@@ -342,7 +342,7 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
     // Break out of the for loop once we hit the maximum number of
     // timers to collect, and we know that the next timer doesn't
     // have the same pop time as our last timer
-    if ((retrieved_timers >= max_responses) &&
+    if ((retrieved_timers >= max_rsps_with_unique_pop_time) &&
         (last_time_from != current_time_from))
     {
       TRC_DEBUG("Reached the max number of timers to collect");
@@ -398,7 +398,9 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   pthread_mutex_unlock(&_mutex);
 
   TRC_DEBUG("Retrieved %d timers", retrieved_timers);
-  return (retrieved_timers >= max_responses) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
+  return (retrieved_timers >= max_rsps_with_unique_pop_time) ?
+                                        HTTP_PARTIAL_CONTENT :
+                                        HTTP_OK;
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
