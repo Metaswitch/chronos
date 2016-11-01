@@ -41,6 +41,7 @@
 #include "utils.h"
 
 #include <fstream>
+#include <syslog.h>
 
 // Shorten the imported namespace for ease of use.  Notice we don't do this in the
 // header file to avoid infecting other compilation units' namespaces.

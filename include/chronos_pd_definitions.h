@@ -45,9 +45,7 @@
 // The fields for each PDLog instance contains:
 //   Identity - Identifies the log id to be used in the syslog id field.
 //   Severity - One of Emergency, Alert, Critical, Error, Warning, Notice, 
-//              and Info.  Directly corresponds to the syslog severity types.
-//              Only PDLOG_ERROR or PDLOG_NOTICE are used.  
-//              See syslog_facade.h for definitions.
+//              and Info. Only LOG_ERROR or LOG_NOTICE are used.  
 //   Message  - Formatted description of the condition.
 //   Cause    - The cause of the condition.
 //   Effect   - The effect the condition.
@@ -56,7 +54,7 @@
 static const PDLog1<const char*> CL_CHRONOS_CRASHED
 (
   PDLogBase::CL_CHRONOS_ID + 1,
-  PDLOG_ERR,
+  LOG_ERR,
   "Fatal - Chronos has exited or crashed with signal %s.",
   "Chronos has encountered a fatal software error or has been terminated.",
   "The application will exit and restart until the problem is fixed. If "
@@ -69,7 +67,7 @@ static const PDLog1<const char*> CL_CHRONOS_CRASHED
 static const PDLog CL_CHRONOS_STARTED
 (
   PDLogBase::CL_CHRONOS_ID + 2,
-  PDLOG_NOTICE,
+  LOG_NOTICE,
   "Chronos started.",
   "The Chronos application has started.",
   "Normal.",
@@ -79,7 +77,7 @@ static const PDLog CL_CHRONOS_STARTED
 static const PDLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE
 (
   PDLogBase::CL_CHRONOS_ID + 5,
-  PDLOG_NOTICE,
+  LOG_NOTICE,
   "Chronos HTTP service is now available.",
   "Chronos can now accept HTTP connections.",
   "Normal.",
@@ -89,7 +87,7 @@ static const PDLog CL_CHRONOS_HTTP_SERVICE_AVAILABLE
 static const PDLog CL_CHRONOS_ENDED
 (
   PDLogBase::CL_CHRONOS_ID + 6,
-  PDLOG_ERR,
+  LOG_ERR,
   "Fatal - Termination signal received - terminating.",
   "Chronos has been terminated by monit or has exited.",
   "Chronos timer service is not longer available. If Chronos processes are "
@@ -102,7 +100,7 @@ static const PDLog CL_CHRONOS_ENDED
 static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
 (
   PDLogBase::CL_CHRONOS_ID + 7,
-  PDLOG_ERR,
+  LOG_ERR,
   "Fatal - Failed to get system time - timer service cannot run: %s.",
   "The Chronos time service cannot get the system time.",
   "The application will exit and restart until the problem is fixed. If "
@@ -115,7 +113,7 @@ static const PDLog1<const char*> CL_CHRONOS_NO_SYSTEM_TIME
 static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_FAIL
 (
   PDLogBase::CL_CHRONOS_ID + 8,
-  PDLOG_ERR,
+  LOG_ERR,
   "Fatal - Failed to initialize HttpStack stack in function %s with error %d.",
   "The HTTP interfaces could not be initialized.",
   "The application will exit and restart until the problem is fixed. If "
@@ -128,7 +126,7 @@ static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_FAIL
 static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL
 (
   PDLogBase::CL_CHRONOS_ID + 9,
-  PDLOG_ERR,
+  LOG_ERR,
   "The HTTP interfaces encountered an error when stopping the HTTP stack "
   "in %s with error %d.",
   "When Chronos was exiting it encountered an error when shutting "
@@ -140,7 +138,7 @@ static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL
 const static PDLog CL_CHRONOS_START_RESYNC
 (
   PDLog::CL_CHRONOS_ID + 10,
-  PDLOG_INFO,
+  LOG_INFO,
   "Chronos has started a resync operation",
   "Chronos has detected an on-going cluster resize or Chronos process start "
   " and is proactively resynchronising timers between cluster members.",
@@ -153,7 +151,7 @@ const static PDLog CL_CHRONOS_START_RESYNC
 const static PDLog CL_CHRONOS_COMPLETE_RESYNC
 (
   PDLog::CL_CHRONOS_ID + 11,
-  PDLOG_INFO,
+  LOG_INFO,
   "Chronos has completed a resync operation",
   "Chronos has synchronised all available data to the local node.",
   "The operation may be completed once all other Chronos instances have "
@@ -165,7 +163,7 @@ const static PDLog CL_CHRONOS_COMPLETE_RESYNC
 const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
 (
   PDLog::CL_CHRONOS_ID + 12,
-  PDLOG_ERR,
+  LOG_ERR,
   "Chronos has failed to synchronise some data with the Chronos node at %s.",
   "Chronos was unable to fully synchronize with another Chronos.",
   "Not all timers have been resynchronised, completing any scaling action now "
@@ -177,7 +175,7 @@ const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
 const static PDLog2<int, int> CL_CHRONOS_CLUSTER_OLD_CFG_READ
 (
   PDLog::CL_CHRONOS_ID + 13,
-  PDLOG_NOTICE,
+  LOG_NOTICE,
   "The Chronos cluster configuration has been loaded. There are now %d current members and %d leaving nodes.",
   "Chronos has reloaded its cluster configuration file.",
   "If necessary, timers will be resynced across the Chronos cluster.",
@@ -187,7 +185,7 @@ const static PDLog2<int, int> CL_CHRONOS_CLUSTER_OLD_CFG_READ
 const static PDLog3<int, int, int> CL_CHRONOS_CLUSTER_CFG_READ
 (
   PDLog::CL_CHRONOS_ID + 14,
-  PDLOG_NOTICE,
+  LOG_NOTICE,
   "The Chronos cluster configuration has been loaded. There are %d joining nodes, %d staying nodes and %d leaving nodes.",
   "Chronos has reloaded its cluster configuration file.",
   "If necessary, timers will be resynced across the Chronos cluster.",
