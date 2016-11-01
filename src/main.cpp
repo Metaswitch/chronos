@@ -53,12 +53,14 @@
 #include <getopt.h>
 #include "chronos_internal_connection.h"
 #include "chronos_alarmdefinition.h"
+#include "gr_replicator.h"
 #include "snmp_infinite_timer_count_table.h"
 #include "snmp_infinite_scalar_table.h"
 #include "snmp_continuous_increment_table.h"
 #include "snmp_counter_table.h"
 #include "snmp_scalar.h"
 #include "snmp_agent.h"
+#include "updater.h"
 
 #include <iostream>
 #include <cassert>
@@ -69,8 +71,10 @@ struct options
 {
   std::string config_file;
   std::string cluster_config_file;
+  std::string gr_config_file;
   std::string pidfile;
   bool daemon;
+  std::string dns_config_file;
 };
 
 // Enum for option types not assigned short-forms
@@ -78,18 +82,22 @@ enum OptionTypes
 {
   CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
   CLUSTER_CONFIG_FILE,
+  GR_CONFIG_FILE,
   PIDFILE,
   DAEMON,
-  HELP
+  HELP,
+  DNS_CONFIG_FILE
 };
 
 const static struct option long_opt[] =
 {
   {"config-file", required_argument, NULL, CONFIG_FILE},
   {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
+  {"gr-config-file", required_argument, NULL, GR_CONFIG_FILE},
   {"pidfile", required_argument, NULL, PIDFILE},
   {"daemon", no_argument, NULL, DAEMON},
   {"help", no_argument, NULL, HELP},
+  {"dns-config-file", required_argument, NULL, DNS_CONFIG_FILE},
   {NULL, 0, NULL, 0},
 };
 
@@ -99,8 +107,10 @@ void usage(void)
        "\n"
        " --config-file <filename>         Specify the per node configuration file\n"
        " --cluster-config-file <filename> Specify the cluster configuration file\n"
+       " --gr-config-file <filename>      Specify the GR configuration file\n"
        " --pidfile <filename>             Specify the pidfile\n"
        " --daemon                         Run in the background as a daemon\n"
+       " --dns-config-file <filename>     Specify the dns config file\n"
        " --help                           Show this help screen\n");
 }
 
@@ -121,12 +131,20 @@ int init_options(int argc, char**argv, struct options& options)
       options.cluster_config_file = std::string(optarg);
       break;
 
+    case GR_CONFIG_FILE:
+      options.gr_config_file = std::string(optarg);
+      break;
+
     case PIDFILE:
       options.pidfile = std::string(optarg);
       break;
 
     case DAEMON:
       options.daemon = true;
+      break;
+
+    case DNS_CONFIG_FILE:
+      options.dns_config_file = std::string(optarg);
       break;
 
     case HELP:
@@ -189,8 +207,10 @@ int main(int argc, char** argv)
   struct options options;
   options.config_file = "/etc/chronos/chronos.conf";
   options.cluster_config_file = "/etc/chronos/chronos_cluster.conf";
+  options.gr_config_file = "/etc/chronos/chronos_gr.conf";
   options.pidfile = "";
   options.daemon = false;
+  options.dns_config_file = "/etc/clearwater/dns_config";
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -238,15 +258,17 @@ int main(int argc, char** argv)
   }
 
   start_signal_handlers();
+  srand(time(NULL));
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,
   // so this mustn't be created until after the process has daemonised.
   __globals = new Globals(options.config_file,
-                          options.cluster_config_file);
+                          options.cluster_config_file,
+                          options.gr_config_file);
 
   AlarmManager* alarm_manager = NULL;
-  Alarm* scale_operation_alarm = NULL;
+  Alarm* resync_operation_alarm = NULL;
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
@@ -277,14 +299,15 @@ int main(int argc, char** argv)
   // Create Chronos's alarm objects. Note that the alarm identifier strings must match those
   // in the alarm definition JSON file exactly.
   alarm_manager = new AlarmManager();
-  scale_operation_alarm = new Alarm(alarm_manager,
-                                    "chronos",
-                                    AlarmDef::CHRONOS_SCALE_IN_PROGRESS,
-                                    AlarmDef::MINOR);
+  resync_operation_alarm = new Alarm(alarm_manager,
+                                     "chronos",
+                                     AlarmDef::CHRONOS_RESYNC_IN_PROGRESS,
+                                     AlarmDef::MINOR);
 
-  // Explicitly clear scaling alarm in case we died while the alarm was still active,
-  // to ensure that the alarm is not then stuck in a set state.
-  scale_operation_alarm->clear();
+  // Explicitly clear resynchronization alarm in case we died while the alarm
+  // was still active, to ensure that the alarm is not then stuck in a set
+  // state.
+  resync_operation_alarm->clear();
 
   // Now create the Chronos components
   HealthChecker* hc = new HealthChecker();
@@ -298,25 +321,22 @@ int main(int argc, char** argv)
                                            false,
                                            hc);
 
-  // Create the timer store, handlers, replicators...
-  TimerStore *store = new TimerStore(hc);
-  Replicator* controller_rep = new Replicator(exception_handler);
-  Replicator* handler_rep = new Replicator(exception_handler);
-  HTTPCallback* callback = new HTTPCallback();
-  TimerHandler* handler = new TimerHandler(store, callback,
-                                           handler_rep,
-                                           all_timers_table,
-                                           total_timers_table,
-                                           scalar_timers_table);
-  callback->start(handler);
-
-  // Create a Chronos internal connection class for scaling operations.
-  // This uses HTTPConnection from cpp-common so needs various
-  // resolvers
+  // We're going to need an HttpResolver both for our HTTP callbacks and for
+  // our internal connections.  Create one.
   std::vector<std::string> dns_servers;
   __globals->get_dns_servers(dns_servers);
 
-  DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers);
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
+                                                          options.dns_config_file);
+
+
+  // Create an Updater that listens for SIGUSR2 and, in response, reloads the
+  // static DNS records
+  Updater<void, DnsCachedResolver>* dns_updater =
+    new Updater<void, DnsCachedResolver>(dns_resolver,
+                                         std::mem_fun(&DnsCachedResolver::reload_static_records),
+                                         &_sigusr2_handler,
+                                         true);
 
   int af = AF_INET;
   struct in6_addr dummy_addr;
@@ -331,11 +351,27 @@ int main(int argc, char** argv)
 
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
 
+  // Create the timer store, handlers, replicators...
+  TimerStore* store = new TimerStore(hc);
+  Replicator* controller_rep = new Replicator(exception_handler);
+  Replicator* handler_rep = new Replicator(exception_handler);
+  GRReplicator* gr_rep = new GRReplicator(http_resolver, exception_handler);
+  HTTPCallback* callback = new HTTPCallback(http_resolver);
+  TimerHandler* handler = new TimerHandler(store,
+                                           callback,
+                                           handler_rep,
+                                           gr_rep,
+                                           all_timers_table,
+                                           total_timers_table,
+                                           scalar_timers_table);
+  callback->start(handler);
+
+  // Create a Chronos internal connection class for resynchronization operations.
   ChronosInternalConnection* chronos_internal_connection =
             new ChronosInternalConnection(http_resolver,
                                           handler,
                                           handler_rep,
-                                          scale_operation_alarm,
+                                          resync_operation_alarm,
                                           remaining_nodes_scalar,
                                           timers_processed_table,
                                           invalid_timers_processed_table);
@@ -368,7 +404,7 @@ int main(int argc, char** argv)
                                         load_monitor,
                                         NULL);
   HttpStackUtils::PingHandler ping_handler;
-  ControllerTask::Config controller_config(controller_rep, handler);
+  ControllerTask::Config controller_config(controller_rep, gr_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
                                                                                              &HttpStack::NULL_SAS_LOGGER);
 
@@ -404,26 +440,31 @@ int main(int argc, char** argv)
     std::cerr << "Caught HttpStack::Exception" << std::endl;
   }
 
+  delete load_monitor; load_monitor = NULL;
   delete chronos_internal_connection; chronos_internal_connection = NULL;
-  delete http_resolver; http_resolver = NULL;
-  delete dns_resolver; dns_resolver = NULL;
   delete handler; handler = NULL;
   // Callback is deleted by the handler
+  delete gr_rep; gr_rep = NULL;
   delete handler_rep; handler_rep = NULL;
   delete controller_rep; controller_rep = NULL;
   delete store; store = NULL;
+  delete http_resolver; http_resolver = NULL;
+  delete dns_updater; dns_updater = NULL;
+  delete dns_resolver; dns_resolver = NULL;
 
-  delete remaining_nodes_scalar;
-  delete timers_processed_table;
-  delete invalid_timers_processed_table;
-  delete total_timers_table;
+  delete scalar_timers_table; scalar_timers_table = NULL;
+  delete total_timers_table; total_timers_table = NULL;
+  delete all_timers_table; all_timers_table = NULL;
+  delete invalid_timers_processed_table; invalid_timers_processed_table = NULL;
+  delete timers_processed_table; timers_processed_table = NULL;
+  delete remaining_nodes_scalar; remaining_nodes_scalar = NULL;
 
+  delete exception_handler; exception_handler = NULL;
   hc->stop_thread();
   delete hc; hc = NULL;
-  delete exception_handler; exception_handler = NULL;
 
   // Delete Chronos's alarm object
-  delete scale_operation_alarm;
+  delete resync_operation_alarm;
   delete alarm_manager;
   delete http_stack; http_stack = NULL;
 

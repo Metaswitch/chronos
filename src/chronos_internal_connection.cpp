@@ -71,13 +71,13 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _invalid_timers_processed_table(invalid_timers_processed_table)
 {
   // Create an updater to control when Chronos should resynchronise. This uses
-  // SIGUSR1 rather than the default SIGHUP, and we shouldn't resynchronise
-  // on start up (note this may change in future work)
+  // SIGUSR1 rather than the default SIGHUP, and we should resynchronise on
+  // start up
   _updater = new Updater<void, ChronosInternalConnection>
                    (this,
                    std::mem_fun(&ChronosInternalConnection::resynchronize),
                    &_sigusr1_handler,
-                   false);
+                   true);
 
   // Zero the statistic to start with
   if (_remaining_nodes_scalar)
@@ -115,7 +115,6 @@ void ChronosInternalConnection::resynchronize()
 
   // Shuffle the lists (so the same Chronos node doesn't get queried by
   // all the other nodes at the same time) and remove the local node
-  srand(time(NULL));
   std::random_shuffle(cluster_nodes.begin(), cluster_nodes.end());
   std::string localhost;
   __globals->get_cluster_local_ip(localhost);
@@ -124,14 +123,14 @@ void ChronosInternalConnection::resynchronize()
                                   localhost),
                       cluster_nodes.end());
 
-  // Start the scaling operation. Update the logs/stats/alarms
+  // Start the resync operation. Update the logs/stats/alarms
   if (_alarm)
   {
     _alarm->set();  // LCOV_EXCL_LINE - No alarms in UT
   }
 
-  CL_CHRONOS_START_SCALE.log();
-  TRC_DEBUG("Starting scaling operation");
+  CL_CHRONOS_START_RESYNC.log();
+  TRC_DEBUG("Starting resynchronization operation");
 
   int nodes_remaining = cluster_nodes.size();
   int default_port;
@@ -161,10 +160,10 @@ void ChronosInternalConnection::resynchronize()
     }
   }
 
-  // The scaling operation is now complete. Update the logs/stats/alarms
-  TRC_DEBUG("Finished scaling operation");
+  // The resync operation is now complete. Update the logs/stats/alarms
+  TRC_DEBUG("Finished resynchronization operation");
 
-  CL_CHRONOS_COMPLETE_SCALE.log();
+  CL_CHRONOS_COMPLETE_RESYNC.log();
 
   if (_alarm)
   {
@@ -268,11 +267,14 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             bool store_timer = false;
             std::string error_str;
             bool replicated_timer;
+            bool unused_gr_replicated_timer;
+
             Timer* timer = Timer::from_json_obj(timer_id,
                                                 0,
                                                 0,
                                                 error_str,
                                                 replicated_timer,
+                                                unused_gr_replicated_timer,
                                                 (rapidjson::Value&)timer_obj);
 
             if (!timer)
@@ -290,7 +292,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             }
 
             // Update our view of the newest timer we've processed
-            time_from = timer->next_pop_time() - current_time;
+            time_from = timer->next_pop_time() - current_time + 1;
 
             // Decide what we're going to do with this timer.
             int old_level = 0;
@@ -446,7 +448,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
           {
             // We've received an error response to the DELETE request. There's
             // not much more we can do here (a timeout will have already
-            // been retried). A failed DELETE won't prevent the scaling operation
+            // been retried). A failed DELETE won't prevent the resync operation
             // from finishing, it just means that we'll tell other nodes
             // about timers inefficiently.
             TRC_INFO("Error response (%d) to DELETE request to %s",
@@ -487,7 +489,6 @@ std::string ChronosInternalConnection::create_path(
 {
   std::string path = std::string("/timers?") +
                      PARAM_NODE_FOR_REPLICAS + "="  + node_for_replicas_param + ";" +
-                     PARAM_SYNC_MODE + "=" + PARAM_SYNC_MODE_VALUE_SCALE + ";" +
                      PARAM_CLUSTER_VIEW_ID + "="  + cluster_view_id_param;
 
   if (use_time_from_param)

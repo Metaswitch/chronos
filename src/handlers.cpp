@@ -118,17 +118,20 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
                                          uint64_t replica_hash)
 {
   Timer* timer = NULL;
-  bool replicated_timer;
+  bool replicated_timer = false;
+  bool gr_replicated_timer = false;
 
   if (_req.method() == htp_method_DELETE)
   {
     // Replicated deletes are implemented as replicated tombstones so no DELETE
-    // can be a replication request.
-    replicated_timer = false;
+    // can be a replication request - it must have come from the client so we
+    // should replicate it ourselves (both within site and cross-site).
     timer = Timer::create_tombstone(timer_id, replica_hash);
   }
   else
   {
+    // Create a timer from the JSON body. This also works out whether the
+    // timer has already been replicated within/cross-site.
     std::string body = _req.get_rx_body();
     std::string error_str;
     timer = Timer::from_json(timer_id,
@@ -136,7 +139,8 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
                              replica_hash,
                              body,
                              error_str,
-                             replicated_timer);
+                             replicated_timer,
+                             gr_replicated_timer);
 
     if (!timer)
     {
@@ -147,16 +151,26 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
     }
   }
 
-  TRC_DEBUG("Accepted timer definition, timer is%s a replica", replicated_timer ? "" : " not");
+  TRC_DEBUG("Timer accepted: %s replicating within-site, %s replicating cross-site",
+            replicated_timer ? "does not need" : "needs",
+            gr_replicated_timer ? "does not need" : "needs");
 
   // Now we have a valid timer object, reply to the HTTP request.
   _req.add_header("Location", timer->url());
   send_http_reply(HTTP_OK);
 
-  // Replicate the timer to the other replicas if this is a client request
+  // Replicate the timer to the other replicas within the site if this is the
+  // first Chronos in this site to handle the request
   if (!replicated_timer)
   {
     _cfg->_replicator->replicate(timer);
+
+    // Replicate the timer cross site if this is the first Chronos in this
+    // deployment to handle the request
+    if (!gr_replicated_timer)
+    {
+      _cfg->_gr_replicator->replicate(timer);
+    }
   }
 
   // If the timer belongs to the local node, store it. Otherwise, turn it into
@@ -177,65 +191,9 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
 
 void ControllerTask::handle_delete()
 {
-  // Check the request has a valid JSON body
-  std::string body = _req.get_rx_body();
-  rapidjson::Document doc;
-  doc.Parse<0>(body.c_str());
-
-  if (doc.HasParseError())
-  {
-    TRC_INFO("Failed to parse document as JSON");
-    send_http_reply(HTTP_BAD_REQUEST);
-    return;
-  }
-
-  // Now loop through the body, pulling out the IDs/replica numbers
-  // The JSON body should have the format:
-  //  {"IDs": [{"ID": 123, "ReplicaIndex": 0},
-  //           {"ID": 456, "ReplicaIndex": 2},
-  //          ...]
-  // The replica_index is zero-indexed (so the primary replica has an
-  // index of 0).
-  try
-  {
-    JSON_ASSERT_CONTAINS(doc, JSON_IDS);
-    JSON_ASSERT_ARRAY(doc[JSON_IDS]);
-    const rapidjson::Value& ids_arr = doc[JSON_IDS];
-
-    // The request is valid, so respond with a 202. Now loop through the
-    // the body and update the replica trackers.
-    send_http_reply(HTTP_ACCEPTED);
-
-    for (rapidjson::Value::ConstValueIterator ids_it = ids_arr.Begin();
-         ids_it != ids_arr.End();
-         ++ids_it)
-    {
-      try
-      {
-        TimerID timer_id;
-        int replica_index;
-        JSON_GET_INT_64_MEMBER(*ids_it, JSON_ID, timer_id);
-        JSON_GET_INT_MEMBER(*ids_it, JSON_REPLICA_INDEX, replica_index);
-
-        // Update the timer's replica_tracker to show that the replicas
-        // at level 'replica_index' and higher have been informed
-        // about the timer. This will tombstone the timer if all
-        // replicas have been informed.
-        _cfg->_handler->update_replica_tracker_for_timer(timer_id,
-                                                         replica_index);
-      }
-      catch (JsonFormatError& err)
-      {
-        TRC_INFO("JSON entry was invalid (hit error at %s:%d)",
-                  err._file, err._line);
-      }
-    }
-  }
-  catch (JsonFormatError& err)
-  {
-    TRC_INFO("JSON body didn't contain the IDs array");
-    send_http_reply(HTTP_BAD_REQUEST);
-  }
+  // We no longer need to handle deletes on resync.
+  // Return Accepted for backwards compatibility.
+  send_http_reply(HTTP_ACCEPTED);
 }
 
 void ControllerTask::handle_get()

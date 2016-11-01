@@ -35,7 +35,9 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   snmp_agent.cpp \
                   snmp_row.cpp \
                   timer_counter.cpp \
-                  MurmurHash3.cpp
+                  MurmurHash3.cpp \
+                  chronos_gr_connection.cpp \
+                  gr_replicator.cpp
 
 chronos_SOURCES := ${COMMON_SOURCES} \
                    main.cpp \
@@ -59,6 +61,8 @@ chronos_test_SOURCES := ${COMMON_SOURCES} \
                         timer_helper.cpp \
                         test_interposer.cpp \
                         test_chronos_internal_connection.cpp \
+                        test_gr_replicator.cpp \
+                        test_http_callback.cpp \
                         fakelogger.cpp \
                         mock_sas.cpp \
                         fakecurl.cpp \

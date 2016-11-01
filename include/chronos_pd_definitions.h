@@ -135,29 +135,29 @@ static const PDLog2<const char*, int> CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL
   "No action required."
 );
 
-const static PDLog CL_CHRONOS_START_SCALE
+const static PDLog CL_CHRONOS_START_RESYNC
 (
   PDLog::CL_CHRONOS_ID + 10,
   LOG_INFO,
   "Chronos has started a resync operation",
-  "Chronos has detected an on-going cluster resize and is proactively "
-    "resynchronising timers between cluster members.",
+  "Chronos has detected an on-going cluster resize or Chronos process start "
+  " and is proactively resynchronising timers between cluster members.",
   "Timers are being resynced across the Chronos cluster. Statistics may "
     "be temporarily incorrect.",
   "Wait until the current resync operation has completed before continuing "
-    "with the cluster resize."
+    "with any cluster resize."
 );
 
-const static PDLog CL_CHRONOS_COMPLETE_SCALE
+const static PDLog CL_CHRONOS_COMPLETE_RESYNC
 (
   PDLog::CL_CHRONOS_ID + 11,
   LOG_INFO,
   "Chronos has completed a resync operation",
   "Chronos has synchronised all available data to the local node.",
-  "The scale operation may be completed once all other Chronos instances have "
+  "The operation may be completed once all other Chronos instances have "
     "completed their resync operations.",
   "Once all other Chronos instances have completed their resync operations "
-    "you may continue the cluster resize"
+    "you may continue any cluster resize"
 );
 
 const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
@@ -166,7 +166,7 @@ const static PDLog1<const char*> CL_CHRONOS_RESYNC_ERROR
   LOG_ERR,
   "Chronos has failed to synchronise some data with the Chronos node at %s.",
   "Chronos was unable to fully synchronize with another Chronos.",
-  "Not all timers have been resynchronised, completing the scaling action now "
+  "Not all timers have been resynchronised, completing any scaling action now "
     "may result in loss of timers or loss of redundancy",
   "Check the status of the Chronos cluster and ensure network connectivity "
     "is possible between all nodes."

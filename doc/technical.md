@@ -39,7 +39,7 @@ instances in the cluster and passing them down to the timer wheel.
 
 ### Architecture
 
-Chronos is made up of 7 major components:
+Chronos is made up of 8 major components:
 
  * HTTP Stack - Responsible for parsing and validating incoming requests.
  * Controller - Handles the logic for the proxying service.
@@ -48,6 +48,7 @@ Chronos is made up of 7 major components:
  * Timer Wheel - The local timer wheel.
  * HTTP Callback Client - A simple HTTP client that calls back to the client.
  * Chronos connection - Responsible for resynchronizing timers between Chronos nodes 
+ * GR replicator - Responsible for replicating timers between sites
 
 ![Architecture Diagram](architecture.png?raw=true)
 

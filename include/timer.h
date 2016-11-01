@@ -48,7 +48,6 @@ typedef uint64_t TimerID;
 
 // Separate class implementing the hash approach for rendezvous hashing -
 // allows the hashing to be changed in UT (e.g. to force collisions).
-
 class Hasher
 {
 public:
@@ -116,11 +115,13 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
-  // Mark which replicas have been informed about the timer
-  int update_replica_tracker(int replica_index);
+  // Populate the site list for this timer. Should be called when the site
+  // list is empty
+  void populate_sites();
 
-  // Return whether a particular replica has been informed about a timer
-  bool has_replica_been_informed(int replica_index);
+  // Update the site list for a timer. Should be called when the timer has
+  // just popped
+  void update_sites_on_timer_pop();
 
   // Update the cluster information stored in the timer (replica list and
   // cluster view ID)
@@ -136,19 +137,25 @@ public:
   std::string cluster_view_id;
   std::vector<std::string> replicas;
   std::vector<std::string> extra_replicas;
+  std::vector<std::string> sites;
   std::map<std::string, uint32_t> tags;
   std::string callback_url;
   std::string callback_body;
 
 private:
-  uint32_t _replication_factor;
+  // Work out how delayed the timer should be based on this node's position
+  // in the replica list
+  uint32_t delay_from_replica_position() const;
 
-  // The replica tracker is used to track which replicas need to be informed
-  // if the replica is being moved off the current node (e.g. during scale
-  // down). Each bit corresponds to a replica in the timer's replica list,
-  // where the primary replica corresponds to the least significant bit,
-  // the second replica to the next least significant bit, and so on...
-  uint32_t _replica_tracker;
+  // Work out how delayed the timer should be based on this node's position
+  // in the site list
+  uint32_t delay_from_site_position() const;
+
+  // Work out how delayed the timer should be based on the timer's sequence
+  // number and interval period (i.e. if this is a repeating timer)
+  uint32_t delay_from_sequence_position() const;
+
+  uint32_t _replication_factor;
 
   // Class functions
 public:
@@ -159,13 +166,21 @@ public:
                           uint64_t replica_hash,
                           std::string json,
                           std::string& error,
-                          bool& replicated);
+                          bool& replicated,
+                          bool& gr_replicated);
   static Timer* from_json_obj(TimerID id,
                               uint32_t replication_factor,
                               uint64_t replica_hash,
                               std::string& error,
                               bool& replicated,
+                              bool& gr_replicated,
                               rapidjson::Value& doc);
+
+  // Sort timers by their pop time
+  static bool compare_timer_pop_times(Timer* t1, Timer* t2)
+  {
+    return (t1->next_pop_time() < t2->next_pop_time());
+  }
 };
 
 #endif
