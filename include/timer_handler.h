@@ -72,7 +72,7 @@ public:
   virtual void handle_successful_callback(TimerID id);
   virtual void handle_failed_callback(TimerID id);
   virtual HTTPCode get_timers_for_node(std::string node,
-                                       int max_responses,
+                                       int max_rsps_with_unique_pop_time,
                                        std::string cluster_view_id,
                                        uint32_t time_from,
                                        std::string& get_response);

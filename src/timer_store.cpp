@@ -432,42 +432,6 @@ void TimerStore::TSOrderedTimerIterator::iterate_through_ordered_timers()
   }
 }
 
-TimerStore::TSOverdueIterator::TSOverdueIterator(TimerStore* ts,
-                                                 uint32_t time_from) :
-  TSOrderedTimerIterator(ts, time_from)
-{
-  _iterator = _ordered_timers.end();
-
-  if (Utils::overflow_less_than(_time_from, _ts->_tick_timestamp))
-  {
-    for (Timer* timer : _ts->_overdue_timers)
-    {
-      _ordered_timers.push_back(timer);
-    }
-
-    if (_ordered_timers.size() != 0)
-    {
-      iterate_through_ordered_timers();
-    }
-  }
-}
-
-TimerStore::TSOverdueIterator& TimerStore::TSOverdueIterator::operator++()
-{
-  ++_iterator;
-  return *this;
-}
-
-Timer* TimerStore::TSOverdueIterator::operator*()
-{
-  return *_iterator;
-}
-
-bool TimerStore::TSOverdueIterator::end() const
-{
-  return (_iterator == _ordered_timers.end());
-}
-
 TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
                                                        uint32_t time_from) :
   TSOrderedTimerIterator(ts, time_from)
@@ -655,7 +619,6 @@ TimerStore::TSIterator::TSIterator(TimerStore* ts,
                                    uint32_t time_from) :
   _ts(ts),
   _time_from(time_from),
-  _overdue_it(ts, time_from),
   _short_wheel_it(ts, time_from),
   _long_wheel_it(ts, time_from),
   _heap_it(ts, time_from)
@@ -670,11 +633,7 @@ TimerStore::TSIterator& TimerStore::TSIterator::operator++()
 
 Timer* TimerStore::TSIterator::operator*()
 {
-  if (!_overdue_it.end())
-  {
-    return (Timer*)(*_overdue_it);
-  }
-  else if (!_short_wheel_it.end())
+  if (!_short_wheel_it.end())
   {
     return (Timer*)(*_short_wheel_it);
   }
@@ -690,19 +649,14 @@ Timer* TimerStore::TSIterator::operator*()
 
 bool TimerStore::TSIterator::end() const
 {
-  return ((_overdue_it.end()) &&
-          (_short_wheel_it.end()) &&
+  return ((_short_wheel_it.end()) &&
           (_long_wheel_it.end()) &&
           (_heap_it.end()));
 }
 
 void TimerStore::TSIterator::next_iterator()
 {
-  if (!_overdue_it.end())
-  {
-    ++_overdue_it;
-  }
-  else if (!_short_wheel_it.end())
+  if (!_short_wheel_it.end())
   {
     ++_short_wheel_it;
   }

@@ -292,7 +292,7 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
             }
 
             // Update our view of the newest timer we've processed
-            time_from = timer->next_pop_time() - current_time;
+            time_from = timer->next_pop_time() - current_time + 1;
 
             // Decide what we're going to do with this timer.
             int old_level = 0;

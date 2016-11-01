@@ -307,7 +307,7 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
 }
 
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
-                                           int max_responses,
+                                           int max_rsps_with_unique_pop_time,
                                            std::string cluster_view_id,
                                            uint32_t time_from,
                                            std::string& get_response)
@@ -329,12 +329,26 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   TRC_DEBUG("Get timers for %s", request_node.c_str());
 
   int retrieved_timers = 0;
+  uint32_t last_time_from = 0;
+  uint32_t current_time_from = 0;
 
   for (TimerStore::TSIterator it = _store->begin(time_from);
        !(it.end());
        ++it)
   {
     Timer* timer_copy = new Timer(**it);
+    current_time_from = timer_copy->next_pop_time();
+
+    // Break out of the for loop once we hit the maximum number of
+    // timers to collect, and we know that the next timer doesn't
+    // have the same pop time as our last timer
+    if ((retrieved_timers >= max_rsps_with_unique_pop_time) &&
+        (last_time_from != current_time_from))
+    {
+      TRC_DEBUG("Reached the max number of timers to collect");
+      delete timer_copy;
+      break;
+    }
 
     if (!timer_copy->is_tombstone())
     {
@@ -370,18 +384,12 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
         writer.EndObject();
         retrieved_timers++;
       }
+
+      last_time_from = current_time_from;
     }
 
     // Tidy up the copy
     delete timer_copy;
-
-    // Break out of the for loop once we hit the maximum number of
-    // timers to collect
-    if (retrieved_timers == max_responses)
-    {
-      TRC_DEBUG("Reached the max number of timers to collect");
-      break;
-    }
   }
 
   writer.EndArray();
@@ -390,7 +398,9 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   pthread_mutex_unlock(&_mutex);
 
   TRC_DEBUG("Retrieved %d timers", retrieved_timers);
-  return (retrieved_timers == max_responses) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
+  return (retrieved_timers >= max_rsps_with_unique_pop_time) ?
+                                        HTTP_PARTIAL_CONTENT :
+                                        HTTP_OK;
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
