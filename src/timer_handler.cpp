@@ -226,12 +226,12 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     TRC_DEBUG("Adding new timer");
   }
 
-  // Would be good in future work to pull all statistics logic out into a 
+  // Would be good in future work to pull all statistics logic out into a
   // separate statistics module, passing in new and old tags, and what is
   // happening to the timer (add, update, delete), to keep the timer_handler
   // scope of responsibility clear.
 
-  // Update statistics 
+  // Update statistics
   if (update_stats)
   {
     std::map<std::string, uint32_t> tags_to_add = std::map<std::string, uint32_t>();
@@ -299,7 +299,7 @@ void TimerHandler::return_timer(Timer* timer)
   // This would be for when a customer wants some information back from Chronos
   // immediately and only once, hence we should tombstone the timer after use.
   if (((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for) ||
-      ((timer->interval_ms == 0) && 
+      ((timer->interval_ms == 0) &&
        (timer->repeat_for == 0)))
   {
     // This timer won't pop again, so tombstone it and update statistics
@@ -379,7 +379,11 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
     Timer* timer;
     bool timer_in_wheel = true;
 
-    if (store_timers.information_timer == NULL)
+    std::string cluster_view_id;
+    __globals->get_cluster_view_id(cluster_view_id);
+
+    if ((store_timers.information_timer == NULL) ||
+        (!store_timers.active_timer->is_matching_cluster_view_id(cluster_view_id)))
     {
       timer = store_timers.active_timer;
     }
@@ -388,9 +392,6 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
       timer = store_timers.information_timer;
       timer_in_wheel = false;
     }
-
-    std::string cluster_view_id;
-    __globals->get_cluster_view_id(cluster_view_id);
 
     if (!timer->is_matching_cluster_view_id(cluster_view_id))
     {
