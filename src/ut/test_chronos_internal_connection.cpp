@@ -225,11 +225,13 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
   // This isn't a valid response (as it should be different for .2/.3/.4), but it's sufficient
   const char* response = "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.1:9999\", \"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.3:9999\", \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}}]}";
 
+  fakecurl_responses["http://10.0.0.1:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = response;
   fakecurl_responses["http://10.0.0.2:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = response;
   fakecurl_responses["http://10.0.0.3:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = response;
   fakecurl_responses["http://10.0.0.4:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = response;
 
   // Delete response
+  fakecurl_responses["http://10.0.0.1:9999/timers/references"] = HTTP_SERVER_UNAVAILABLE;
   fakecurl_responses["http://10.0.0.2:9999/timers/references"] = HTTP_SERVER_UNAVAILABLE;
   fakecurl_responses["http://10.0.0.3:9999/timers/references"] = HTTP_SERVER_UNAVAILABLE;
   fakecurl_responses["http://10.0.0.4:9999/timers/references"] = HTTP_SERVER_UNAVAILABLE;
@@ -254,6 +256,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
 TEST_F(TestChronosInternalConnection, ResynchronizeWithInvalidGetResponse)
 {
   // Response has invalid JSON
+  fakecurl_responses["http://10.0.0.1:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":}";
   fakecurl_responses["http://10.0.0.2:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":}";
   fakecurl_responses["http://10.0.0.3:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = "{\"Timers\":}";
 
@@ -266,6 +269,7 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithInvalidGetResponse)
 TEST_F(TestChronosInternalConnection, ResynchronizeWithGetRequestFailed)
 {
   // GET request fails
+  fakecurl_responses["http://10.0.0.1:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = HTTP_BAD_REQUEST;
   fakecurl_responses["http://10.0.0.2:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = HTTP_BAD_REQUEST;
   fakecurl_responses["http://10.0.0.3:9999/timers?node-for-replicas=10.0.0.1:9999;sync-mode=SCALE;cluster-view-id=cluster-view-id"] = HTTP_BAD_REQUEST;
 
