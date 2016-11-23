@@ -936,7 +936,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
 // Return a timer to the handler as if it has been passed back from
 // HTTPCallback and wont pop again. Give the timer an interval and
 // repeat_for value of 0. The timer should be tombstoned before
-// being put back into the store. 
+// being put back into the store.
 TEST_F(TestTimerHandlerAddAndReturn, TombstoneZeroIntervalAndRepeatForTimer)
 {
   Timer* timer = default_timer(1);
@@ -1160,6 +1160,36 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForInformationTime
   // Delete the timer (this is normally done by the insert call, but this
   // is mocked out)
   delete insert_pair.active_timer;
+}
+
+// Test that if there's an out-of-date active timer, that's updated in
+// preference to any informational timer.
+TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimerWithInfoTimer)
+{
+  // Set up the timers
+  Timer* timer_active = default_timer(1);
+  timer_active->_replica_tracker = 15;
+  timer_active->cluster_view_id = "different-id";
+  Timer* timer_info = default_timer(1);
+  timer_info->_replica_tracker = 15;
+  timer_info->cluster_view_id = "different-id";
+  TimerPair insert_pair;
+  insert_pair.active_timer = timer_active;
+  insert_pair.information_timer = timer_info;
+
+  // Update the replica tracker. This should update the active timer.
+  EXPECT_CALL(*_store, fetch(_, _)).
+                       WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
+  EXPECT_CALL(*_store, insert(_, _, _, _)).
+                       WillOnce(SaveArg<0>(&insert_pair));
+  _th->update_replica_tracker_for_timer(1u, 0);
+  ASSERT_EQ(0u, insert_pair.active_timer->_replica_tracker);
+  ASSERT_EQ(15u, insert_pair.information_timer->_replica_tracker);
+
+  // Delete the timers (this is normally done by the insert call, but this
+  // is mocked out)
+  delete insert_pair.active_timer;
+  delete insert_pair.information_timer;
 }
 
 // Timer handler tests with a real timer store. This allows better tests of resync
