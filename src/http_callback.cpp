@@ -136,7 +136,10 @@ void HTTPCallback::worker_thread_entry_point()
     // Send the request
     CURLcode curl_rc = curl_easy_perform(curl);
 
-    if (curl_rc == CURLE_OK)
+    long http_rc = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
+
+    if ((curl_rc == CURLE_OK) && (http_rc < 400))
     {
       // The callback succeeded, so we need to re-find the timer, and replicate it.
       TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
@@ -146,8 +149,6 @@ void HTTPCallback::worker_thread_entry_point()
     {
       if (curl_rc == CURLE_HTTP_RETURNED_ERROR)
       {
-        long http_rc = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
         TRC_DEBUG("Got HTTP error %d from %s", http_rc, callback_url.c_str());
       }
 
