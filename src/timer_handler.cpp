@@ -526,9 +526,9 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
           timer_copy->to_json_obj(&writer);
         }
         writer.EndObject();
-      }
 
-      retrieved_timers++;
+        retrieved_timers++;
+      }
     }
 
     // Tidy up the copy

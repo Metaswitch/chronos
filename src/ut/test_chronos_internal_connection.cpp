@@ -239,8 +239,11 @@ TEST_F(TestChronosInternalConnection, ResynchronizeWithTimers)
   EXPECT_CALL(*_th, add_timer(_,_)).Times(0);
   // There are no calls to replicate to 10.0.0.3 as it is lower in the replica list
   EXPECT_CALL(*_replicator, replicate_timer_to_node(_, "10.0.0.3:9999")).Times(0);
-  // There are three calls to replicate to 10.0.0.2 as it is lower/equal in the old/new replica lists
-  EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.2:9999")).Times(3);
+  // There are four calls to replicate to 10.0.0.2 as it is lower/equal in the
+  // old/new replica lists. (Note, you wouldn't expect to call this four times
+  // in the real code, this is just because each of the four resync calls returned
+  // the same timer).
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.2:9999")).Times(4);
   _chronos->resynchronize();
 
   _cluster_addresses.pop_back();
