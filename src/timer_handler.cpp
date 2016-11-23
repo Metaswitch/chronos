@@ -367,6 +367,28 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
   delete failed_pair.information_timer; failed_pair.information_timer = NULL;
 }
 
+Timer* TimerHandler::get_out_of_date_timer(const TimerPair &pair,
+                                           const std::string &cluster_view_id,
+                                           bool &active_timer)
+{
+  Timer* timer = NULL;
+
+  if ((pair.active_timer != NULL) &&
+      (!pair.active_timer->is_matching_cluster_view_id(cluster_view_id)))
+  {
+    timer = pair.active_timer;
+    active_timer = true;
+  }
+  else if ((pair.information_timer != NULL) &&
+      (!pair.information_timer->is_matching_cluster_view_id(cluster_view_id)))
+  {
+    timer = pair.information_timer;
+    active_timer = false;
+  }
+
+  return timer;
+}
+
 void TimerHandler::update_replica_tracker_for_timer(TimerID id,
                                                     int replica_index)
 {
@@ -376,26 +398,15 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
 
   if (timer_found)
   {
-    Timer* timer;
-    bool timer_in_wheel = true;
-
     std::string cluster_view_id;
     __globals->get_cluster_view_id(cluster_view_id);
 
-    if ((store_timers.information_timer == NULL) ||
-        (!store_timers.active_timer->is_matching_cluster_view_id(cluster_view_id)))
-    {
-      timer = store_timers.active_timer;
-    }
-    else
-    {
-      timer = store_timers.information_timer;
-      timer_in_wheel = false;
-    }
+    bool timer_in_wheel = true;
+    Timer* timer = get_out_of_date_timer(store_timers, cluster_view_id, timer_in_wheel);
 
-    if (!timer->is_matching_cluster_view_id(cluster_view_id))
+    if (timer != NULL)
     {
-      // The cluster view ID is out of date, so update the tracker.
+      // We have an out of date timer, so update the tracker.
       int remaining_replicas = timer->update_replica_tracker(replica_index);
 
       if (remaining_replicas == 0)
@@ -418,6 +429,7 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
       }
     }
 
+    // Put the timer back in the store
     uint32_t next_pop_time = store_timers.active_timer->next_pop_time();
 
     std::vector<std::string> cluster_view_id_vector;
@@ -465,14 +477,12 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   {
     Timer* timer_copy;
     TimerPair pair = *it;
+    bool active;
+    Timer* out_of_date = get_out_of_date_timer(pair, cluster_view_id, active);
 
-    if (!pair.active_timer->is_matching_cluster_view_id(cluster_view_id))
+    if (out_of_date != NULL)
     {
-      timer_copy = new Timer(*(pair.active_timer));
-    }
-    else if (pair.information_timer)
-    {
-      timer_copy = new Timer(*(pair.information_timer));
+      timer_copy = new Timer(*(out_of_date));
     }
     else
     {

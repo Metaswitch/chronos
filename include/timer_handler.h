@@ -111,6 +111,13 @@ private:
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);
 
+  // For a given TimerPair, return:
+  // - the active timer if it doesn't match the cluster view id; else
+  // - the informational timer if it exists and doesn't match the cluster view id; else
+  // - NULL
+  // If a timer is returned, active_timer is set to true if it was the active
+  // timer of the TimerPair
+  Timer* get_out_of_date_timer(const TimerPair &pair, const std::string &cluster_view_id, bool &active_timer);
 
   TimerStore* _store;
   Callback* _callback;

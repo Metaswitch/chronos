@@ -1163,7 +1163,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForInformationTime
 }
 
 // Test that if there's an out-of-date active timer, that's updated in
-// preferecnce to any informational timer.
+// preference to any informational timer.
 TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimerWithInfoTimer)
 {
   // Set up the timers
@@ -1171,6 +1171,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimerW
   timer_active->_replica_tracker = 15;
   timer_active->cluster_view_id = "different-id";
   Timer* timer_info = default_timer(1);
+  timer_info->_replica_tracker = 15;
   timer_info->cluster_view_id = "different-id";
   TimerPair insert_pair;
   insert_pair.active_timer = timer_active;
@@ -1179,10 +1180,11 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimerW
   // Update the replica tracker. This should update the active timer.
   EXPECT_CALL(*_store, fetch(timer_active->id, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
-  EXPECT_CALL(*_store, insert(_, timer_active->id, timer_active->next_pop_time(), _)).
+  EXPECT_CALL(*_store, insert(_, _, _, _)).
                        WillOnce(SaveArg<0>(&insert_pair));
   _th->update_replica_tracker_for_timer(1u, 0);
   ASSERT_EQ(0u, insert_pair.active_timer->_replica_tracker);
+  ASSERT_EQ(15u, insert_pair.information_timer->_replica_tracker);
 
   // Delete the timers (this is normally done by the insert call, but this
   // is mocked out)
