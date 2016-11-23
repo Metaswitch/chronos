@@ -1178,7 +1178,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateReplicaTrackerValueForOldActiveTimerW
   insert_pair.information_timer = timer_info;
 
   // Update the replica tracker. This should update the active timer.
-  EXPECT_CALL(*_store, fetch(timer_active->id, _)).
+  EXPECT_CALL(*_store, fetch(_, _)).
                        WillOnce(DoAll(SetArgReferee<1>(insert_pair),Return(true)));
   EXPECT_CALL(*_store, insert(_, _, _, _)).
                        WillOnce(SaveArg<0>(&insert_pair));
