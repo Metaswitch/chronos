@@ -367,23 +367,23 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
   delete failed_pair.information_timer; failed_pair.information_timer = NULL;
 }
 
-Timer* TimerHandler::get_out_of_date_timer(const TimerPair &pair,
-                                           const std::string &cluster_view_id,
-                                           bool &active_timer)
+Timer* TimerHandler::get_out_of_date_timer(const TimerPair& pair,
+                                           const std::string& cluster_view_id,
+                                           bool& active_timer)
 {
   Timer* timer = NULL;
+  active_timer = false;
 
-  if ((pair.active_timer != NULL) &&
+  if ((pair.active_timer) &&
       (!pair.active_timer->is_matching_cluster_view_id(cluster_view_id)))
   {
     timer = pair.active_timer;
     active_timer = true;
   }
-  else if ((pair.information_timer != NULL) &&
-      (!pair.information_timer->is_matching_cluster_view_id(cluster_view_id)))
+  else if ((pair.information_timer) &&
+           (!pair.information_timer->is_matching_cluster_view_id(cluster_view_id)))
   {
     timer = pair.information_timer;
-    active_timer = false;
   }
 
   return timer;
@@ -401,8 +401,8 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
     std::string cluster_view_id;
     __globals->get_cluster_view_id(cluster_view_id);
 
-    bool timer_in_wheel = true;
-    Timer* timer = get_out_of_date_timer(store_timers, cluster_view_id, timer_in_wheel);
+    bool is_active_timer = true;
+    Timer* timer = get_out_of_date_timer(store_timers, cluster_view_id, is_active_timer);
 
     if (timer != NULL)
     {
@@ -411,7 +411,7 @@ void TimerHandler::update_replica_tracker_for_timer(TimerID id,
 
       if (remaining_replicas == 0)
       {
-        if (!timer_in_wheel)
+        if (!is_active_timer)
         {
           // All the new replicas have been told about the timer. We don't
           // need to store the information about the timer anymore.
@@ -477,8 +477,10 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   {
     Timer* timer_copy;
     TimerPair pair = *it;
-    bool active;
-    Timer* out_of_date = get_out_of_date_timer(pair, cluster_view_id, active);
+    bool unused_is_active_timer;
+    Timer* out_of_date = get_out_of_date_timer(pair,
+                                               cluster_view_id,
+                                               unused_is_active_timer);
 
     if (out_of_date != NULL)
     {
