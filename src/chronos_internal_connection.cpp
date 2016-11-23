@@ -117,12 +117,6 @@ void ChronosInternalConnection::resynchronize()
   // all the other nodes at the same time) and remove the local node
   srand(time(NULL));
   std::random_shuffle(cluster_nodes.begin(), cluster_nodes.end());
-  std::string localhost;
-  __globals->get_cluster_local_ip(localhost);
-  cluster_nodes.erase(std::remove(cluster_nodes.begin(),
-                                  cluster_nodes.end(),
-                                  localhost),
-                      cluster_nodes.end());
 
   // Start the scaling operation. Update the logs/stats/alarms
   if (_alarm)
@@ -136,6 +130,8 @@ void ChronosInternalConnection::resynchronize()
   int nodes_remaining = cluster_nodes.size();
   int default_port;
   __globals->get_bind_port(default_port);
+  std::string localhost;
+  __globals->get_cluster_local_ip(localhost);
 
   for (std::vector<std::string>::iterator it = cluster_nodes.begin();
                                           it != cluster_nodes.end();
