@@ -147,13 +147,10 @@ void HTTPCallback::worker_thread_entry_point()
     }
     else
     {
-      if (curl_rc == CURLE_HTTP_RETURNED_ERROR)
-      {
-        TRC_DEBUG("Got HTTP error %d from %s", http_rc, callback_url.c_str());
-      }
-
-      TRC_DEBUG("Failed to process callback for %lu: URL %s, curl error was: %s", timer_id,
+      TRC_DEBUG("Failed to process callback for %lu: URL %s, HTTP return code %d, curl error was: %s",
+                timer_id,
                 callback_url.c_str(),
+                http_rc,
                 curl_easy_strerror(curl_rc));
 
       // The callback failed, and so we need to remove the timer from the store.
