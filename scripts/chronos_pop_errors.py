@@ -1,6 +1,6 @@
 #! /usr/bin/python2.7
 
-# @file chronos_pop.py
+# @file chronos_pop_errors.py
 #
 # Project Clearwater - IMS in the Cloud
 # Copyright (C) 2016  Metaswitch Networks Ltd
@@ -42,9 +42,9 @@ sys.path.append(path.dirname(path.abspath(__file__)))
 from chronos_fv_test import ChronosFVTest, start_nodes, create_timers, chronos_nodes, node_reload_config
 
 # Test that Chronos correctly handles responses to its timer pops
-class ChronosPopReceivesErrorTest(ChronosFVTest):
+class ChronosPopErrorTest(ChronosFVTest):
 
-    def test_replicas(self):
+    def test_503_errors(self):
         # Test that Chronos replicas pop correctly. This test creates 3 Chronos
         # nodes and adds 100 timers that will get 503 errors on their first pop
         # and successes on subsequent pops.
