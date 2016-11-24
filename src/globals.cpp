@@ -102,22 +102,36 @@ void Globals::update_config()
   std::ifstream file;
   po::variables_map conf_map;
 
-  // Read clustering config from _cluster_config_file and other config from
-  // _config_file. Any remaining unset configuration options will be set to
-  // their default values defined above when notify is called.
-  file.open(_cluster_config_file);
-  if (file.is_open())
-  {
-    po::store(po::parse_config_file(file, _desc), conf_map);
-    file.close();
-  }
+  std::string error = "";
+  std::string error_config_file = "";
 
-  file.open(_config_file);
-  // This is safe even if the config file doesn't exist, and this also sets up
-  // the default values if the file doesn't exist, or for any config options
-  // that aren't set in the file.
-  po::store(po::parse_config_file(file, _desc), conf_map);
-  po::notify(conf_map);
+  try
+  {
+    // Read clustering config from _cluster_config_file and other config from
+    // _config_file. Any remaining unset configuration options will be set to
+    // their default values defined above when notify is called.
+    file.open(_cluster_config_file);
+    if (file.is_open())
+    {
+      error_config_file = _cluster_config_file;
+      po::store(po::parse_config_file(file, _desc), conf_map);
+      file.close();
+    }
+
+    file.open(_config_file);
+    // This is safe even if the config file doesn't exist, and this also sets up
+    // the default values if the file doesn't exist, or for any config options
+    // that aren't set in the file.
+    error_config_file = _config_file;
+    po::store(po::parse_config_file(file, _desc), conf_map);
+    po::notify(conf_map);
+  }
+  // LCOV_EXCL_START
+  catch (po::error& e)
+  {
+    error = e.what();
+  }
+  // LCOV_EXCL_STOP
 
   if (file.is_open())
   {
@@ -126,12 +140,23 @@ void Globals::update_config()
 
   lock();
 
-  // Set up the per node configuration. Set up logging early so we can 
+  // Set up the per node configuration. Set up logging early so we can
   // log the other settings
 #ifndef UNIT_TEST
   Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
   Log::setLoggingLevel(conf_map["logging.level"].as<int>());
 #endif
+
+  // We do error checking after trying to set up the logger, so that we have
+  // somewhere to log the error.
+  if (error != "")
+  {
+    // LCOV_EXCL_START
+    TRC_ERROR("Error parsing config file: %s", error_config_file.c_str());
+    TRC_ERROR(error.c_str());
+    exit(1);
+    // LCOV_EXCL_STOP
+  }
 
   std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
@@ -183,7 +208,7 @@ void Globals::update_config()
 
   uint32_t instance_id = conf_map["identity.instance_id"].as<uint32_t>();
   uint32_t deployment_id = conf_map["identity.deployment_id"].as<uint32_t>();
-  
+
   set_instance_id(instance_id);
   set_deployment_id(deployment_id);
 
@@ -210,7 +235,7 @@ void Globals::update_config()
                                cluster_joining_addresses.end());
   std::vector<uint32_t> new_cluster_rendezvous_hashes = generate_hashes(new_cluster_addresses);
   set_new_cluster_hashes(new_cluster_rendezvous_hashes);
-  
+
   // Figure out the old cluster by combining the nodes that are staying and the
   // nodes that are leaving.
   std::vector<std::string> old_cluster_addresses = cluster_staying_addresses;
@@ -219,7 +244,7 @@ void Globals::update_config()
                                cluster_leaving_addresses.end());
   std::vector<uint32_t> old_cluster_rendezvous_hashes = generate_hashes(old_cluster_addresses);
   set_old_cluster_hashes(old_cluster_rendezvous_hashes);
- 
+
   std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 
