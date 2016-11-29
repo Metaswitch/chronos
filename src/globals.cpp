@@ -138,6 +138,17 @@ void Globals::update_config()
     file.close();
   }
 
+  // If we hit an error, log it to stderr and exit
+  if (error != "")
+  {
+    // LCOV_EXCL_START
+    fprintf(stderr, "Error parsing config file: %s \n %s",
+            error_config_file.c_str(),
+            error.c_str());
+    exit(1);
+    // LCOV_EXCL_STOP
+  }
+
   lock();
 
   // Set up the per node configuration. Set up logging early so we can
@@ -146,17 +157,6 @@ void Globals::update_config()
   Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
   Log::setLoggingLevel(conf_map["logging.level"].as<int>());
 #endif
-
-  // We do error checking after trying to set up the logger, so that we have
-  // somewhere to log the error.
-  if (error != "")
-  {
-    // LCOV_EXCL_START
-    TRC_ERROR("Error parsing config file: %s", error_config_file.c_str());
-    TRC_ERROR(error.c_str());
-    exit(1);
-    // LCOV_EXCL_STOP
-  }
 
   std::string bind_address = conf_map["http.bind-address"].as<std::string>();
   set_bind_address(bind_address);
