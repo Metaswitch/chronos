@@ -52,14 +52,14 @@ void Base::SetUp()
   __globals->set_bind_address(localhost);
   std::vector<std::string> cluster_addresses;
   cluster_addresses.push_back("10.0.0.1:9999");
-  cluster_addresses.push_back("10.0.0.2:9999");
-  cluster_addresses.push_back("10.0.0.3:9999");
+  cluster_addresses.push_back("10.0.0.2");
+  cluster_addresses.push_back("10.0.0.3");
   __globals->set_cluster_staying_addresses(cluster_addresses);
   std::map<std::string, uint64_t> cluster_bloom_filters;
 
   cluster_bloom_filters["10.0.0.1:9999"] = 0x00010000010001;
-  cluster_bloom_filters["10.0.0.2:9999"] = 0x10001000001000;
-  cluster_bloom_filters["10.0.0.3:9999"] = 0x01000100000100;
+  cluster_bloom_filters["10.0.0.2"] = 0x10001000001000;
+  cluster_bloom_filters["10.0.0.3"] = 0x01000100000100;
   __globals->set_cluster_bloom_filters(cluster_bloom_filters);
   std::vector<uint32_t> cluster_rendezvous_hashes = __globals->generate_hashes(cluster_addresses);
   __globals->set_new_cluster_hashes(cluster_rendezvous_hashes);

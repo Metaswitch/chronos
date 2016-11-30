@@ -126,15 +126,29 @@ void Globals::update_config()
 
   // Read clustering config from _cluster_config_file, geographic redundancy
   // config from _gr_config_file and other config from_config_file.
-  parse_config_file(_cluster_config_file, conf_map, _desc);
-  parse_config_file(_config_file, conf_map, _desc);
-  parse_config_file(_gr_config_file, conf_map, _desc);
+  std::string config_files[] = {_cluster_config_file, _config_file, _gr_config_file};
+  for (std::string& config_file : config_files)
+  {
+    try
+    {
+      parse_config_file(config_file, conf_map, _desc);
+      po::notify(conf_map);
+    }
+    // LCOV_EXCL_START
+    catch (po::error& e)
+    {
+      fprintf(stderr, "Error parsing config file: %s \n %s",
+              config_file.c_str(),
+              e.what());
+      exit(1);
+    }
+    // LCOV_EXCL_STOP
+  }
 
-  po::notify(conf_map);
 
   lock();
 
-  // Set up the per node configuration. Set up logging early so we can 
+  // Set up the per node configuration. Set up logging early so we can
   // log the other settings
 #ifndef UNIT_TEST
   Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
@@ -191,7 +205,7 @@ void Globals::update_config()
 
   uint32_t instance_id = conf_map["identity.instance_id"].as<uint32_t>();
   uint32_t deployment_id = conf_map["identity.deployment_id"].as<uint32_t>();
-  
+
   set_instance_id(instance_id);
   set_deployment_id(deployment_id);
 
@@ -218,7 +232,7 @@ void Globals::update_config()
                                cluster_joining_addresses.end());
   std::vector<uint32_t> new_cluster_rendezvous_hashes = generate_hashes(new_cluster_addresses);
   set_new_cluster_hashes(new_cluster_rendezvous_hashes);
-  
+
   // Figure out the old cluster by combining the nodes that are staying and the
   // nodes that are leaving.
   std::vector<std::string> old_cluster_addresses = cluster_staying_addresses;
@@ -227,7 +241,7 @@ void Globals::update_config()
                                cluster_leaving_addresses.end());
   std::vector<uint32_t> old_cluster_rendezvous_hashes = generate_hashes(old_cluster_addresses);
   set_old_cluster_hashes(old_cluster_rendezvous_hashes);
- 
+
   std::map<std::string, uint64_t> cluster_bloom_filters;
   uint64_t cluster_view_id = 0;
 

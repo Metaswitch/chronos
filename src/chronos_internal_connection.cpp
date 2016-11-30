@@ -116,12 +116,6 @@ void ChronosInternalConnection::resynchronize()
   // Shuffle the lists (so the same Chronos node doesn't get queried by
   // all the other nodes at the same time) and remove the local node
   std::random_shuffle(cluster_nodes.begin(), cluster_nodes.end());
-  std::string localhost;
-  __globals->get_cluster_local_ip(localhost);
-  cluster_nodes.erase(std::remove(cluster_nodes.begin(),
-                                  cluster_nodes.end(),
-                                  localhost),
-                      cluster_nodes.end());
 
   // Start the resync operation. Update the logs/stats/alarms
   if (_alarm)
@@ -135,6 +129,8 @@ void ChronosInternalConnection::resynchronize()
   int nodes_remaining = cluster_nodes.size();
   int default_port;
   __globals->get_bind_port(default_port);
+  std::string localhost;
+  __globals->get_cluster_local_ip(localhost);
 
   for (std::vector<std::string>::iterator it = cluster_nodes.begin();
                                           it != cluster_nodes.end();
@@ -439,11 +435,15 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
       if (!delete_map.empty())
       {
         std::string delete_body = create_delete_body(delete_map);
+        int default_port;
+        __globals->get_bind_port(default_port);
+
         for (std::vector<std::string>::iterator it = cluster_nodes.begin();
                                                 it != cluster_nodes.end();
                                                 ++it)
         {
-          HTTPCode delete_rc = send_delete(*it, delete_body);
+          std::string delete_server = Utils::uri_address(*it, default_port);
+          HTTPCode delete_rc = send_delete(delete_server, delete_body);
           if (delete_rc != HTTP_ACCEPTED)
           {
             // We've received an error response to the DELETE request. There's

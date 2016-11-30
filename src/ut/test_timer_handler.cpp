@@ -872,7 +872,7 @@ TEST_F(TestTimerHandlerAddAndReturn, ReturnTimerWontPopAgain)
 // Return a timer to the handler as if it has been passed back from
 // HTTPCallback and wont pop again. Give the timer an interval and
 // repeat_for value of 0. The timer should be tombstoned before
-// being put back into the store. 
+// being put back into the store.
 TEST_F(TestTimerHandlerAddAndReturn, TombstoneZeroIntervalAndRepeatForTimer)
 {
   Timer* timer = default_timer(1);
@@ -1129,9 +1129,11 @@ TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
   __globals->unlock();
 
   // Now just call get_timers_for_node (as if someone had done a resync without
-  // changing the cluster configuration). No timers should be returned
+  // changing the cluster configuration). No timers should be returned. Use
+  // a maximum timer count of 1, so that if this does pick up the single timer
+  // it would return 206, so we can detect that error in this UT as well.
   std::string get_response;
-  int rc = _th->get_timers_for_node("10.0.0.4:9999", 2, updated_cluster_view_id, current_time, get_response);
+  int rc = _th->get_timers_for_node("10.0.0.4:9999", 1, updated_cluster_view_id, current_time, get_response);
   std::string exp_rsp = "\\\{\"Timers\":\\\[]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
