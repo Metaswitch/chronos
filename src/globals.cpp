@@ -132,7 +132,6 @@ void Globals::update_config()
     try
     {
       parse_config_file(config_file, conf_map, _desc);
-      po::notify(conf_map);
     }
     // LCOV_EXCL_START
     catch (po::error& e)
@@ -143,8 +142,9 @@ void Globals::update_config()
       exit(1);
     }
     // LCOV_EXCL_STOP
-  }
 
+    po::notify(conf_map);
+  }
 
   lock();
 
