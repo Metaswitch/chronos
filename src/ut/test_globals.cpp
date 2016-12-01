@@ -80,12 +80,12 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 
   std::string cluster_local_address;
   test_global->get_cluster_local_ip(cluster_local_address);
-  EXPECT_EQ(cluster_local_address, "localhost:7253");
+  EXPECT_EQ(cluster_local_address, "127.0.0.1:7253");
 
   std::vector<std::string> cluster_addresses;
   test_global->get_cluster_staying_addresses(cluster_addresses);
   EXPECT_EQ(cluster_addresses.size(), (unsigned)1);
-  EXPECT_EQ(cluster_addresses[0], "localhost:7253");
+  EXPECT_EQ(cluster_addresses[0], "127.0.0.1:7253");
 
   std::vector<std::string> cluster_joining_addresses;
   test_global->get_cluster_joining_addresses(cluster_joining_addresses);
