@@ -80,14 +80,14 @@ TEST_F(TestGRReplicator, ReplicateTimer)
 
   // The timer's been sent when fakecurl records the request. Sleep until then.
   std::map<std::string, Request>::iterator it =
-      fakecurl_requests.find("http://10.42.42.42:80/timers/0000000000000001-1");
+      fakecurl_requests.find("http://remote_site_1_dns_record:80/timers/0000000000000001-1");
   int count = 0;
   while (it == fakecurl_requests.end() && count < 10)
   {
     // Don't wait for more than 10 seconds
     count++;
     sleep(1);
-    it = fakecurl_requests.find("http://10.42.42.42:80/timers/0000000000000001-1");
+    it = fakecurl_requests.find("http://remote_site_1_dns_record:80/timers/0000000000000001-1");
   }
 
   if (count >= 10)
@@ -97,7 +97,7 @@ TEST_F(TestGRReplicator, ReplicateTimer)
 
   // Look at the body sent on the request. Check that it doesn't have any
   // replica information, and that it makes a valid timer
-  Request& request = fakecurl_requests["http://10.42.42.42:80/timers/0000000000000001-1"];
+  Request& request = fakecurl_requests["http://remote_site_1_dns_record:80/timers/0000000000000001-1"];
   rapidjson::Document doc;
   doc.Parse<0>(request._body.c_str());
   EXPECT_FALSE(doc.HasParseError());

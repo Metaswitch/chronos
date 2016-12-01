@@ -484,8 +484,8 @@ TEST_F(TestTimer, URLWithReplicas)
 {
   Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITH_REPLICAS;
   __globals->set_timer_id_format(new_timer_id);
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname:9999"));
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090010011000011001", t1->url("hostname"));
+  EXPECT_EQ("http://hostname:9999/timers/00000001000000090000010000010001", t1->url("hostname:9999"));
+  EXPECT_EQ("http://hostname:9999/timers/00000001000000090000010000010001", t1->url("hostname"));
 }
 
 TEST_F(TestTimer, ToJSON)

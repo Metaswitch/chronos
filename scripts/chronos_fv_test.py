@@ -72,10 +72,12 @@ chronos_nodes = [
     Node(ip='127.0.0.14', port='7256'),
 ]
 
-receiveCount = 0
+successReceiveCount = 0
+failureReceiveCount = 0
 processes = []
-timerCounts = []
 timerIDs = []
+successTimerCounts = []
+failureTimerCounts = []
 
 # Create log folders for each Chronos process. These are useful for
 # debugging any problems. Running the tests deletes the logs from the
@@ -104,11 +106,30 @@ app = Flask(__name__)
 
 @app.route('/pop', methods=['POST'])
 def pop():
-    global receiveCount
-    receiveCount += 1
-    global timerCounts
-    timerCounts.append(request.data)
+    global successReceiveCount
+    successReceiveCount += 1
+    global successTimerCounts
+    successTimerCounts.append(request.data)
     return 'success'
+
+
+@app.route('/pop-with-errors', methods=['POST'])
+def pop_with_errors():
+    # The first time a timer pops, it fails with 503. Any other replicas will
+    # succeed
+    global successTimerCounts
+    global failureTimerCounts
+    global successReceiveCount
+    global failureReceiveCount
+
+    if request.data in failureTimerCounts:
+        successReceiveCount += 1
+        successTimerCounts.append(request.data)
+        return 'success'
+    else:
+        failureReceiveCount += 1
+        failureTimerCounts.append(request.data)
+        return flask.make_response("failure", 503)
 
 
 def run_app():
@@ -165,7 +186,7 @@ def node_trigger_scaling(lower, upper):
     sleep(2)
 
 
-def create_timers(target, num, max_num):
+def create_timers(target, num, max_num, path="pop", replicas=2):
     # Create and send timer requests. These are all sent to the first Chronos
     # process which will replicate the timers out to the other Chronos processes
     global timerIDs
@@ -176,9 +197,12 @@ def create_timers(target, num, max_num):
         },
         'callback': {
             'http': {
-                'uri': 'http://%s:%s/pop' % (flask_server.ip, flask_server.port),
+                'uri': 'http://%s:%s/%s' % (flask_server.ip, flask_server.port, path),
                 'opaque': 'REPLACE',
             }
+        },
+        'reliability': {
+            'replication-factor': replicas
         }
     }
 
@@ -256,12 +280,16 @@ class ChronosFVTest(unittest.TestCase):
 
     def setUp(self):
         # Track the Chronos processes and timer pops
-        global receiveCount
+        global successReceiveCount
+        global failureReceiveCount
         global processes
-        global timerCounts
-        receiveCount = 0
+        global successTimerCounts
+        global failureTimerCounts
+        successReceiveCount = 0
+        failureReceiveCount = 0
         processes = []
-        timerCounts = []
+        successTimerCounts = []
+        failureTimerCounts = []
 
     def tearDown(self):
         # Kill all the Chronos processes
@@ -273,13 +301,26 @@ class ChronosFVTest(unittest.TestCase):
         # Ideally, we'd be checking where the timers popped from, but that's
         # not possible with these tests (as everything looks like it comes
         # from 127.0.0.1)
-        self.assertEqual(receiveCount,
+        self.assertEqual(successReceiveCount,
                          expected_number,
                          ('Incorrect number of popped timers: received %i, expected exactly %i' %
-                         (receiveCount, expected_number)))
+                         (successReceiveCount, expected_number)))
 
         for i in range(expected_number):
-            assert str(i) in timerCounts, "Missing timer pop for %i" % i
+            assert str(i) in successTimerCounts, "Missing timer pop for %i" % i
+
+
+    def assert_correct_timers_failed(self, expected_number):
+        # Check that the expected number of timers failed.
+        # This should be as many as were added in the first place if using the
+        # "pop-with-errors" path.
+        self.assertEqual(failureReceiveCount,
+                         expected_number,
+                         ('Incorrect number of popped timers failed: actual %i, expected exactly %i' %
+                         (failureReceiveCount, expected_number)))
+
+        for i in range(expected_number):
+            assert str(i) in failureTimerCounts, "Missing timer failure for %i" % i
 
     def write_config_for_nodes(self, staying, joining=[], leaving=[]):
         # Write configuration files for the nodes

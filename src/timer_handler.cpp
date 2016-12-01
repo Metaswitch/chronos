@@ -184,12 +184,12 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     TRC_DEBUG("Adding new timer");
   }
 
-  // It would be good in future work to pull all statistics logic out into a
+  // Would be good in future work to pull all statistics logic out into a
   // separate statistics module, passing in new and old tags, and what is
   // happening to the timer (add, update, delete), to keep the timer_handler
   // scope of responsibility clear.
 
-  // Update statistics 
+  // Update statistics
   if (update_stats)
   {
     std::map<std::string, uint32_t> tags_to_add = std::map<std::string, uint32_t>();
@@ -246,7 +246,7 @@ void TimerHandler::return_timer(Timer* timer)
   // This would be for when a customer wants some information back from Chronos
   // immediately and only once, hence we should tombstone the timer after use.
   if (((timer->sequence_number + 1) * timer->interval_ms > timer->repeat_for) ||
-      ((timer->interval_ms == 0) && 
+      ((timer->interval_ms == 0) &&
        (timer->repeat_for == 0)))
   {
     // This timer won't pop again, so tombstone it and update statistics

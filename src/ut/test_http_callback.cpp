@@ -84,20 +84,20 @@ TEST_F(TestHTTPCallback, Success)
 
   // The timer's been sent when fakecurl records the request. Sleep until then.
   std::map<std::string, Request>::iterator it =
-      fakecurl_requests.find("http://10.42.42.42:80/callback1");
+      fakecurl_requests.find("http://localhost:80/callback1");
   int count = 0;
   while (it == fakecurl_requests.end() && count < 10)
   {
     // Don't wait for more than 10 seconds
     count++;
     sleep(1);
-    it = fakecurl_requests.find("http://10.42.42.42:80/callback1");
+    it = fakecurl_requests.find("http://localhost:80/callback1");
   }
 
   EXPECT_LT(count, 10) << "No request was sent that matched the expected timer";
 
   // Check the body on the request is expected.
-  Request& request = fakecurl_requests["http://10.42.42.42:80/callback1"];
+  Request& request = fakecurl_requests["http://localhost:80/callback1"];
   rapidjson::Document doc;
   EXPECT_EQ(request._body, "stuff stuff stuff");
 
@@ -115,14 +115,14 @@ TEST_F(TestHTTPCallback, Failure)
 
   // The timer's been sent when fakecurl records the request. Sleep until then.
   std::map<std::string, Request>::iterator it =
-      fakecurl_requests.find("http://10.42.42.42:80/callback1");
+      fakecurl_requests.find("http://localhost:80/callback1");
   int count = 0;
   while (it == fakecurl_requests.end() && count < 10)
   {
     // Don't wait for more than 10 seconds
     count++;
     sleep(1);
-    it = fakecurl_requests.find("http://10.42.42.42:80/callback1");
+    it = fakecurl_requests.find("http://localhost:80/callback1");
   }
 
   EXPECT_LT(count, 10) << "No request was sent that matched the expected timer";
