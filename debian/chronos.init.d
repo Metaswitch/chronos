@@ -146,6 +146,7 @@ do_wait_sync() {
   # Query Chronos via the 0MQ socket, parse out the number of Chronos nodes
   # still needing to be queried, and check if it's 0.
   # If not, wait for 5s and try again.
+  num_cycles_unchanged=0
   while true
   do
     # Retrieve the statistics.
@@ -156,6 +157,28 @@ do_wait_sync() {
     if [ "$nodes" = "0" ]
     then
       break
+    fi
+
+    # If the nodes left to query hasn't changed for the last 120 cycles (i.e.
+    # over the last 10 minutes), make a syslog and stop waiting.  We don't
+    # expect resyncs to take more than 10 minutes in normal operation, so this
+    # suggests that the local service has failed.  We need to
+    # end the wait in this case as the potential service impact of aborting
+    # the wait early is far outweighed by the impact on management operations
+    # of an infinite wait.
+    if [ "$nodes" = "$last_nodes" ]
+    then
+      num_cycles_unchanged=$(( $num_cycles_unchanged + 1 ))
+
+      if [ $num_cycles_unchanged -ge 120 ]
+      then
+        logger chronos: Wait sync aborting as unsynced node count apparently stuck at $nodes
+        break
+      fi
+
+    else
+      last_nodes=$nodes
+      num_cycles_unchanged=0
     fi
 
     # Indicate that we're still waiting, then sleep for 5 secs and repeat

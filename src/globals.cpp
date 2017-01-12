@@ -64,9 +64,9 @@ Globals::Globals(std::string config_file,
   _desc.add_options()
     ("http.bind-address", po::value<std::string>()->default_value("0.0.0.0"), "Address to bind the HTTP server to")
     ("http.bind-port", po::value<int>()->default_value(7253), "Port to bind the HTTP server to")
-    ("cluster.localhost", po::value<std::string>()->default_value("localhost:7253"), "The address of the local host")
+    ("cluster.localhost", po::value<std::string>()->default_value("127.0.0.1:7253"), "The address of the local host")
     ("cluster.joining", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are joining")
-    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "localhost:7253"), "HOST"), "The addresses of nodes in the cluster that are staying")
+    ("cluster.node", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are staying")
     ("cluster.leaving", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "HOST"), "The addresses of nodes in the cluster that are leaving")
     ("identity.instance_id", po::value<uint32_t>()->default_value(0), "A number between 0 and 127. The combination of instance ID and deployment ID should uniquely identify this node in the cluster, to remove the risk of timer collisions.")
     ("identity.deployment_id", po::value<uint32_t>()->default_value(0), "A number between 0 and 7. The combination of instance ID and deployment ID should uniquely identify this node in the cluster, to remove the risk of timer collisions.")
@@ -218,11 +218,21 @@ void Globals::update_config()
   std::vector<std::string> cluster_joining_addresses = conf_map["cluster.joining"].as<std::vector<std::string>>();
   set_cluster_joining_addresses(cluster_joining_addresses);
 
-  std::vector<std::string> cluster_staying_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
-  set_cluster_staying_addresses(cluster_staying_addresses);
-
   std::vector<std::string> cluster_leaving_addresses = conf_map["cluster.leaving"].as<std::vector<std::string>>();
   set_cluster_leaving_addresses(cluster_leaving_addresses);
+
+  std::vector<std::string> cluster_staying_addresses = conf_map["cluster.node"].as<std::vector<std::string>>();
+
+  // If there are no joining, staying or leaving addresses, add the local node
+  // to the staying nodes
+  if (cluster_staying_addresses.empty() &&
+      cluster_leaving_addresses.empty() &&
+      cluster_joining_addresses.empty())
+  {
+    cluster_staying_addresses.push_back(cluster_local_address);
+  }
+
+  set_cluster_staying_addresses(cluster_staying_addresses);
 
   // Figure out the new cluster by combining the nodes that are staying and the
   // nodes that are joining.

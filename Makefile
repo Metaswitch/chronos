@@ -10,7 +10,7 @@ INSTALL_DIR ?= ${PREFIX}
 MODULE_DIR := ${ROOT}/modules
 
 DEB_COMPONENT := chronos
-DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
+DEB_MAJOR_VERSION ?= 1.0${DEB_VERSION_QUALIFIER}
 DEB_NAMES := chronos-libs chronos-libs-dbg chronos chronos-dbg
 
 INCLUDE_DIR := ${INSTALL_DIR}/include
