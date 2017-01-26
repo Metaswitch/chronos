@@ -116,6 +116,11 @@ do_abort()
 {
   start-stop-daemon --stop --quiet --retry=ABRT/60/KILL/5 --user $NAME --pidfile $PIDFILE --name $EXECNAME
   RETVAL="$?"
+  # If the abort failed, it may be because the PID in PIDFILE doesn't match the right process
+  # In this window condition, we may not recover, so remove the PIDFILE to get it running
+  if [ $RETVAL != 0 ]; then
+    rm -f $PIDFILE
+  fi
   [ "$RETVAL" = 2 ] && return 2
   return $RETVAL
 }
@@ -180,6 +185,20 @@ do_wait_sync() {
   done
   return 0
 }
+
+# There should only be at most one chronos process, and it should be the one in /var/run/chronos.pid.
+# Sanity check this, and kill and log any leaked ones.
+if [ -f $PIDFILE ] ; then
+  leaked_pids=$(pgrep -f "^$DAEMON" | grep -v $(cat $PIDFILE))
+else
+  leaked_pids=$(pgrep -f "^$DAEMON")
+fi
+if [ -n "$leaked_pids" ] ; then
+  for pid in $leaked_pids ; do
+    logger -p daemon.error -t $NAME Found leaked chronos $pid \(correct is $(cat $PIDFILE)\) - killing $pid
+    kill -9 $pid
+  done
+fi
 
 case "$1" in
   start)
