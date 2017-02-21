@@ -9,8 +9,8 @@ Chronos's cluster settings are controlled by `/etc/chronos/chronos_cluster.conf`
     node = 1.2.3.4
 
     [identity]
-    instance_id = <unique number for each Chronos instance>
-    deployment_id = <number that is the same for each Chronos instance in the same site, and different to any other site>
+    instance_id = <a unique number for each Chronos instance>
+    deployment_id = <a number that is the identical on each Chronos instance in the same site. This must be different to the number chosen for other sites>
 
 ## Scaling up
 
