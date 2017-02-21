@@ -8,6 +8,10 @@ Chronos's cluster settings are controlled by `/etc/chronos/chronos_cluster.conf`
     localhost = 1.2.3.4
     node = 1.2.3.4
 
+    [identity]
+    instance_id = <a unique number for each Chronos instance>
+    deployment_id = <a number that is the identical on each Chronos instance in the same site. This must be different to the number chosen for other sites>
+
 ## Scaling up
 
 Additional nodes are added to the cluster by adding `joining` lines and sending a SIGHUP (so that Chronos reloads the config):
