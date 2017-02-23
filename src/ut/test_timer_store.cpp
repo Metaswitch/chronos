@@ -652,18 +652,20 @@ TYPED_TEST(TestTimerStore, IterateOverTimersInPreviousBuckets)
   std::unordered_set<Timer*> unused_set = std::unordered_set<Timer*>();
   TestFixture::ts->fetch_next_timers(unused_set);
 
-  // Add a timer that falls into the first bucket of the short wheel
+  // Add a timer that falls into the first bucket of the short wheel, "behind"
+  // the bucket we're currently pointed at.
   Timer* timer4 = default_timer(4);
   timer4->start_time_mono_ms = get_time_ms();
-  timer4->interval_ms =
-    TimerStore::SHORT_WHEEL_PERIOD_MS - TimerStore::SHORT_WHEEL_RESOLUTION_MS;
+  timer4->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS -
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS;
   TestFixture::ts->insert(timer4);
 
-  // Add a timer that falls into the first bucket of the long wheel
+  // Add a timer that falls into the first bucket of the long wheel, "behind"
+  // the bucket we're currently pointed at.
   Timer* timer5 = default_timer(5);
   timer5->start_time_mono_ms = get_time_ms();
-  timer5->interval_ms =
-    TimerStore::LONG_WHEEL_PERIOD_MS - TimerStore::LONG_WHEEL_RESOLUTION_MS;
+  timer5->interval_ms = TimerStore::LONG_WHEEL_PERIOD_MS -
+                        TimerStore::LONG_WHEEL_RESOLUTION_MS;
   TestFixture::ts->insert(timer5);
 
   // Check that the iterator returns both timers
@@ -714,7 +716,8 @@ TYPED_TEST(TestTimerStore, IterateOverTimersRefillingWheel)
   // This once gets added directly to the short wheel.
   Timer* timer6 = default_timer(6);
   timer6->start_time_mono_ms = get_time_ms();
-  timer6->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS - TimerStore::SHORT_WHEEL_RESOLUTION_MS * 1 / 4;
+  timer6->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS -
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS * 1 / 4;
   TestFixture::ts->insert(timer6);
 
   // Now iterate over timers due to pop from now - should get all 3 in the order
