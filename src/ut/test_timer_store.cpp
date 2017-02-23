@@ -677,4 +677,61 @@ TYPED_TEST(TestTimerStore, IterateOverTimersInPreviousBuckets)
 
   ASSERT_EQ(count, 2);
 
+  // Tidy up the timers
+  delete timer4; timer4 = NULL;
+  delete timer5; timer5 = NULL;
+}
+
+// Test that the short wheel is correctly refilled when starting to iterate over
+// timers.
+TYPED_TEST(TestTimerStore, IterateOverTimersRefillingWheel)
+{
+  // Add a timer that falls into the first long bucket, but only by half the
+  // size of a short bucket
+  Timer* timer4 = default_timer(4);
+  timer4->start_time_mono_ms = get_time_ms();
+  timer4->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS +
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS / 2;
+  TestFixture::ts->insert(timer4);
+
+  // Add a timer that falls into the first bucket of the long wheel by more than
+  // the size of a short bucket
+  Timer* timer5 = default_timer(5);
+  timer5->start_time_mono_ms = get_time_ms();
+  timer5->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS +
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS * 2;
+  TestFixture::ts->insert(timer5);
+
+  // Advance time by the short wheel bucket size
+  cwtest_advance_time_ms(TimerStore::SHORT_WHEEL_RESOLUTION_MS);
+
+  // We call fetch_next_timers to ensure the _tick_timestamp is up to date since
+  // we've altered the time
+  std::unordered_set<Timer*> unused_set = std::unordered_set<Timer*>();
+  TestFixture::ts->fetch_next_timers(unused_set);
+
+  // Add a third timer due to pop after timer4, but still in the short wheel.
+  // This once gets added directly to the short wheel.
+  Timer* timer6 = default_timer(6);
+  timer6->start_time_mono_ms = get_time_ms();
+  timer6->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS - TimerStore::SHORT_WHEEL_RESOLUTION_MS * 1 / 4;
+  TestFixture::ts->insert(timer6);
+
+  // Now iterate over timers due to pop from now - should get all 3 in the order
+  // 4, 6, 5
+  int ids[3] = {4, 6, 5};
+
+  int ii = 0;
+  for (TimerStore::TSIterator it = TestFixture::ts->begin(get_time_ms());
+       !(it.end());
+       ++it)
+  {
+    ASSERT_EQ((*it)->id, ids[ii]);
+    ii++;
+  }
+
+  // Tidy up the timers
+  delete timer4; timer4 = NULL;
+  delete timer5; timer5 = NULL;
+  delete timer6; timer6 = NULL;
 }
