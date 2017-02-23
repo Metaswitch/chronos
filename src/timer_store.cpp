@@ -129,7 +129,6 @@ void TimerStore::insert(Timer* timer)
   else if (Utils::overflow_less_than(to_short_wheel_resolution(timer->next_pop_time()),
            to_short_wheel_resolution(_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
   {
-
     bucket = short_wheel_bucket(timer->next_pop_time());
     bucket->insert(timer);
   }
@@ -282,6 +281,7 @@ void TimerStore::maybe_refill_wheels()
 
   // Every second on the second refill the short timer wheel. Do this 2nd as
   // timers may need to propogate from the heap -> long wheel -> short wheel.
+  // Move all timers from the first bucket of the long wheel into the short.
   if ((_tick_timestamp % SHORT_WHEEL_PERIOD_MS) == 0)
   {
     refill_short_wheel();
@@ -298,7 +298,7 @@ void TimerStore::refill_long_wheel()
 
     if (timer != NULL)
     {
-      TRC_DEBUG("Timer at top of heap is has ID %lu", timer->id);
+      TRC_DEBUG("Timer at top of heap has ID %lu", timer->id);
     }
 
     while ((timer != NULL) &&
@@ -324,6 +324,7 @@ void TimerStore::refill_long_wheel()
 
 // Refill the short timer wheel by distributing timers from the current bucket
 // in the long timer wheel.
+// All timers in the long wheel bucket are moved into the short wheel.
 void TimerStore::refill_short_wheel()
 {
   Bucket* long_bucket = long_wheel_bucket(_tick_timestamp);
@@ -337,6 +338,31 @@ void TimerStore::refill_short_wheel()
   }
 
   long_bucket->clear();
+}
+
+// Refill the short timer wheel by distributing timers from the next bucket in
+// the long timer wheel.
+// Because not all timers in the next bucket will fit into the short wheel, we
+// check the time of each to decide if it should be moved.
+void TimerStore::refill_short_wheel_from_next_long_bucket()
+{
+  Bucket* long_bucket = long_wheel_bucket(_tick_timestamp + LONG_WHEEL_RESOLUTION_MS);
+  Bucket::iterator it = long_bucket->begin();
+
+  while (it != long_bucket->end())
+  {
+    if (Utils::overflow_less_than((*it)->next_pop_time(),
+                                  _tick_timestamp + SHORT_WHEEL_PERIOD_MS))
+    {
+      Bucket* short_bucket = short_wheel_bucket(*it);
+      short_bucket->insert(*it);
+      it = long_bucket->erase(it);
+    }
+    else
+    {
+      ++it;
+    }
+  }
 }
 
 void TimerStore::remove_timer_from_timer_wheel(Timer* timer)
@@ -362,7 +388,7 @@ void TimerStore::remove_timer_from_timer_wheel(Timer* timer)
       if (num_erased == 0)
       {
         bool success = _extra_heap.remove(timer);
-        
+
         if (!success)
         {
           // We failed to remove the timer from any data structure.  Try and
@@ -421,7 +447,8 @@ void TimerStore::TSOrderedTimerIterator::iterate_through_ordered_timers()
 
   while (_iterator != _ordered_timers.end())
   {
-    if ((*_iterator)->next_pop_time() >= _time_from)
+    if ((Utils::overflow_less_than(_time_from, (*_iterator)->next_pop_time())) ||
+        (_time_from == (*_iterator)->next_pop_time()))
     {
       break;
     }
@@ -436,6 +463,10 @@ TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
                                                        uint32_t time_from) :
   TSOrderedTimerIterator(ts, time_from)
 {
+  // We have to check the next bucket of the long wheel for any timers which
+  // need moving into the short wheel (to ensure they'll get picked up by one of
+  // the iterators).
+  _ts->refill_short_wheel_from_next_long_bucket();
   _bucket = 0;
   _iterator = _ordered_timers.end();
 
@@ -444,11 +475,14 @@ TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
                                    _ts->_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
   {
     _bucket = (time_from / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
+    uint32_t current_bucket = (_ts->_tick_timestamp / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
+    _end_bucket = current_bucket + SHORT_WHEEL_NUM_BUCKETS;
     next_bucket();
   }
   else
   {
     _bucket = SHORT_WHEEL_NUM_BUCKETS;
+    _end_bucket = SHORT_WHEEL_NUM_BUCKETS;
   }
 }
 
@@ -471,7 +505,7 @@ Timer* TimerStore::TSShortWheelIterator::operator*()
 bool TimerStore::TSShortWheelIterator::end() const
 {
   return ((_iterator == _ordered_timers.end()) &&
-          (_bucket == SHORT_WHEEL_NUM_BUCKETS));
+          (_bucket == _end_bucket));
 }
 
 void TimerStore::TSShortWheelIterator::next_bucket()
@@ -479,10 +513,10 @@ void TimerStore::TSShortWheelIterator::next_bucket()
   _ordered_timers.clear();
   _iterator = _ordered_timers.end();
 
-  while ((_bucket < SHORT_WHEEL_NUM_BUCKETS) &&
+  while ((_bucket < _end_bucket) &&
          (_ordered_timers.size() == 0))
   {
-    for (Timer* timer : _ts->_short_wheel[_bucket])
+    for (Timer* timer : _ts->_short_wheel[_bucket % SHORT_WHEEL_NUM_BUCKETS])
     {
       _ordered_timers.push_back(timer);
     }
@@ -510,6 +544,9 @@ TimerStore::TSLongWheelIterator::TSLongWheelIterator(TimerStore* ts,
                                                      uint32_t time_from) :
   TSOrderedTimerIterator(ts, time_from)
 {
+  // We have to top up the long wheel with times from the heap to ensure the
+  // iterators will pick them up in the correct order.
+  _ts->refill_long_wheel();
   _bucket = 0;
   _iterator = _ordered_timers.end();
 
@@ -518,11 +555,14 @@ TimerStore::TSLongWheelIterator::TSLongWheelIterator(TimerStore* ts,
                                    _ts->_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
   {
     _bucket = (time_from / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
+    uint32_t current_bucket = (_ts->_tick_timestamp / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
+    _end_bucket = current_bucket + LONG_WHEEL_NUM_BUCKETS;
     next_bucket();
   }
   else
   {
     _bucket = LONG_WHEEL_NUM_BUCKETS;
+    _end_bucket = LONG_WHEEL_NUM_BUCKETS;
   }
 }
 
@@ -545,7 +585,7 @@ Timer* TimerStore::TSLongWheelIterator::operator*()
 bool TimerStore::TSLongWheelIterator::end() const
 {
   return ((_iterator == _ordered_timers.end()) &&
-          (_bucket == LONG_WHEEL_NUM_BUCKETS));
+          (_bucket == _end_bucket));
 }
 
 void TimerStore::TSLongWheelIterator::next_bucket()
@@ -553,10 +593,10 @@ void TimerStore::TSLongWheelIterator::next_bucket()
   _ordered_timers.clear();
   _iterator = _ordered_timers.end();
 
-  while ((_bucket < LONG_WHEEL_NUM_BUCKETS) &&
+  while ((_bucket < _end_bucket) &&
          (_ordered_timers.size() == 0))
   {
-    for (Timer* timer : _ts->_long_wheel[_bucket])
+    for (Timer* timer : _ts->_long_wheel[_bucket % LONG_WHEEL_NUM_BUCKETS])
     {
       _ordered_timers.push_back(timer);
     }
@@ -588,7 +628,7 @@ TimerStore::TSHeapIterator::TSHeapIterator(TimerStore* ts,
 {
   while (!this->end())
   {
-    if (static_cast<Timer*>(*_iterator)->next_pop_time() >= time_from)
+    if (Utils::overflow_less_than(time_from, static_cast<Timer*>(*_iterator)->next_pop_time()))
     {
       break;
     }
