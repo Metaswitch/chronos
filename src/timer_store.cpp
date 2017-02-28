@@ -529,6 +529,7 @@ void TimerStore::TSShortWheelIterator::next_bucket()
       if (_iterator == _ordered_timers.end())
       {
         _ordered_timers.clear();
+        _iterator = _ordered_timers.end();
         ++_bucket;
       }
       // LCOV_EXCL_STOP
@@ -609,6 +610,7 @@ void TimerStore::TSLongWheelIterator::next_bucket()
       if (_iterator == _ordered_timers.end())
       {
         _ordered_timers.clear();
+        _iterator = _ordered_timers.end();
         ++_bucket;
       }
       // LCOV_EXCL_STOP
