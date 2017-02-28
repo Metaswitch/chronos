@@ -56,6 +56,7 @@ import unittest
 # perform scaling operations, and check that the correct number of
 # timers still pop
 CHRONOS_BINARY = 'build/bin/chronos'
+CHRONOS_LIBS = 'usr/lib/'
 PID_PATTERN = 'scripts/pid/chronos.fvtest.%i.pid'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.fvtest.conf%i'
 CLUSTER_CONFIG_FILE_PATTERN = 'scripts/log/chronos.cluster.fvtest.conf%i'
@@ -138,13 +139,16 @@ def run_app():
 
 # Helper functions for the Chronos tests
 def start_nodes(lower, upper):
+    environment = os.environ.copy()
+    environment["LD_LIBRARY_PATH"] = CHRONOS_LIBS
+
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
         Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i,
               '--config-file', CONFIG_FILE_PATTERN % i,
               '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i,
               '--gr-config-file', GR_CONFIG_FILE_PATTERN % i],
-              stdout=FNULL, stderr=FNULL)
+              stdout=FNULL, stderr=FNULL, env=environment)
         sleep(2)
 
         f = open(PID_PATTERN % i)
