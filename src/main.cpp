@@ -366,15 +366,6 @@ int main(int argc, char** argv)
                                            scalar_timers_table);
   callback->start(handler);
 
-  // Create a Chronos internal connection class for resynchronization operations.
-  ChronosInternalConnection* chronos_internal_connection =
-            new ChronosInternalConnection(http_resolver,
-                                          handler,
-                                          handler_rep,
-                                          resync_operation_alarm,
-                                          remaining_nodes_scalar,
-                                          timers_processed_table,
-                                          invalid_timers_processed_table);
 
 
   int target_latency;
@@ -392,7 +383,7 @@ int main(int argc, char** argv)
                                               initial_token_rate,
                                               min_token_rate);
 
-  // Finally, set up the HTTPStack and handlers
+  // Set up the HTTPStack and handlers
   int bind_port;
   int http_threads;
   __globals->get_bind_port(bind_port);
@@ -425,6 +416,17 @@ int main(int argc, char** argv)
   }
 
   CL_CHRONOS_HTTP_SERVICE_AVAILABLE.log();
+
+  // Create a Chronos internal connection class for resynchronization operations.
+  // We do this after creating the HTTPStack as it triggers a resync operation.
+  ChronosInternalConnection* chronos_internal_connection =
+            new ChronosInternalConnection(http_resolver,
+                                          handler,
+                                          handler_rep,
+                                          resync_operation_alarm,
+                                          remaining_nodes_scalar,
+                                          timers_processed_table,
+                                          invalid_timers_processed_table);
 
   // Wait here until the quit semaphore is signaled.
   sem_wait(&term_sem);
