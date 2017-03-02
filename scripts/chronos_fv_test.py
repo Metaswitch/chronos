@@ -43,6 +43,7 @@ import os
 import sys
 import shutil
 import signal
+import random
 from subprocess import Popen
 from time import sleep
 from collections import namedtuple
@@ -55,9 +56,11 @@ import unittest
 # perform scaling operations, and check that the correct number of
 # timers still pop
 CHRONOS_BINARY = 'build/bin/chronos'
+CHRONOS_LIBS = 'usr/lib/'
 PID_PATTERN = 'scripts/pid/chronos.fvtest.%i.pid'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.fvtest.conf%i'
 CLUSTER_CONFIG_FILE_PATTERN = 'scripts/log/chronos.cluster.fvtest.conf%i'
+GR_CONFIG_FILE_PATTERN = 'scripts/log/chronos.gr.fvtest.conf%i'
 LOG_FILE_DIR = 'scripts/log/'
 LOG_FILE_PATTERN = LOG_FILE_DIR + 'chronos%s'
 
@@ -73,6 +76,7 @@ chronos_nodes = [
 successReceiveCount = 0
 failureReceiveCount = 0
 processes = []
+timerIDs = []
 successTimerCounts = []
 failureTimerCounts = []
 
@@ -135,11 +139,16 @@ def run_app():
 
 # Helper functions for the Chronos tests
 def start_nodes(lower, upper):
+    environment = os.environ.copy()
+    environment["LD_LIBRARY_PATH"] = CHRONOS_LIBS
+
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
-        Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i, '--config-file',
-            CONFIG_FILE_PATTERN % i, '--cluster-config-file',
-            CLUSTER_CONFIG_FILE_PATTERN % i], stdout=FNULL, stderr=FNULL)
+        Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i,
+              '--config-file', CONFIG_FILE_PATTERN % i,
+              '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i,
+              '--gr-config-file', GR_CONFIG_FILE_PATTERN % i],
+              stdout=FNULL, stderr=FNULL, env=environment)
         sleep(2)
 
         f = open(PID_PATTERN % i)
@@ -160,6 +169,13 @@ def kill_nodes(lower, upper):
                 raise
 
 
+def kill_random_nodes(count):
+    # Kill a random count of the processes
+    kill_list = random.sample(processes, count)
+    for p in kill_list:
+        os.kill(int(p), signal.SIGKILL)
+
+
 def node_reload_config(lower, upper):
     # SIGHUP nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
@@ -174,9 +190,10 @@ def node_trigger_scaling(lower, upper):
     sleep(2)
 
 
-def create_timers(target, num, path="pop", replicas=2):
+def create_timers(target, num, max_num, path="pop", replicas=2):
     # Create and send timer requests. These are all sent to the first Chronos
     # process which will replicate the timers out to the other Chronos processes
+    global timerIDs
     body_dict = {
         'timing': {
             'interval': 10,
@@ -195,13 +212,18 @@ def create_timers(target, num, path="pop", replicas=2):
 
     # Set the number of the timer in the opaque data - this way we can check we
     # get the correct timers back
-    for i in range(num):
+    for i in range(num, max_num):
         body_dict['callback']['http']['opaque'] = str(i)
         r = requests.post('http://%s:%s/timers' % (target.ip, target.port),
                           data=json.dumps(body_dict)
                           )
+        timerIDs.append(r.headers['location'])
         assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
+def delete_timers(target, num):
+    for i in range(num):
+        r = requests.delete('http://%s:%s%s' % (target.ip, target.port, timerIDs[i]))
+        assert r.status_code == 200, 'Received unexpected status code: %i' % r.status_code
 
 def write_conf(filename, this_node):
     # Create a configuration file for a chronos process. Use a generous token
@@ -236,6 +258,16 @@ def write_cluster_conf(filename, this_node, joining, nodes, leaving):
         for node in leaving:
             f.write('leaving = {node.ip}:{node.port}\n'.format(**locals()))
 
+
+def write_gr_conf(filename, local_site, remote_sites):
+    # Create a GR configuration file for a chronos process.
+    with open(filename, 'w') as f:
+        f.write(dedent("""\
+        [sites]
+        local_site = {}
+        """).format(local_site))
+        for site in remote_sites:
+            f.write('remote_site = {site}\n'.format(**locals()))
 
 # Test the resynchronization operations for Chronos.
 class ChronosFVTest(unittest.TestCase):
@@ -304,3 +336,16 @@ class ChronosFVTest(unittest.TestCase):
                                [chronos_nodes[i] for i in joining],
                                [chronos_nodes[i] for i in staying],
                                [chronos_nodes[i] for i in leaving])
+
+    def write_gr_config_for_nodes(self, nodes, local_site, remote_sites):
+        # Write configuration files for the nodes
+        for num in nodes:
+            write_conf(CONFIG_FILE_PATTERN % num,
+                       chronos_nodes[num])
+            write_cluster_conf(CLUSTER_CONFIG_FILE_PATTERN % num,
+                               this_node=chronos_nodes[num],
+                               joining=[],
+                               nodes=[chronos_nodes[i] for i in nodes],
+                               leaving=[])
+            write_gr_conf(GR_CONFIG_FILE_PATTERN % num,
+                          local_site, remote_sites)

@@ -63,4 +63,4 @@ Chronos uses our common infrastructure to run the unit tests. How to run the UTs
 
 ## Running Functional Tests
 
-To run the tests of Chronos resynchronization, run `make resync_test`.
+To run the Chronos FV tests, run `make fv_test`.

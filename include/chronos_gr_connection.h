@@ -1,8 +1,8 @@
 /**
- * @file mock_timer_handler.h
+ * @file chronos_gr_connection.h
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2015  Metaswitch Networks Ltd
+ * Copyright (C) 2016  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,26 +34,29 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_TIMER_HANDLER_H__
-#define MOCK_TIMER_HANDLER_H__
+#ifndef CHRONOS_GR_CONNECTION_H__
+#define CHRONOS_GR_CONNECTION_H__
 
-#include "timer_handler.h"
+#include "httpconnection.h"
 
-#include <gmock/gmock.h>
-
-class MockTimerHandler : public TimerHandler
+/// @class ChronosGRConnection
+///
+/// Responsible for sending replication requests between sites. Each connection
+/// is responsible for replication to a single remote site.
+class ChronosGRConnection
 {
 public:
-  MOCK_METHOD2(add_timer,void(Timer*,bool));
-  MOCK_METHOD1(return_timer,void(Timer*));
-  MOCK_METHOD1(handle_successful_callback,void(TimerID));
-  MOCK_METHOD1(handle_failed_callback,void(TimerID));
-  MOCK_METHOD5(get_timers_for_node, HTTPCode(std::string request_node,
-                                             int max_responses,
-                                             std::string cluster_view_id,
-                                             uint32_t time_from,
-                                             std::string& get_response));
+  ChronosGRConnection(const std::string& remote_site,
+                      HttpResolver* resolver);
+  virtual ~ChronosGRConnection();
+
+  // Replicate the timer cross-site.
+  virtual void send_put(std::string url,
+                        std::string body);
+
+private:
+  std::string _site_name;
+  HttpConnection* _http;
 };
 
 #endif
-

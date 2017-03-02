@@ -43,7 +43,8 @@ void Base::SetUp()
 {
   // Set up globals to something sensible
   __globals = new Globals("/etc/chronos/chronos.conf",
-                          "/etc/chronos/chronos_cluster.conf");
+                          "/etc/chronos/chronos_cluster.conf",
+                          "/etc/chronos/chronos_gr.conf");
   __globals->lock();
   std::string localhost = "10.0.0.1";
   std::string localhost_port = "10.0.0.1:9999";
@@ -76,6 +77,21 @@ void Base::SetUp()
   uint32_t deployment_id = 3;
   __globals->set_instance_id(instance_id);
   __globals->set_deployment_id(deployment_id);
+
+  std::string local_site_name = "local_site_name";
+  __globals->set_local_site_name(local_site_name);
+
+  std::map<std::string, std::string> remote_sites;
+  remote_sites.insert(std::make_pair("remote_site_1_name", "remote_site_1_dns_record"));
+  __globals->set_remote_sites(remote_sites);
+
+  std::vector<std::string> remote_site_names;
+  remote_site_names.push_back("remote_site_1_name");
+  __globals->set_remote_site_names(remote_site_names);
+
+  std::vector<std::string> remote_site_dns_records;
+  remote_site_dns_records.push_back("remote_site_1_dns_record");
+  __globals->set_remote_site_dns_records(remote_site_dns_records);
 
   __globals->unlock();
 }

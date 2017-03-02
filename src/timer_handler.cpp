@@ -53,17 +53,19 @@ void* TimerHandler::timer_handler_entry_func(void* arg)
 TimerHandler::TimerHandler(TimerStore* store,
                            Callback* callback,
                            Replicator* replicator,
+                           GRReplicator* gr_replicator,
                            SNMP::ContinuousIncrementTable* all_timers_table,
                            SNMP::InfiniteTimerCountTable* tagged_timers_table,
                            SNMP::InfiniteScalarTable* scalar_timers_table) :
-                           _store(store),
-                           _callback(callback),
-                           _replicator(replicator),
-                           _all_timers_table(all_timers_table),
-                           _tagged_timers_table(tagged_timers_table),
-                           _scalar_timers_table(scalar_timers_table),
-                           _terminate(false),
-                           _nearest_new_timer(-1)
+  _store(store),
+  _callback(callback),
+  _replicator(replicator),
+  _gr_replicator(gr_replicator),
+  _all_timers_table(all_timers_table),
+  _tagged_timers_table(tagged_timers_table),
+  _scalar_timers_table(scalar_timers_table),
+  _terminate(false),
+  _nearest_new_timer(-1)
 {
   pthread_mutex_init(&_mutex, NULL);
 
@@ -107,47 +109,36 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
 {
   pthread_mutex_lock(&_mutex);
 
-  // Convert the new timer to a timer pair
-  TimerPair new_tp;
-  new_tp.active_timer = timer;
-
-  // Pull out any existing timer pair from the timer store
-  TimerPair existing_tp;
-  bool timer_found = _store->fetch(timer->id, existing_tp);
+  // Pull out any existing timer from the timer store
+  Timer* existing_timer = NULL;
+  _store->fetch(timer->id, &existing_timer);
 
   // We've found a timer.
-  if (timer_found)
+  if (existing_timer)
   {
     bool will_add_timer = true;
     std::string cluster_view_id;
     __globals->get_cluster_view_id(cluster_view_id);
 
     if ((timer->is_matching_cluster_view_id(cluster_view_id)) &&
-        !(existing_tp.active_timer->is_matching_cluster_view_id(cluster_view_id)))
+        !(existing_timer->is_matching_cluster_view_id(cluster_view_id)))
     {
       // If the new timer matches the current cluster view ID, and the old timer
       // doesn't, always prioritise the new timer.
       TRC_DEBUG("Adding timer with current cluster view ID");
     }
-    else if (timer->sequence_number == existing_tp.active_timer->sequence_number)
+    else if (timer->sequence_number == existing_timer->sequence_number)
     {
       // If the new timer has the same sequence number as the old timer,
       // then check which timer is newer. If the existing timer is newer then we just
       // want to replace the timer and not change it
       if (Utils::overflow_less_than(timer->start_time_mono_ms,
-                                    existing_tp.active_timer->start_time_mono_ms))
+                                    existing_timer->start_time_mono_ms))
       {
         TRC_DEBUG("Timer sequence numbers the same, but timer is older than the "
                   "timer in the store");
-
-        delete new_tp.active_timer;
-        new_tp.active_timer = new Timer(*existing_tp.active_timer);
-
-        if (existing_tp.information_timer)
-        {
-          new_tp.information_timer = new Timer(*existing_tp.information_timer);
-        }
-
+        delete timer;
+        timer = new Timer(*existing_timer);
         will_add_timer = false;
       }
       else
@@ -160,22 +151,15 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       // One of the sequence numbers is non-zero - at least one request is not
       // from the client
       if ((near_time(timer->start_time_mono_ms,
-                     existing_tp.active_timer->start_time_mono_ms))            &&
-          (timer->sequence_number < existing_tp.active_timer->sequence_number) &&
+                     existing_timer->start_time_mono_ms))            &&
+          (timer->sequence_number < existing_timer->sequence_number) &&
           (timer->sequence_number != 0))
       {
         // These are probably the same timer, and the timer we are trying to add is both
         // not from the client, and has a lower sequence number (so is less "informed")
         TRC_DEBUG("Not adding timer as it's older than the timer in the store");
-
-        delete new_tp.active_timer;
-        new_tp.active_timer = new Timer(*existing_tp.active_timer);
-
-        if (existing_tp.information_timer)
-        {
-          new_tp.information_timer = new Timer(*existing_tp.information_timer);
-        }
-
+        delete timer;
+        timer = new Timer(*existing_timer);
         will_add_timer = false;
       }
       else
@@ -189,36 +173,10 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     if (will_add_timer)
     {
       // If the new timer is a tombstone, make sure its interval is long enough
-      save_tombstone_information(new_tp.active_timer, existing_tp.active_timer);
+      save_tombstone_information(timer, existing_timer);
 
-      // Decide whether we should save the old timer as an informational timer
-      if (existing_tp.active_timer->cluster_view_id !=
-          new_tp.active_timer->cluster_view_id)
-      {
-        // The cluster IDs on the new and existing timers are different.
-        // This means that the cluster configuration has changed between
-        // then and when the timer was last updated
-        TRC_DEBUG("Saving existing timer as informational timer");
-
-        if (existing_tp.information_timer)
-        {
-          // There's already a saved timer, but the new timer doesn't match the
-          // existing timer. This is an error condition, and suggests that
-          // a scaling operation has been started before an old scaling operation
-          // finished, or there was a node failure during a scaling operation.
-          // Either way, the saved timer information is out of date, and is
-          // deleted (by not saving a copy of it when we delete the entire Timer
-          // ID structure in the next step)
-          TRC_WARNING("Deleting out of date timer from timer map");
-        }
-
-        new_tp.information_timer = new Timer(*existing_tp.active_timer);
-      }
-      else if (existing_tp.information_timer)
-      {
-        // If there's an existing informational timer save it off
-        new_tp.information_timer = new Timer(*existing_tp.information_timer);
-      }
+      // Update the site information
+      save_site_information(timer, existing_timer);
     }
   }
   else
@@ -237,31 +195,31 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     std::map<std::string, uint32_t> tags_to_add = std::map<std::string, uint32_t>();
     std::map<std::string, uint32_t> tags_to_remove = std::map<std::string, uint32_t>();
 
-    if (new_tp.active_timer->is_tombstone())
+    if (timer->is_tombstone())
     {
       // If the new timer is a tombstone, no new tags should be added
-      // If it overwrites an existing active timer, the old tags should
+      // If it overwrites an existing timer, the old tags should
       // be removed, and global count decremented
-      if ((existing_tp.active_timer) &&
-          !(existing_tp.active_timer->is_tombstone()))
+      if ((existing_timer) &&
+          !(existing_timer->is_tombstone()))
       {
-        tags_to_remove = existing_tp.active_timer->tags;
-        TRC_DEBUG("new timer is a tombstone overwriting an existing timer");
+        tags_to_remove = existing_timer->tags;
+        TRC_DEBUG("New timer is a tombstone overwriting an existing timer");
         _all_timers_table->decrement(1);
       }
     }
     else
     {
       // Add new timer tags
-      tags_to_add = new_tp.active_timer->tags;
+      tags_to_add = timer->tags;
 
       // If there was an old existing timer, its tags should be removed
       // Global count should only increment if there was not an old
       // timer, as otherwise it is only an update.
-      if ((existing_tp.active_timer) &&
-          !(existing_tp.active_timer->is_tombstone()))
+      if ((existing_timer) &&
+          !(existing_timer->is_tombstone()))
       {
-        tags_to_remove = existing_tp.active_timer->tags;
+        tags_to_remove = existing_timer->tags;
       }
       else
       {
@@ -273,22 +231,11 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
     update_statistics(tags_to_add, tags_to_remove);
   }
 
-  delete existing_tp.active_timer;
-  delete existing_tp.information_timer;
+  delete existing_timer;
 
-  TimerID id = new_tp.active_timer->id;
-  uint32_t next_pop_time = new_tp.active_timer->next_pop_time();
+  TRC_DEBUG("Inserting the new timer with ID %llu", timer->id);
+  _store->insert(timer);
 
-  std::vector<std::string> cluster_view_id_vector;
-  cluster_view_id_vector.push_back(new_tp.active_timer->cluster_view_id);
-
-  if (new_tp.information_timer)
-  {
-    cluster_view_id_vector.push_back(new_tp.information_timer->cluster_view_id);
-  }
-
-  TRC_DEBUG("Inserting the new timer with ID %llu", id);
-  _store->insert(new_tp, id, next_pop_time, cluster_view_id_vector);
   pthread_mutex_unlock(&_mutex);
 }
 
@@ -318,25 +265,21 @@ void TimerHandler::return_timer(Timer* timer)
 
 void TimerHandler::handle_successful_callback(TimerID timer_id)
 {
-  // Fetch the timer from the store and replicate it.
+  // Fetch the timer from the store and replicate it (within and cross-site)
   pthread_mutex_lock(&_mutex);
-  TimerPair timer_pair;
-  bool timer_found = _store->fetch(timer_id, timer_pair);
 
-  if (timer_found)
+  Timer* timer = NULL;
+  _store->fetch(timer_id, &timer);
+
+  if (timer)
   {
-    Timer* timer;
-    timer = timer_pair.active_timer;
+    // Update the sites
+    timer->update_sites_on_timer_pop();
     _replicator->replicate(timer);
+    _gr_replicator->replicate(timer);
 
-    std::vector<std::string> cluster_view_id_vector;
-    cluster_view_id_vector.push_back(timer->cluster_view_id);
-    if (timer_pair.information_timer)
-    {
-      cluster_view_id_vector.push_back(timer_pair.information_timer->cluster_view_id);
-    }
     // Pass the timer pair back to the store, relinquishing responsibility for it.
-    _store->insert(timer_pair, timer_id, timer->next_pop_time(), cluster_view_id_vector);
+    _store->insert(timer);
   }
 
   pthread_mutex_unlock(&_mutex);
@@ -346,15 +289,12 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
 {
   // Fetch the timer from the store and delete it.
   pthread_mutex_lock(&_mutex);
-  TimerPair failed_pair;
-  bool timer_found = _store->fetch(timer_id, failed_pair);
+  Timer* timer = NULL;
+  _store->fetch(timer_id, &timer);
   pthread_mutex_unlock(&_mutex);
 
-  if (timer_found)
+  if (timer)
   {
-    Timer* timer;
-    timer = failed_pair.active_timer;
-
     // If the timer is not a tombstone we also update statistics.
     if (!timer->is_tombstone())
     {
@@ -363,92 +303,11 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
     }
   }
 
-  delete failed_pair.active_timer; failed_pair.active_timer = NULL;
-  delete failed_pair.information_timer; failed_pair.information_timer = NULL;
-}
-
-Timer* TimerHandler::get_out_of_date_timer(const TimerPair& pair,
-                                           const std::string& cluster_view_id,
-                                           bool& active_timer)
-{
-  Timer* timer = NULL;
-  active_timer = false;
-
-  if ((pair.active_timer) &&
-      (!pair.active_timer->is_matching_cluster_view_id(cluster_view_id)))
-  {
-    timer = pair.active_timer;
-    active_timer = true;
-  }
-  else if ((pair.information_timer) &&
-           (!pair.information_timer->is_matching_cluster_view_id(cluster_view_id)))
-  {
-    timer = pair.information_timer;
-  }
-
-  return timer;
-}
-
-void TimerHandler::update_replica_tracker_for_timer(TimerID id,
-                                                    int replica_index)
-{
-  pthread_mutex_lock(&_mutex);
-  TimerPair store_timers;
-  bool timer_found = _store->fetch(id, store_timers);
-
-  if (timer_found)
-  {
-    std::string cluster_view_id;
-    __globals->get_cluster_view_id(cluster_view_id);
-
-    bool is_active_timer = true;
-    Timer* timer = get_out_of_date_timer(store_timers, cluster_view_id, is_active_timer);
-
-    if (timer != NULL)
-    {
-      // We have an out of date timer, so update the tracker.
-      int remaining_replicas = timer->update_replica_tracker(replica_index);
-
-      if (remaining_replicas == 0)
-      {
-        if (!is_active_timer)
-        {
-          // All the new replicas have been told about the timer. We don't
-          // need to store the information about the timer anymore.
-          delete timer; timer = NULL;
-          store_timers.information_timer = NULL;
-        }
-        else
-        {
-          // This is a window condition where the node is responsible for an
-          // old timer replica. The node knows that all new replicas that
-          // should know about the timer are in the process of being told,
-          // but it hasn't yet received an update or tombstone for its
-          // replica. It will receive this soon.
-        }
-      }
-    }
-
-    // Put the timer back in the store
-    uint32_t next_pop_time = store_timers.active_timer->next_pop_time();
-
-    std::vector<std::string> cluster_view_id_vector;
-    cluster_view_id_vector.push_back(store_timers.active_timer->cluster_view_id);
-
-    if (store_timers.information_timer)
-    {
-      cluster_view_id_vector.push_back(store_timers.information_timer->cluster_view_id);
-    }
-
-    _store->insert(store_timers, id, next_pop_time, cluster_view_id_vector);
-  }
-
-  TRC_DEBUG("Updated replicas successfully");
-  pthread_mutex_unlock(&_mutex);
+  delete timer; timer = NULL;
 }
 
 HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
-                                           int max_responses,
+                                           int max_rsps_with_unique_pop_time,
                                            std::string cluster_view_id,
                                            uint32_t time_from,
                                            std::string& get_response)
@@ -470,34 +329,31 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   TRC_DEBUG("Get timers for %s", request_node.c_str());
 
   int retrieved_timers = 0;
+  uint32_t last_time_from = 0;
+  uint32_t current_time_from = 0;
 
-  for (TimerStore::TSIterator it = _store->begin(cluster_view_id);
-       it != _store->end();
+  for (TimerStore::TSIterator it = _store->begin(time_from);
+       !(it.end());
        ++it)
   {
-    Timer* timer_copy;
-    TimerPair pair = *it;
-    bool unused_is_active_timer;
-    Timer* out_of_date = get_out_of_date_timer(pair,
-                                               cluster_view_id,
-                                               unused_is_active_timer);
+    Timer* timer_copy = new Timer(**it);
+    current_time_from = timer_copy->next_pop_time();
 
-    if (out_of_date != NULL)
+    // Break out of the for loop once we hit the maximum number of
+    // timers to collect, and we know that the next timer doesn't
+    // have the same pop time as our last timer
+    if ((retrieved_timers >= max_rsps_with_unique_pop_time) &&
+        (last_time_from != current_time_from))
     {
-      timer_copy = new Timer(*(out_of_date));
-    }
-    else
-    {
-      // LCOV_EXCL_START - Logic error to end up here
-      continue;
-      // LCOV_EXCL_STOP
+      TRC_DEBUG("Reached the max number of timers to collect");
+      delete timer_copy;
+      break;
     }
 
     if (!timer_copy->is_tombstone())
     {
       std::vector<std::string> old_replicas;
       if (timer_is_on_node(request_node,
-                           cluster_view_id,
                            timer_copy,
                            old_replicas))
       {
@@ -526,21 +382,14 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
           timer_copy->to_json_obj(&writer);
         }
         writer.EndObject();
-
         retrieved_timers++;
       }
+
+      last_time_from = current_time_from;
     }
 
     // Tidy up the copy
     delete timer_copy;
-
-    // Break out of the for loop once we hit the maximum number of
-    // timers to collect
-    if (retrieved_timers == max_responses)
-    {
-      TRC_DEBUG("Reached the max number of timers to collect");
-      break;
-    }
   }
 
   writer.EndArray();
@@ -549,38 +398,35 @@ HTTPCode TimerHandler::get_timers_for_node(std::string request_node,
   pthread_mutex_unlock(&_mutex);
 
   TRC_DEBUG("Retrieved %d timers", retrieved_timers);
-  return (retrieved_timers == max_responses) ? HTTP_PARTIAL_CONTENT : HTTP_OK;
+  return (retrieved_timers >= max_rsps_with_unique_pop_time) ?
+                                        HTTP_PARTIAL_CONTENT :
+                                        HTTP_OK;
 }
 
 bool TimerHandler::timer_is_on_node(std::string request_node,
-                                    std::string cluster_view_id,
                                     Timer* timer,
                                     std::vector<std::string>& old_replicas)
 {
   bool timer_is_on_requesting_node = false;
 
-  if (!timer->is_matching_cluster_view_id(cluster_view_id))
+  // Store the old replica list
+  std::string localhost;
+  __globals->get_cluster_local_ip(localhost);
+  old_replicas = timer->replicas;
+
+  // Calculate whether the new request node is interested in the timer. This
+  // updates the replica list in the timer object to be the new replica list
+  timer->update_cluster_information();
+
+  int index = 0;
+  for (std::vector<std::string>::iterator it = timer->replicas.begin();
+                                          it != timer->replicas.end();
+                                          ++it, ++index)
   {
-    // Store the old replica list
-    std::string localhost;
-    __globals->get_cluster_local_ip(localhost);
-    old_replicas = timer->replicas;
-
-    // Calculate whether the new request node is interested in the timer. This
-    // updates the replica list in the timer object to be the new replica list
-    timer->update_cluster_information();
-
-    int index = 0;
-    for (std::vector<std::string>::iterator it = timer->replicas.begin();
-                                            it != timer->replicas.end();
-                                            ++it, ++index)
+    if (*it == request_node)
     {
-      if ((*it == request_node) &&
-          !(timer->has_replica_been_informed(index)))
-      {
-        timer_is_on_requesting_node = true;
-        break;
-      }
+      timer_is_on_requesting_node = true;
+      break;
     }
   }
 
@@ -593,12 +439,14 @@ bool TimerHandler::timer_is_on_node(std::string request_node,
 // If there are no timers in the store at all, we wait forever for one to be added (or
 // until we're terminated).  If we are woken while waiting for one set of timers to
 // pop, check the timer store to make sure we're holding the nearest timers.
-void TimerHandler::run() {
-  std::unordered_set<TimerPair> next_timers;
+void TimerHandler::run()
+{
+  std::unordered_set<Timer*> next_timers;
 
   pthread_mutex_lock(&_mutex);
 
   _store->fetch_next_timers(next_timers);
+
   while (!_terminate)
   {
     if (!next_timers.empty())
@@ -649,12 +497,11 @@ void TimerHandler::run() {
   }
 
 
-  for (std::unordered_set<TimerPair>::iterator it = next_timers.begin();
-                                               it != next_timers.end();
-                                               ++it)
+  for (std::unordered_set<Timer*>::iterator it = next_timers.begin();
+                                            it != next_timers.end();
+                                            ++it)
   {
-    delete it->active_timer;
-    delete it->information_timer;
+    delete *it;
   }
 
   next_timers.clear();
@@ -668,15 +515,15 @@ void TimerHandler::run() {
 
 // Pop a set of timers, this function takes ownership of the timers and
 // thus empties the passed in set.
-void TimerHandler::pop(std::unordered_set<TimerPair>& timers)
+void TimerHandler::pop(std::unordered_set<Timer*>& timers)
 {
-  for (std::unordered_set<TimerPair>::iterator it = timers.begin();
-                                               it != timers.end();
-                                               ++it)
+  for (std::unordered_set<Timer*>::iterator it = timers.begin();
+                                            it != timers.end();
+                                            ++it)
   {
-    delete it->information_timer;
-    pop(it->active_timer);
+    pop(*it);
   }
+
   timers.clear();
 }
 
@@ -708,11 +555,60 @@ void TimerHandler::save_tombstone_information(Timer* t, Timer* existing)
 {
   if (t->is_tombstone())
   {
-  // Learn the interval so that this tombstone lasts long enough to
-  //  catch errors.
+    // Learn the interval so that this tombstone lasts long enough to
+    // catch errors.
     t->interval_ms = existing->interval_ms;
     t->repeat_for = existing->repeat_for;
   }
+}
+
+void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
+{
+  // Firstly, check if the sites are the same (potentially in a different
+  // order). We expect this to be the mainline case, so we always do this
+  // cheaper check
+  std::vector<std::string> old_timer_sites = old_timer->sites;
+  std::vector<std::string> new_timer_sites = new_timer->sites;
+  std::sort(old_timer_sites.begin(), old_timer_sites.end());
+  std::sort(new_timer_sites.begin(), new_timer_sites.end());
+
+  if (old_timer_sites == new_timer_sites)
+  {
+    new_timer->sites = old_timer->sites;
+    return;
+  }
+
+  // The sites aren't the same. We have to check the sites to make sure that
+  // the site ordering is retained (which is O(n^2) cost - but this only
+  // happens when the sites are added/removed which we expect to be rare).
+  std::vector<std::string> site_names;
+
+  // Remove any sites that aren't in the new timer
+  for (std::string site: old_timer->sites)
+  {
+    if (std::find(new_timer->sites.begin(), new_timer->sites.end(), site) !=
+        new_timer->sites.end())
+    {
+      site_names.push_back(site);
+    }
+    else
+    {
+      TRC_DEBUG("Removing site (%s) as it no longer exists", site.c_str());
+    }
+  }
+
+  // Add any new sites that are only in the new timer
+  for (std::string site: new_timer->sites)
+  {
+    if (std::find(site_names.begin(), site_names.end(), site) ==
+        site_names.end())
+    {
+      TRC_DEBUG("Adding remote site (%s) to sites", site.c_str());
+      site_names.push_back(site);
+    }
+  }
+
+  new_timer->sites = site_names;
 }
 
 // Report an update to the number of timers to statistics

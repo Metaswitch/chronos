@@ -48,6 +48,7 @@
 #include "timer_store.h"
 #include "callback.h"
 #include "replicator.h"
+#include "gr_replicator.h"
 #include "alarm.h"
 #include "snmp_continuous_increment_table.h"
 #include "snmp_infinite_timer_count_table.h"
@@ -60,6 +61,7 @@ public:
   TimerHandler(TimerStore*,
                Callback*,
                Replicator*,
+               GRReplicator*,
                SNMP::ContinuousIncrementTable*,
                SNMP::InfiniteTimerCountTable*,
                SNMP::InfiniteScalarTable*);
@@ -69,10 +71,8 @@ public:
   virtual void return_timer(Timer*);
   virtual void handle_successful_callback(TimerID id);
   virtual void handle_failed_callback(TimerID id);
-  virtual void update_replica_tracker_for_timer(TimerID id,
-                                                int replica_index);
   virtual HTTPCode get_timers_for_node(std::string node,
-                                       int max_responses,
+                                       int max_rsps_with_unique_pop_time,
                                        std::string cluster_view_id,
                                        uint32_t time_from,
                                        std::string& get_response);
@@ -89,14 +89,13 @@ private:
   // same. It should be bigger than the expected network lag
   static const int NETWORK_DELAY = 200;
 
-  void pop(std::unordered_set<TimerPair>&);
+  void pop(std::unordered_set<Timer*>&);
   void pop(Timer*);
 
   // Update a timer object with the current cluster configuration. Store off
   // the old set of replicas, and return whether the requesting node is
   // one of the new replicas
   bool timer_is_on_node(std::string request_node,
-                        std::string cluster_view_id,
                         Timer* timer,
                         std::vector<std::string>& old_replicas);
 
@@ -104,27 +103,21 @@ private:
   // as the previous timer
   void save_tombstone_information(Timer* timer, Timer* existing);
 
+  // Ensure the update to the timer honours any previous site ordering
+  void save_site_information(Timer* new_timer, Timer* old_timer);
+
   // Report a statistics changed - called with empty maps if a timer has only
   // just been introduced, or is being permanently deleted/tombstoned
-  void update_statistics(std::map<std::string, uint32_t> new_tags, std::map<std::string, uint32_t> old_tags);
+  void update_statistics(std::map<std::string, uint32_t> new_tags,
+                         std::map<std::string, uint32_t> old_tags);
 
   // Check to see if these two timestamps are within NETWORK_DELAY of each other
   bool near_time(uint32_t a, uint32_t b);
 
-  // For a given TimerPair, return:
-  // - the active timer if it doesn't match the cluster view id; else
-  // - the informational timer if it exists and doesn't match the cluster view
-  //   id; else
-  // - NULL
-  // If a timer is returned, active_timer is set to true if it was the active
-  // timer of the TimerPair
-  Timer* get_out_of_date_timer(const TimerPair& pair,
-                               const std::string& cluster_view_id,
-                               bool& active_timer);
-
   TimerStore* _store;
   Callback* _callback;
   Replicator* _replicator;
+  GRReplicator* _gr_replicator;
   SNMP::ContinuousIncrementTable* _all_timers_table;
   SNMP::InfiniteTimerCountTable* _tagged_timers_table;
   SNMP::InfiniteScalarTable* _scalar_timers_table;

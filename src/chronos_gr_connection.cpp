@@ -1,8 +1,8 @@
 /**
- * @file mock_timer_handler.h
+ * @file chronos_gr_connection.cpp.
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2015  Metaswitch Networks Ltd
+ * Copyright (C) 2016  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,26 +34,36 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_TIMER_HANDLER_H__
-#define MOCK_TIMER_HANDLER_H__
+#include "log.h"
+#include "sasevent.h"
+#include "chronos_gr_connection.h"
 
-#include "timer_handler.h"
-
-#include <gmock/gmock.h>
-
-class MockTimerHandler : public TimerHandler
+ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
+                                         HttpResolver* resolver) :
+  _site_name(remote_site),
+  _http(new HttpConnection(remote_site,
+                           false,
+                           resolver,
+                           SASEvent::HttpLogLevel::NONE,
+                           NULL))
 {
-public:
-  MOCK_METHOD2(add_timer,void(Timer*,bool));
-  MOCK_METHOD1(return_timer,void(Timer*));
-  MOCK_METHOD1(handle_successful_callback,void(TimerID));
-  MOCK_METHOD1(handle_failed_callback,void(TimerID));
-  MOCK_METHOD5(get_timers_for_node, HTTPCode(std::string request_node,
-                                             int max_responses,
-                                             std::string cluster_view_id,
-                                             uint32_t time_from,
-                                             std::string& get_response));
-};
+}
 
-#endif
+ChronosGRConnection::~ChronosGRConnection()
+{
+  delete _http; _http = NULL;
+}
 
+void ChronosGRConnection::send_put(std::string url,
+                                   std::string body)
+{
+  HTTPCode rc = _http->send_put(url, body, 0);
+
+  if (rc != HTTP_OK)
+  {
+    // LCOV_EXCL_START - No value in testing this log in UT
+    TRC_ERROR("Unable to send replication to a remote site (%s)",
+              _site_name.c_str());
+    // LCOV_EXCL_STOP
+  }
+}
