@@ -342,8 +342,8 @@ void TimerStore::refill_short_wheel()
 
 // Refill the short timer wheel by distributing timers from the next bucket in
 // the long timer wheel.
-// Because not all timers in the next bucket will fit into the short wheel, we
-// check the time of each to decide if it should be moved.
+// Only timers due to pop within SHORT_WHEEL_PERIOD_MS should be moved from the
+// long bucket, so we check the time of each timer.
 void TimerStore::refill_short_wheel_from_next_long_bucket()
 {
   Bucket* long_bucket = long_wheel_bucket(_tick_timestamp + LONG_WHEEL_RESOLUTION_MS);
