@@ -384,7 +384,7 @@ TYPED_TEST(TestTimerStore, HeapPropertyTest)
 
   cwtest_advance_time_ms(TestFixture::timers[1]->interval_ms + TIMER_GRANULARITY_MS);
   TestFixture::ts->fetch_next_timers(next_timers);
-  
+
   ASSERT_EQ(1u, next_timers.size()) << "Bucket should have 1 timer";
   const Timer* t = (*next_timers.begin());
   EXPECT_EQ(2u, t->id);
@@ -606,4 +606,135 @@ TYPED_TEST(TestTimerStore, DeleteOverdueTimer)
   TestFixture::ts->fetch_next_timers(next_timers);
   ASSERT_EQ(0u, next_timers.size());
 
+}
+
+// Test that timers get picked up by the iterators.
+TYPED_TEST(TestTimerStore, IterateOverTimers)
+{
+  // Add the timers
+  TestFixture::ts->insert(TestFixture::timers[0]);
+  TestFixture::ts->insert(TestFixture::timers[1]);
+  TestFixture::ts->insert(TestFixture::timers[2]);
+
+  // Check that the iterator returns all 3 timers
+  int count = 0;
+  for (TimerStore::TSIterator it = TestFixture::ts->begin(get_time_ms());
+       !(it.end());
+       ++it)
+  {
+    count++;
+  }
+
+  ASSERT_EQ(count, 3);
+
+}
+
+// Test that adding timers to the bucket "behind" where the current time
+// corresponds to still results in them being picked up by the iterators.
+TYPED_TEST(TestTimerStore, IterateOverTimersInPreviousBuckets)
+{
+  // If the current time is pointing to a time in the first long wheel bucket,
+  // advance time by LONG_WHEEL_RESOLUTION_MS to move into the 2nd bucket
+  if (TestFixture::ts->long_wheel_bucket(get_time_ms()) == &(TestFixture::ts->_long_wheel[0]))
+  {
+    cwtest_advance_time_ms(TimerStore::LONG_WHEEL_RESOLUTION_MS);
+  }
+
+  // If the current time is pointing to a time in the first short wheel bucket,
+  // advance time by SHORT_WHEEL_RESOLUTION_MS to move into the 2nd bucket
+  if (TestFixture::ts->short_wheel_bucket(get_time_ms()) == &(TestFixture::ts->_short_wheel[0]))
+  {
+    cwtest_advance_time_ms(TimerStore::SHORT_WHEEL_RESOLUTION_MS);
+  }
+
+  // We call fetch_next_timers to ensure the _tick_timestamp is up to date since
+  // we've altered the time
+  std::unordered_set<Timer*> unused_set = std::unordered_set<Timer*>();
+  TestFixture::ts->fetch_next_timers(unused_set);
+
+  // Add a timer that falls into the first bucket of the short wheel, "behind"
+  // the bucket we're currently pointed at.
+  Timer* timer4 = default_timer(4);
+  timer4->start_time_mono_ms = get_time_ms();
+  timer4->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS -
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS;
+  TestFixture::ts->insert(timer4);
+
+  // Add a timer that falls into the first bucket of the long wheel, "behind"
+  // the bucket we're currently pointed at.
+  Timer* timer5 = default_timer(5);
+  timer5->start_time_mono_ms = get_time_ms();
+  timer5->interval_ms = TimerStore::LONG_WHEEL_PERIOD_MS -
+                        TimerStore::LONG_WHEEL_RESOLUTION_MS;
+  TestFixture::ts->insert(timer5);
+
+  // Check that the iterator returns both timers
+  int count = 0;
+  for (TimerStore::TSIterator it = TestFixture::ts->begin(get_time_ms());
+       !(it.end());
+       ++it)
+  {
+    count++;
+  }
+
+  ASSERT_EQ(count, 2);
+
+  // Tidy up the timers
+  delete timer4; timer4 = NULL;
+  delete timer5; timer5 = NULL;
+}
+
+// Test that the short wheel is correctly refilled when starting to iterate over
+// timers.
+TYPED_TEST(TestTimerStore, IterateOverTimersRefillingWheel)
+{
+  // Add a timer that falls into the first long bucket, but only by half the
+  // size of a short bucket
+  Timer* timer4 = default_timer(4);
+  timer4->start_time_mono_ms = get_time_ms();
+  timer4->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS +
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS / 2;
+  TestFixture::ts->insert(timer4);
+
+  // Add a timer that falls into the first bucket of the long wheel by more than
+  // the size of a short bucket
+  Timer* timer5 = default_timer(5);
+  timer5->start_time_mono_ms = get_time_ms();
+  timer5->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS +
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS * 2;
+  TestFixture::ts->insert(timer5);
+
+  // Advance time by the short wheel bucket size
+  cwtest_advance_time_ms(TimerStore::SHORT_WHEEL_RESOLUTION_MS);
+
+  // We call fetch_next_timers to ensure the _tick_timestamp is up to date since
+  // we've altered the time
+  std::unordered_set<Timer*> unused_set = std::unordered_set<Timer*>();
+  TestFixture::ts->fetch_next_timers(unused_set);
+
+  // Add a third timer due to pop after timer4, but still in the short wheel.
+  // This once gets added directly to the short wheel.
+  Timer* timer6 = default_timer(6);
+  timer6->start_time_mono_ms = get_time_ms();
+  timer6->interval_ms = TimerStore::SHORT_WHEEL_PERIOD_MS -
+                        TimerStore::SHORT_WHEEL_RESOLUTION_MS * 1 / 4;
+  TestFixture::ts->insert(timer6);
+
+  // Now iterate over timers due to pop from now - should get all 3 in the order
+  // 4, 6, 5
+  int ids[3] = {4, 6, 5};
+
+  int ii = 0;
+  for (TimerStore::TSIterator it = TestFixture::ts->begin(get_time_ms());
+       !(it.end());
+       ++it)
+  {
+    ASSERT_EQ((*it)->id, ids[ii]);
+    ii++;
+  }
+
+  // Tidy up the timers
+  delete timer4; timer4 = NULL;
+  delete timer5; timer5 = NULL;
+  delete timer6; timer6 = NULL;
 }

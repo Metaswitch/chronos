@@ -125,6 +125,7 @@ public:
     bool end() const;
 
   private:
+    int _end_bucket;
     int _bucket;
     void next_bucket();
   };
@@ -138,6 +139,7 @@ public:
     bool end() const;
 
   private:
+    int _end_bucket;
     int _bucket;
     void next_bucket();
   };
@@ -301,6 +303,10 @@ private:
 
   // Refill the short timer wheel from the long wheel.
   void refill_short_wheel();
+
+  // Refill the short timer wheel using appropriate timers from the next bucket
+  // of the long wheel.
+  void refill_short_wheel_from_next_long_bucket();
 
   // Ensure a timer is no longer stored in the timer wheels.  This is an
   // expensive operation and should only be called when unsure of the timer
