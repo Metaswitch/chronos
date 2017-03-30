@@ -714,11 +714,15 @@ TimerID Timer::generate_timer_id()
 // default expires of 10 seconds, if they're found to be
 // deleting an existing tombstone, they'll use that timer's
 // interval as an expiry.
-Timer* Timer::create_tombstone(TimerID id, uint64_t replica_hash)
+Timer* Timer::create_tombstone(TimerID id,
+                               uint64_t replica_hash,
+                               uint32_t replication_factor)
 {
   // Create a tombstone record that will last for 10 seconds.
   Timer* tombstone = new Timer(id, 10000, 10000);
+  tombstone->_replication_factor = replication_factor;
   tombstone->calculate_replicas(replica_hash);
+  tombstone->populate_sites();
   return tombstone;
 }
 

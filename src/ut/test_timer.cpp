@@ -37,7 +37,10 @@
 #include "test_interposer.hpp"
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <map>
+
+using ::testing::UnorderedElementsAreArray;
 
 /*****************************************************************************/
 /* Test fixture                                                              */
@@ -553,9 +556,17 @@ TEST_F(TestTimer, IsLocal)
 
 TEST_F(TestTimer, IsTombstone)
 {
-  Timer* t2 = Timer::create_tombstone(100, 0);
+  Timer* t2 = Timer::create_tombstone(100, 0, 2);
   EXPECT_NE(0u, t2->start_time_mono_ms);
   EXPECT_TRUE(t2->is_tombstone());
+  std::vector<std::string> expected_replicas;
+  expected_replicas.push_back("10.0.0.2");
+  expected_replicas.push_back("10.0.0.3");
+  std::vector<std::string> expected_sites;
+  expected_sites.push_back("local_site_name");
+  expected_sites.push_back("remote_site_1_name");
+  EXPECT_THAT(expected_replicas, UnorderedElementsAreArray(t2->replicas));
+  EXPECT_THAT(expected_sites, UnorderedElementsAreArray(t2->sites));
   delete t2;
 }
 
