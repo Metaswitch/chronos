@@ -49,3 +49,4 @@ fv_test: build/bin/chronos
 	./scripts/chronos_gr.py
 	./scripts/chronos_resync.py
 	./scripts/chronos_pop_errors.py
+	./scripts/chronos_delete_timers.py

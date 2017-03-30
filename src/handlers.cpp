@@ -126,7 +126,7 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
     // Replicated deletes are implemented as replicated tombstones so no DELETE
     // can be a replication request - it must have come from the client so we
     // should replicate it ourselves (both within site and cross-site).
-    timer = Timer::create_tombstone(timer_id, replica_hash);
+    timer = Timer::create_tombstone(timer_id, replica_hash, replication_factor);
   }
   else
   {

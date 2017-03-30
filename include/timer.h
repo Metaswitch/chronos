@@ -160,7 +160,7 @@ private:
   // Class functions
 public:
   static TimerID generate_timer_id();
-  static Timer* create_tombstone(TimerID, uint64_t);
+  static Timer* create_tombstone(TimerID, uint64_t, uint32_t);
   static Timer* from_json(TimerID id,
                           uint32_t replication_factor,
                           uint64_t replica_hash,
