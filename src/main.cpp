@@ -210,7 +210,7 @@ int main(int argc, char** argv)
   options.gr_config_file = "/etc/chronos/chronos_gr.conf";
   options.pidfile = "";
   options.daemon = false;
-  options.dns_config_file = "/etc/clearwater/dns_config";
+  options.dns_config_file = "/etc/clearwater/dns.json";
 
   if (init_options(argc, argv, options) != 0)
   {
