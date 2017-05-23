@@ -185,7 +185,7 @@ int main(int argc, char** argv)
   options.gr_config_file = "/etc/chronos/chronos_gr.conf";
   options.pidfile = "";
   options.daemon = false;
-  options.dns_config_file = "/etc/clearwater/dns_config";
+  options.dns_config_file = "/etc/clearwater/dns.json";
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -315,10 +315,10 @@ int main(int argc, char** argv)
 
   int af = AF_INET;
   struct in6_addr dummy_addr;
-  std::string bind_address;
-  __globals->get_bind_address(bind_address);
+  std::string local_ip;
+  __globals->get_cluster_local_ip(local_ip);
 
-  if (inet_pton(AF_INET6, bind_address.c_str(), &dummy_addr) == 1)
+  if (inet_pton(AF_INET6, local_ip.c_str(), &dummy_addr) == 1)
   {
     TRC_DEBUG("Local host is an IPv6 address");
     af = AF_INET6;
@@ -359,8 +359,10 @@ int main(int argc, char** argv)
                                               min_token_rate);
 
   // Set up the HTTPStack and handlers
+  std::string bind_address;
   int bind_port;
   int http_threads;
+  __globals->get_bind_address(bind_address);
   __globals->get_bind_port(bind_port);
   __globals->get_threads(http_threads);
 
