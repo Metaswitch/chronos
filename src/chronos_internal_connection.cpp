@@ -95,7 +95,7 @@ void ChronosInternalConnection::resynchronize()
   // Start the resync operation. Update the logs/stats/alarms
   if (_alarm)
   {
-    _alarm->set();  // LCOV_EXCL_LINE - No alarms in UT
+    _alarm->set_minor();  // LCOV_EXCL_LINE - No alarms in UT
   }
 
   CL_CHRONOS_START_RESYNC.log();

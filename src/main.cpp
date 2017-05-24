@@ -276,8 +276,7 @@ int main(int argc, char** argv)
   alarm_manager = new AlarmManager();
   resync_operation_alarm = new Alarm(alarm_manager,
                                      "chronos",
-                                     AlarmDef::CHRONOS_RESYNC_IN_PROGRESS,
-                                     AlarmDef::MINOR);
+                                     AlarmDef::CHRONOS_RESYNC_IN_PROGRESS);
 
   // Explicitly clear resynchronization alarm in case we died while the alarm
   // was still active, to ensure that the alarm is not then stuck in a set
