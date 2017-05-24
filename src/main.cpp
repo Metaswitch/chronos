@@ -302,6 +302,7 @@ int main(int argc, char** argv)
   __globals->get_dns_servers(dns_servers);
 
   DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
+                                                          DnsCachedResolver::DEFAULT_TIMEOUT,
                                                           options.dns_config_file);
 
 
