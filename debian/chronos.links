@@ -1,0 +1,3 @@
+/usr/share/clearwater/clearwater-queue-manager/scripts/check_chronos_gr_restart_queue_state /usr/bin/cw-check_chronos_gr_restart_queue_state
+/usr/share/clearwater/clearwater-queue-manager/scripts/force_chronos_gr_restart_queue_state /usr/bin/cw-force_chronos_gr_restart_queue_state
+/usr/share/clearwater/clearwater-config-manager/scripts/upload_chronos_gr_config /usr/bin/cw-upload_chronos_gr_config
