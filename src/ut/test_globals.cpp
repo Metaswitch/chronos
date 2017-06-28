@@ -231,4 +231,6 @@ TEST_F(TestGlobals, LocalConfigOverridesSharedConfig)
   int ttl;
   test_global->get_max_ttl(ttl);
   EXPECT_EQ(ttl, 1000);
+
+  delete test_global; test_global = NULL;
 }
