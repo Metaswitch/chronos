@@ -35,7 +35,7 @@ CHRONOS_LIBS = 'usr/lib/'
 PID_PATTERN = 'scripts/pid/chronos.fvtest.%i.pid'
 CONFIG_FILE_PATTERN = 'scripts/log/chronos.fvtest.conf%i'
 CLUSTER_CONFIG_FILE_PATTERN = 'scripts/log/chronos.cluster.fvtest.conf%i'
-GR_CONFIG_FILE_PATTERN = 'scripts/log/chronos.gr.fvtest.conf%i'
+SHARED_CONFIG_FILE_PATTERN = 'scripts/log/chronos.shared.fvtest.conf%i'
 LOG_FILE_DIR = 'scripts/log/'
 LOG_FILE_PATTERN = LOG_FILE_DIR + 'chronos%s'
 
@@ -120,9 +120,9 @@ def start_nodes(lower, upper):
     # Start nodes with indexes [lower, upper) and allow them time to start
     for i in range(lower, upper):
         Popen([CHRONOS_BINARY, '--daemon', '--pidfile', PID_PATTERN % i,
-              '--config-file', CONFIG_FILE_PATTERN % i,
+              '--local-config-file', CONFIG_FILE_PATTERN % i,
               '--cluster-config-file', CLUSTER_CONFIG_FILE_PATTERN % i,
-              '--gr-config-file', GR_CONFIG_FILE_PATTERN % i],
+              '--shared-config-file', SHARED_CONFIG_FILE_PATTERN % i],
               stdout=FNULL, stderr=FNULL, env=environment)
         sleep(2)
 
@@ -234,8 +234,8 @@ def write_cluster_conf(filename, this_node, joining, nodes, leaving):
             f.write('leaving = {node.ip}:{node.port}\n'.format(**locals()))
 
 
-def write_gr_conf(filename, local_site, remote_sites):
-    # Create a GR configuration file for a chronos process.
+def write_shared_conf(filename, local_site, remote_sites):
+    # Create a shared configuration file for a chronos process.
     with open(filename, 'w') as f:
         f.write(dedent("""\
         [sites]
@@ -312,7 +312,7 @@ class ChronosFVTest(unittest.TestCase):
                                [chronos_nodes[i] for i in staying],
                                [chronos_nodes[i] for i in leaving])
 
-    def write_gr_config_for_nodes(self, nodes, local_site, remote_sites):
+    def write_shared_config_for_nodes(self, nodes, local_site, remote_sites):
         # Write configuration files for the nodes
         for num in nodes:
             write_conf(CONFIG_FILE_PATTERN % num,
@@ -322,5 +322,5 @@ class ChronosFVTest(unittest.TestCase):
                                joining=[],
                                nodes=[chronos_nodes[i] for i in nodes],
                                leaving=[])
-            write_gr_conf(GR_CONFIG_FILE_PATTERN % num,
-                          local_site, remote_sites)
+            write_shared_conf(SHARED_CONFIG_FILE_PATTERN % num,
+                              local_site, remote_sites)

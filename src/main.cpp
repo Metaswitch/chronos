@@ -44,35 +44,35 @@
 
 struct options
 {
-  std::string config_file;
+  std::string local_config_file;
   std::string cluster_config_file;
-  std::string gr_config_file;
+  std::string shared_config_file;
+  std::string dns_config_file;
   std::string pidfile;
   bool daemon;
-  std::string dns_config_file;
 };
 
 // Enum for option types not assigned short-forms
 enum OptionTypes
 {
-  CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
+  LOCAL_CONFIG_FILE = 128, // start after the ASCII set ends to avoid conflicts
   CLUSTER_CONFIG_FILE,
-  GR_CONFIG_FILE,
+  SHARED_CONFIG_FILE,
+  DNS_CONFIG_FILE,
   PIDFILE,
   DAEMON,
-  HELP,
-  DNS_CONFIG_FILE
+  HELP
 };
 
 const static struct option long_opt[] =
 {
-  {"config-file", required_argument, NULL, CONFIG_FILE},
+  {"local-config-file", required_argument, NULL, LOCAL_CONFIG_FILE},
   {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
-  {"gr-config-file", required_argument, NULL, GR_CONFIG_FILE},
+  {"shared-config-file", required_argument, NULL, SHARED_CONFIG_FILE},
+  {"dns-config-file", required_argument, NULL, DNS_CONFIG_FILE},
   {"pidfile", required_argument, NULL, PIDFILE},
   {"daemon", no_argument, NULL, DAEMON},
   {"help", no_argument, NULL, HELP},
-  {"dns-config-file", required_argument, NULL, DNS_CONFIG_FILE},
   {NULL, 0, NULL, 0},
 };
 
@@ -80,12 +80,12 @@ void usage(void)
 {
   puts("Options:\n"
        "\n"
-       " --config-file <filename>         Specify the per node configuration file\n"
+       " --local-config-file <filename>   Specify the per node configuration file\n"
        " --cluster-config-file <filename> Specify the cluster configuration file\n"
-       " --gr-config-file <filename>      Specify the GR configuration file\n"
+       " --shared-config-file <filename>  Specify the site wide configuration file\n"
+       " --dns-config-file <filename>     Specify the dns config file\n"
        " --pidfile <filename>             Specify the pidfile\n"
        " --daemon                         Run in the background as a daemon\n"
-       " --dns-config-file <filename>     Specify the dns config file\n"
        " --help                           Show this help screen\n");
 }
 
@@ -98,16 +98,20 @@ int init_options(int argc, char**argv, struct options& options)
   {
     switch (opt)
     {
-    case CONFIG_FILE:
-      options.config_file = std::string(optarg);
+    case LOCAL_CONFIG_FILE:
+      options.local_config_file = std::string(optarg);
       break;
 
     case CLUSTER_CONFIG_FILE:
       options.cluster_config_file = std::string(optarg);
       break;
 
-    case GR_CONFIG_FILE:
-      options.gr_config_file = std::string(optarg);
+    case SHARED_CONFIG_FILE:
+      options.shared_config_file = std::string(optarg);
+      break;
+
+    case DNS_CONFIG_FILE:
+      options.dns_config_file = std::string(optarg);
       break;
 
     case PIDFILE:
@@ -116,10 +120,6 @@ int init_options(int argc, char**argv, struct options& options)
 
     case DAEMON:
       options.daemon = true;
-      break;
-
-    case DNS_CONFIG_FILE:
-      options.dns_config_file = std::string(optarg);
       break;
 
     case HELP:
@@ -180,12 +180,12 @@ int main(int argc, char** argv)
   signal(SIGINT, terminate_handler);
 
   struct options options;
-  options.config_file = "/etc/chronos/chronos.conf";
+  options.local_config_file = "/etc/chronos/chronos.conf";
   options.cluster_config_file = "/etc/chronos/chronos_cluster.conf";
-  options.gr_config_file = "/etc/chronos/chronos_gr.conf";
+  options.shared_config_file = "/etc/chronos/chronos_shared.conf";
+  options.dns_config_file = "/etc/clearwater/dns.json";
   options.pidfile = "";
   options.daemon = false;
-  options.dns_config_file = "/etc/clearwater/dns.json";
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -238,9 +238,9 @@ int main(int argc, char** argv)
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,
   // so this mustn't be created until after the process has daemonised.
-  __globals = new Globals(options.config_file,
+  __globals = new Globals(options.local_config_file,
                           options.cluster_config_file,
-                          options.gr_config_file);
+                          options.shared_config_file);
 
   AlarmManager* alarm_manager = NULL;
   Alarm* resync_operation_alarm = NULL;
@@ -300,9 +300,10 @@ int main(int argc, char** argv)
   // our internal connections.  Create one.
   std::vector<std::string> dns_servers;
   __globals->get_dns_servers(dns_servers);
-
+  int dns_timeout;
+  __globals->get_dns_timeout(dns_timeout);
   DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
-                                                          DnsCachedResolver::DEFAULT_TIMEOUT,
+                                                          dns_timeout,
                                                           options.dns_config_file);
 
 

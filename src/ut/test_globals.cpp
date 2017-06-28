@@ -27,9 +27,9 @@ class TestGlobals : public ::testing::Test
 TEST_F(TestGlobals, ParseGlobalsDefaults)
 {
   // Initialize the global configuration. Use default configuration
-  Globals* test_global = new Globals("./no_config_file",
+  Globals* test_global = new Globals("./no_local_config_file",
                                      "./no_cluster_config_file",
-                                     "./no_gr_config_file");
+                                     "./no_shared_config_file");
 
   // Read all global entries
   test_global->update_config();
@@ -55,6 +55,10 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   test_global->get_dns_servers(dns_servers);
   EXPECT_EQ(dns_servers.size(), (unsigned)1);
   EXPECT_EQ(dns_servers[0], "127.0.0.1");
+
+  int dns_timeout;
+  test_global->get_dns_timeout(dns_timeout);
+  EXPECT_EQ(dns_timeout, 200);
 
   std::string cluster_local_address;
   test_global->get_cluster_local_ip(cluster_local_address);
@@ -106,7 +110,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   // Initialize the global configuration. Use default configuration
   Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos.conf"),
                                      std::string(UT_DIR).append("/chronos_cluster.conf"),
-                                     std::string(UT_DIR).append("/chronos_gr.conf"));
+                                     std::string(UT_DIR).append("/chronos_shared.conf"));
 
   // Read all global entries
   test_global->update_config();
@@ -134,6 +138,10 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   EXPECT_EQ(dns_servers[0], "1.1.1.1");
   EXPECT_EQ(dns_servers[1], "2.2.2.2");
   EXPECT_EQ(dns_servers[2], "3.3.3.3");
+
+  int dns_timeout;
+  test_global->get_dns_timeout(dns_timeout);
+  EXPECT_EQ(dns_timeout, 500);
 
   std::string cluster_local_address;
   test_global->get_cluster_local_ip(cluster_local_address);
@@ -195,6 +203,34 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   expected_remote_site_dns_records.push_back("foo.com:800");
   expected_remote_site_dns_records.push_back("bar.com:7254");
   EXPECT_THAT(expected_remote_site_dns_records, UnorderedElementsAreArray(remote_site_dns_records));
+
+  delete test_global; test_global = NULL;
+}
+
+TEST_F(TestGlobals, LocalConfigOverridesSharedConfig)
+{
+  // Initialize the global configuration.
+  Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos_local_override.conf"),
+                                     std::string(UT_DIR).append("/chronos_cluster.conf"),
+                                     std::string(UT_DIR).append("/chronos_shared.conf"));
+
+  // Read all global entries
+  test_global->update_config();
+
+  // Check that the values from the local config files is used in preference
+  // to the global files - check one value that's only in the local file, one
+  // that's in the shared file, and one that's in both.
+  std::string bind_address;
+  test_global->get_bind_address(bind_address);
+  EXPECT_EQ(bind_address, "1.2.3.4");
+
+  std::string local_site_name;
+  test_global->get_local_site_name(local_site_name);
+  EXPECT_EQ(local_site_name, "mysite");
+
+  int ttl;
+  test_global->get_max_ttl(ttl);
+  EXPECT_EQ(ttl, 1000);
 
   delete test_global; test_global = NULL;
 }

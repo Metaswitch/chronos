@@ -211,7 +211,7 @@ The JSON body in the response has the format:
 
     {"timers": [{"TimerID": id,
                  "OldReplicas": ["replica-1", ...],
-                 "Timer": {"timing": {"start-time": <ms since epoch>,
+                 "Timer": {"timing": {"start-time": <start time>,
                                       "sequence-number": <int>
                                       "interval": <secs>,
                                       "repeat-for": <secs>
@@ -229,7 +229,7 @@ The JSON body in the response has the format:
                ]
     }
 
-This JSON body contains enough information for the requesting node to add the timer to their timer wheel, and to optionally replicate the timer to other nodes. The `Timer` object contains the information to recreate the timer on the node, the `TimerID` holds the timer's ID, and the `OldReplicas` list holds where the replicas for the timer were under the old cluster configuration.
+This JSON body contains enough information for the requesting node to add the timer to their timer wheel, and to optionally replicate the timer to other nodes. The `Timer` object contains the information to recreate the timer on the node, the `TimerID` holds the timer's ID, and the `OldReplicas` list holds where the replicas for the timer were under the old cluster configuration. The `start time` for the timer is in ms since the epoch (modulo `UINT_MAX`).
 
 #### Request (DELETE)
 
