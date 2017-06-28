@@ -7,7 +7,7 @@ Chronos's configuration is set up in three files.
 *   `/etc/chronos/chronos_cluster.conf` contains the configuration options that
     control how the Chronos process clusters with other Chronos processes.
 *   `/etc/chronos/chronos_shared.conf` contains the configuration options that
-    site wide (e.g. how the Chronos cluster connects to other clusters for
+    are site wide (e.g. how the Chronos cluster connects to other clusters for
     geographic redundancy.)
 
 The per-node configuration file has the following format:

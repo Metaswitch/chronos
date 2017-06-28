@@ -101,7 +101,7 @@ void Globals::update_config()
   po::variables_map conf_map;
 
   // Read clustering config from _cluster_config_file, shared config
-  // config from _shared_config_file and local config from _local_config_file.
+  // from _shared_config_file and local config from _local_config_file.
   std::string config_files[] = {_cluster_config_file, _local_config_file, _shared_config_file};
   for (std::string& config_file : config_files)
   {
