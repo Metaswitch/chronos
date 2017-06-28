@@ -42,9 +42,9 @@
 class Globals
 {
 public:
-  Globals(std::string config_file,
+  Globals(std::string local_config_file,
           std::string cluster_config_file,
-          std::string gr_config_file);
+          std::string shared_config_file);
   ~Globals();
   Globals(const Globals& copy) = delete;
 
@@ -57,13 +57,6 @@ public:
   GLOBAL(bind_address, std::string);
   GLOBAL(bind_port, int);
   GLOBAL(threads, int);
-  GLOBAL(max_ttl, int);
-  GLOBAL(dns_servers, std::vector<std::string>);
-  GLOBAL(target_latency, int);
-  GLOBAL(max_tokens, int);
-  GLOBAL(initial_token_rate, int);
-  GLOBAL(min_token_rate, int);
-  GLOBAL(timer_id_format, TimerIDFormat);
 
   // Clustering configuration
   GLOBAL(cluster_local_ip, std::string);
@@ -78,7 +71,15 @@ public:
   GLOBAL(instance_id, uint32_t);
   GLOBAL(deployment_id, uint32_t);
 
-  // Geographic Redundancy configuration
+  // Site wide configuration
+  GLOBAL(max_ttl, int);
+  GLOBAL(dns_servers, std::vector<std::string>);
+  GLOBAL(dns_timeout, int);
+  GLOBAL(target_latency, int);
+  GLOBAL(max_tokens, int);
+  GLOBAL(initial_token_rate, int);
+  GLOBAL(min_token_rate, int);
+  GLOBAL(timer_id_format, TimerIDFormat);
   GLOBAL(local_site_name, std::string);
   GLOBAL(remote_sites, std::map<std::string, std::string>);
   GLOBAL(remote_site_names, std::vector<std::string>);
@@ -94,9 +95,9 @@ private:
   uint64_t generate_bloom_filter(std::string);
   std::vector<uint32_t> generate_hashes(std::vector<std::string>);
 
-  std::string _config_file;
+  std::string _local_config_file;
   std::string _cluster_config_file;
-  std::string _gr_config_file;
+  std::string _shared_config_file;
   pthread_rwlock_t _lock; 
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;

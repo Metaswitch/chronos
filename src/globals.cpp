@@ -26,12 +26,12 @@ namespace po = boost::program_options;
 // terminated before main() returns.
 Globals* __globals;
 
-Globals::Globals(std::string config_file,
+Globals::Globals(std::string local_config_file,
                  std::string cluster_config_file,
-                 std::string gr_config_file) :
-  _config_file(config_file),
+                 std::string shared_config_file) :
+  _local_config_file(local_config_file),
   _cluster_config_file(cluster_config_file),
-  _gr_config_file(gr_config_file)
+  _shared_config_file(shared_config_file)
 {
   pthread_rwlock_init(&_lock, NULL);
 
@@ -56,6 +56,7 @@ Globals::Globals(std::string config_file,
     ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
     ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
+    ("dns.timeout", po::value<int>()->default_value(200), "The amount of time to wait for a DNS response")
     ("timers.id-format", po::value<std::string>()->default_value(_timer_id_format_parser.at(default_id_format())), "The format of the timer IDs")
 
     // Deprecated option left in for backwards compatibility
@@ -99,9 +100,9 @@ void Globals::update_config()
 {
   po::variables_map conf_map;
 
-  // Read clustering config from _cluster_config_file, geographic redundancy
-  // config from _gr_config_file and other config from_config_file.
-  std::string config_files[] = {_cluster_config_file, _config_file, _gr_config_file};
+  // Read clustering config from _cluster_config_file, shared config
+  // config from _shared_config_file and local config from _local_config_file.
+  std::string config_files[] = {_cluster_config_file, _local_config_file, _shared_config_file};
   for (std::string& config_file : config_files)
   {
     try
@@ -160,6 +161,9 @@ void Globals::update_config()
 
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
+
+  int dns_timeout = conf_map["dns.timeout"].as<int>();
+  set_dns_timeout(dns_timeout);
 
   std::string timer_id_format_str = conf_map["timers.id-format"].as<std::string>();
   TimerIDFormat timer_id_format = default_id_format();
