@@ -37,7 +37,7 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   // Check that the default values are used
   std::string bind_address;
   test_global->get_bind_address(bind_address);
-  EXPECT_EQ(bind_address, "::");
+  EXPECT_EQ(bind_address, "0.0.0.0");
 
   int bind_port;
   test_global->get_bind_port(bind_port);
