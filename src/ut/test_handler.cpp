@@ -473,12 +473,6 @@ TEST_F(TestHandler, TimerWithReplicasNoSites)
 // enough replicas - for a new timer
 TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasNew)
 {
-  // This test is only valid when the TimerIDFormat is without replicas
-  Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITHOUT_REPLICAS;
-  __globals->lock();
-  __globals->set_timer_id_format(timer_id_format);
-  __globals->unlock();
-
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
@@ -503,12 +497,6 @@ TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasNew)
 // enough replicas - for an already replicated timer
 TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasReplicated)
 {
-  // This test is only valid when the TimerIDFormat is without replicas
-  Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITHOUT_REPLICAS;
-  __globals->lock();
-  __globals->set_timer_id_format(timer_id_format);
-  __globals->unlock();
-
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 

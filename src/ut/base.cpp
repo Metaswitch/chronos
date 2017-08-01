@@ -45,9 +45,6 @@ void Base::SetUp()
   int bind_port = 9999;
   __globals->set_bind_port(bind_port);
 
-  Globals::TimerIDFormat timer_id_format = __globals->default_id_format();
-  __globals->set_timer_id_format(timer_id_format);
-
   uint32_t instance_id = 42;
   uint32_t deployment_id = 3;
   __globals->set_instance_id(instance_id);

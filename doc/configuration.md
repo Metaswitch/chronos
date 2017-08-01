@@ -50,9 +50,6 @@ The shared configuration file has the following format:
     servers = 127.0.0.1                      # DNS servers to use (up to three allowed)
     timeout = 200                            # Amount of time to wait for a DNS response
 
-    [timers]
-    id-format = with_replicas                # The format of the timer ID. We recommend that users do not set this configuration option.
-
     [sites]
     local_site = local-site-name             # The name of the local site
     remote_site = site-b=bar.foo.com:8000    # The name of a remote site, and a DNS name resolving to

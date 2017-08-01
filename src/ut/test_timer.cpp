@@ -23,34 +23,16 @@ using ::testing::UnorderedElementsAreArray;
 /*****************************************************************************/
 /* Test fixture                                                              */
 /*****************************************************************************/
-class WithReplicas {
-  static void set_timer_id_format() {
-    Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITH_REPLICAS;
-    __globals->set_timer_id_format(timer_id_format);
-  }
-};
-
-class WithoutReplicas {
-  static void set_timer_id_format() {
-    Globals::TimerIDFormat timer_id_format = Globals::TimerIDFormat::WITHOUT_REPLICAS;
-    __globals->set_timer_id_format(timer_id_format);
-  }
-};
-
-template <class T>
 class TestTimerIDFormats : public Base
 {
 protected:
   virtual void SetUp()
   {
     Base::SetUp();
-    T::set_timer_id_format();
   }
 
   virtual void TearDown()
   {
-    Globals::TimerIDFormat timer_id_format = __globals->default_id_format();
-    __globals->set_timer_id_format(timer_id_format);
     Base::TearDown();
   }
 
@@ -65,10 +47,7 @@ protected:
 /* Class functions                                                           */
 /*****************************************************************************/
 
-typedef ::testing::Types<WithReplicas, WithoutReplicas> TimerIDFormatTypes;
-TYPED_TEST_CASE(TestTimerIDFormats, TimerIDFormatTypes);
-
-TYPED_TEST(TestTimerIDFormats, FromJSONTests)
+TEST_F(TestTimerIDFormats, FromJSONTests)
 {
   // The following tests depend on the current time, so install the shim
   cwtest_completely_control_time();
@@ -163,7 +142,7 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(2, get_replication_factor(timer));
   EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
 
@@ -171,14 +150,14 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(2, get_replication_factor(timer));
   EXPECT_EQ(2u, timer->replicas.size());
   delete timer;
 
   // If you do specify a replication-factor, use that.
   timer = Timer::from_json(1, 0, 0, custom_repl_factor, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer); EXPECT_EQ("", err); EXPECT_FALSE(replicated);
-  EXPECT_EQ(3, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(3, get_replication_factor(timer));
   EXPECT_EQ(3u, timer->replicas.size());
   delete timer;
 
@@ -187,14 +166,14 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(2, get_replication_factor(timer));
   delete timer;
 
   timer = Timer::from_json(1, 3, 0x11011100011101, custom_repl_factor, err, replicated, gr_replicated);
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_FALSE(replicated);
-  EXPECT_EQ(3, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(3, get_replication_factor(timer));
   delete timer;
 
   // If the replication factor on the URL (in this case 2) doesn't match the
@@ -211,7 +190,7 @@ TYPED_TEST(TestTimerIDFormats, FromJSONTests)
   EXPECT_NE((void*)NULL, timer);
   EXPECT_EQ("", err);
   EXPECT_TRUE(replicated);
-  EXPECT_EQ(2, TestFixture::get_replication_factor(timer));
+  EXPECT_EQ(2, get_replication_factor(timer));
   delete timer;
 
   // If no repeat for was specifed, use the interval
@@ -442,31 +421,14 @@ TEST_F(TestTimer, GenerateTimerIDTests)
 /* Instance Functions                                                        */
 /*****************************************************************************/
 
-TEST_F(TestTimer, URLWithoutReplicas)
-{
-  Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITHOUT_REPLICAS;
-  __globals->set_timer_id_format(new_timer_id);
-  EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname:9999"));
-}
-
 TEST_F(TestTimer, URLFormats)
 {
-  Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITHOUT_REPLICAS;
-  __globals->set_timer_id_format(new_timer_id);
-
+  EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname:9999"));
   EXPECT_EQ("http://hostname:9999/timers/0000000100000009-2", t1->url("hostname"));
   EXPECT_EQ("http://10.0.0.1:9999/timers/0000000100000009-2", t1->url("10.0.0.1"));
   EXPECT_EQ("http://[::2]:9999/timers/0000000100000009-2", t1->url("::2"));
   EXPECT_EQ("http://[::2]:9999/timers/0000000100000009-2", t1->url("[::2]"));
   EXPECT_EQ("http://[::2]:9999/timers/0000000100000009-2", t1->url("[::2]:9999"));
-}
-
-TEST_F(TestTimer, URLWithReplicas)
-{
-  Globals::TimerIDFormat new_timer_id = Globals::TimerIDFormat::WITH_REPLICAS;
-  __globals->set_timer_id_format(new_timer_id);
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090000010000010001", t1->url("hostname:9999"));
-  EXPECT_EQ("http://hostname:9999/timers/00000001000000090000010000010001", t1->url("hostname"));
 }
 
 TEST_F(TestTimer, ToJSON)
