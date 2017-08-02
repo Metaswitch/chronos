@@ -57,10 +57,6 @@ Globals::Globals(std::string local_config_file,
     ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
     ("dns.timeout", po::value<int>()->default_value(200), "The amount of time to wait for a DNS response")
-    ("timers.id-format", po::value<std::string>()->default_value(_timer_id_format_parser.at(default_id_format())), "The format of the timer IDs")
-
-    // Deprecated option left in for backwards compatibility
-    ("alarms.enabled", po::value<std::string>()->default_value("false"), "Whether SNMP alarms are enabled")
     ;
 
 #ifndef UNIT_TEST
@@ -85,10 +81,10 @@ static void parse_config_file(std::string& config_file,
   std::ifstream file;
   file.open(config_file);
 
-  // This is safe even if the config file doesn't exist, and this
-  // also sets up the default values if the file deosn't exist, or
-  // if the config options aren't set.
-  po::store(po::parse_config_file(file, _desc), conf_map);
+  // This is safe even if the config file doesn't exist. It sets up the default
+  // values if the file doesn't exist, or if the config options aren't set.
+  // We ignore any unrecognised config options.
+  po::store(po::parse_config_file(file, _desc, true), conf_map);
 
   if (file.is_open())
   {
@@ -102,7 +98,9 @@ void Globals::update_config()
 
   // Read clustering config from _cluster_config_file, shared config
   // from _shared_config_file and local config from _local_config_file.
-  std::string config_files[] = {_cluster_config_file, _local_config_file, _shared_config_file};
+  std::string config_files[] = {_cluster_config_file,
+                                _local_config_file,
+                                _shared_config_file};
   for (std::string& config_file : config_files)
   {
     try
@@ -164,23 +162,6 @@ void Globals::update_config()
 
   int dns_timeout = conf_map["dns.timeout"].as<int>();
   set_dns_timeout(dns_timeout);
-
-  std::string timer_id_format_str = conf_map["timers.id-format"].as<std::string>();
-  TimerIDFormat timer_id_format = default_id_format();
-
-  for (std::map<TimerIDFormat, std::string>::iterator it = _timer_id_format_parser.begin();
-                                                      it != _timer_id_format_parser.end();
-                                                      ++it)
-  {
-    if (it->second == timer_id_format_str)
-    {
-      timer_id_format = it->first;
-      break;
-    }
-  }
-
-  TRC_STATUS("%s", _timer_id_format_parser.at(timer_id_format).c_str());
-  set_timer_id_format(timer_id_format);
 
   uint32_t instance_id = conf_map["identity.instance_id"].as<uint32_t>();
   uint32_t deployment_id = conf_map["identity.deployment_id"].as<uint32_t>();

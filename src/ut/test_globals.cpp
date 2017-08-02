@@ -83,10 +83,6 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   test_global->get_old_cluster_hashes(old_cluster_hashes);
   EXPECT_EQ(new_cluster_hashes, old_cluster_hashes);
 
-  Globals::TimerIDFormat timer_id_format;
-  test_global->get_timer_id_format(timer_id_format);
-  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITHOUT_REPLICAS);
-
   std::string local_site_name;
   test_global->get_local_site_name(local_site_name);
   EXPECT_EQ(local_site_name, "site1");
@@ -171,10 +167,6 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   test_global->get_old_cluster_hashes(old_cluster_hashes);
   EXPECT_NE(new_cluster_hashes, old_cluster_hashes);
 
-  Globals::TimerIDFormat timer_id_format;
-  test_global->get_timer_id_format(timer_id_format);
-  EXPECT_EQ(timer_id_format, Globals::TimerIDFormat::WITHOUT_REPLICAS);
-
   std::string local_site_name;
   test_global->get_local_site_name(local_site_name);
   EXPECT_EQ(local_site_name, "mysite");
@@ -231,6 +223,25 @@ TEST_F(TestGlobals, LocalConfigOverridesSharedConfig)
   int ttl;
   test_global->get_max_ttl(ttl);
   EXPECT_EQ(ttl, 1000);
+
+  delete test_global; test_global = NULL;
+}
+
+TEST_F(TestGlobals, UnknownOptions)
+{
+  // Initialize the global configuration.
+  Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos_unknown_options.conf"),
+                                     std::string(UT_DIR).append("/chronos_cluster.conf"),
+                                     std::string(UT_DIR).append("/chronos_shared.conf"));
+
+  // Read all global entries
+  test_global->update_config();
+
+  // This test has succeeded if we've got to this point and not crashed.
+  // We also check that we can read the file that had an unknown option.
+  std::string bind_address;
+  test_global->get_bind_address(bind_address);
+  EXPECT_EQ(bind_address, "1.2.3.4");
 
   delete test_global; test_global = NULL;
 }
