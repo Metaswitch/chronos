@@ -16,7 +16,7 @@ The per-node configuration file has the following format:
     bind-address = 1.2.3.4         # Address to bind the HTTP server to
     bind-port = 7253               # Port to bind the HTTP server to
     threads = 50                   # Number of HTTP threads (for incoming requests) to create
-    gr_threads = 1000              # Number of HTTP threads (for GR replication) to create
+    gr_threads = 50                # Number of HTTP threads (for GR replication) to create
 
     [logging]
     folder = /var/log/chronos      # Location to output logs to

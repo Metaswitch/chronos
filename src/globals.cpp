@@ -48,7 +48,7 @@ Globals::Globals(std::string local_config_file,
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
     ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads (for incoming requests) to create")
-    ("http.gr_threads", po::value<int>()->default_value(1000), "Number of HTTP threads (for GR replication) to create")
+    ("http.gr_threads", po::value<int>()->default_value(50), "Number of HTTP threads (for GR replication) to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
     ("sites.local_site", po::value<std::string>()->default_value("site1"), "The name of the local site")
     ("sites.remote_site", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "SITE"), "The name and address of the remote sites in the cluster")

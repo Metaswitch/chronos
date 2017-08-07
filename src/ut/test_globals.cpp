@@ -49,7 +49,7 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
 
   int gr_threads;
   test_global->get_gr_threads(gr_threads);
-  EXPECT_EQ(gr_threads, 1000);
+  EXPECT_EQ(gr_threads, 50);
 
   int ttl;
   test_global->get_max_ttl(ttl);
@@ -130,7 +130,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 
   int gr_threads;
   test_global->get_gr_threads(gr_threads);
-  EXPECT_EQ(gr_threads, 500);
+  EXPECT_EQ(gr_threads, 30);
 
   int ttl;
   test_global->get_max_ttl(ttl);
