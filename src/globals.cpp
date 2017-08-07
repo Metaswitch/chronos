@@ -47,7 +47,8 @@ Globals::Globals(std::string local_config_file,
     ("identity.deployment_id", po::value<uint32_t>()->default_value(0), "A number between 0 and 7. The combination of instance ID and deployment ID should uniquely identify this node in the cluster, to remove the risk of timer collisions.")
     ("logging.folder", po::value<std::string>()->default_value("/var/log/chronos"), "Location to output logs to")
     ("logging.level", po::value<int>()->default_value(2), "Logging level: 1(lowest) - 5(highest)")
-    ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads to create")
+    ("http.threads", po::value<int>()->default_value(50), "Number of HTTP threads (for incoming requests) to create")
+    ("http.gr_threads", po::value<int>()->default_value(1000), "Number of HTTP threads (for GR replication) to create")
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
     ("sites.local_site", po::value<std::string>()->default_value("site1"), "The name of the local site")
     ("sites.remote_site", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "SITE"), "The name and address of the remote sites in the cluster")
@@ -140,6 +141,10 @@ void Globals::update_config()
   int threads = conf_map["http.threads"].as<int>();
   set_threads(threads);
   TRC_STATUS("HTTP Threads: %d", threads);
+
+  int gr_threads = conf_map["http.gr_threads"].as<int>();
+  set_gr_threads(gr_threads);
+  TRC_STATUS("HTTP GR Threads: %d", gr_threads);
 
   int ttl = conf_map["exceptions.max_ttl"].as<int>();
   set_max_ttl(ttl);

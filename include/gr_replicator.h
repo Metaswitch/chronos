@@ -17,8 +17,6 @@
 #include "exception_handler.h"
 #include "eventq.h"
 
-#define GR_REPLICATOR_THREAD_COUNT 20
-
 struct GRReplicationRequest
 {
   GRReplicationRequest(ChronosGRConnection* connection,
@@ -43,7 +41,8 @@ class GRReplicator
 {
 public:
   GRReplicator(HttpResolver* http_resolver,
-               ExceptionHandler* exception_handler);
+               ExceptionHandler* exception_handler,
+               int gr_threads);
   virtual ~GRReplicator();
 
   void worker_thread_entry_point();
@@ -52,9 +51,10 @@ public:
 
 private:
   eventq<GRReplicationRequest *> _q;
-  pthread_t _worker_threads[GR_REPLICATOR_THREAD_COUNT];
+  std::vector<pthread_t> _worker_threads;
   std::vector<ChronosGRConnection*> _connections;
   ExceptionHandler* _exception_handler;
+  int _gr_threads;
 };
 
 #endif

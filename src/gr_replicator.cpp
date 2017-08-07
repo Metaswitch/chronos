@@ -14,9 +14,11 @@
 #include <pthread.h>
 
 GRReplicator::GRReplicator(HttpResolver* http_resolver,
-                           ExceptionHandler* exception_handler) :
+                           ExceptionHandler* exception_handler,
+                           int gr_threads) :
   _q(),
-  _exception_handler(exception_handler)
+  _exception_handler(exception_handler),
+  _gr_threads(gr_threads)
 {
   std::vector<std::string> remote_site_dns_records;
   __globals->get_remote_site_dns_records(remote_site_dns_records);
@@ -28,7 +30,8 @@ GRReplicator::GRReplicator(HttpResolver* http_resolver,
   }
 
   // Create a pool of replicator threads
-  for (int ii = 0; ii < GR_REPLICATOR_THREAD_COUNT; ++ii)
+  _worker_threads.resize(_gr_threads);
+  for (int ii = 0; ii < _gr_threads; ++ii)
   {
     pthread_t thread;
     int thread_rc = pthread_create(&thread,
@@ -50,7 +53,7 @@ GRReplicator::~GRReplicator()
 {
   _q.terminate();
 
-  for (int ii = 0; ii < GR_REPLICATOR_THREAD_COUNT; ++ii)
+  for (int ii = 0; ii < _gr_threads; ++ii)
   {
     pthread_join(_worker_threads[ii], NULL);
   }
