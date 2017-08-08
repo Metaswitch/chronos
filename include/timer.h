@@ -80,16 +80,6 @@ public:
                                  std::vector<std::string>& extra_replicas,
                                  Hasher* hasher);
 
-  static void calculate_replicas(TimerID id,
-                                 uint64_t replica_bloom_filter,
-                                 std::map<std::string, uint64_t> cluster_bloom_filters,
-                                 std::vector<std::string> cluster,
-                                 std::vector<uint32_t> cluster_rendezvous_hashes,
-                                 uint32_t replication_factor,
-                                 std::vector<std::string>& replicas,
-                                 std::vector<std::string>& extra_replicas,
-                                 Hasher* hasher);
-
   // Populate the site list for this timer. Should be called when the site
   // list is empty
   void populate_sites();
