@@ -19,7 +19,7 @@
 class MockGRReplicator : public GRReplicator
 {
 public:
-  MockGRReplicator() : GRReplicator(NULL, NULL) {}
+  MockGRReplicator() : GRReplicator(NULL, NULL, 2) {}
 
   MOCK_METHOD1(replicate, void(Timer*));
 };

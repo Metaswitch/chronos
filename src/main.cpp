@@ -329,10 +329,15 @@ int main(int argc, char** argv)
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
 
   // Create the timer store, handlers, replicators...
+  int gr_threads;
+  __globals->get_gr_threads(gr_threads);
+
   TimerStore* store = new TimerStore(hc);
   Replicator* controller_rep = new Replicator(exception_handler);
   Replicator* handler_rep = new Replicator(exception_handler);
-  GRReplicator* gr_rep = new GRReplicator(http_resolver, exception_handler);
+  GRReplicator* gr_rep = new GRReplicator(http_resolver,
+                                          exception_handler,
+                                          gr_threads);
   HTTPCallback* callback = new HTTPCallback(http_resolver);
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
@@ -343,8 +348,6 @@ int main(int argc, char** argv)
                                            scalar_timers_table);
   callback->start(handler);
 
-
-
   int target_latency;
   int max_tokens;
   int initial_token_rate;
@@ -353,7 +356,6 @@ int main(int argc, char** argv)
   __globals->get_max_tokens(max_tokens);
   __globals->get_initial_token_rate(initial_token_rate);
   __globals->get_min_token_rate(min_token_rate);
-
 
   LoadMonitor* load_monitor = new LoadMonitor(target_latency,
                                               max_tokens,

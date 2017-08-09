@@ -25,7 +25,7 @@ protected:
     Base::SetUp();
 
     _resolver = new FakeHttpResolver("10.42.42.42");
-    _gr = new GRReplicator(_resolver, NULL);
+    _gr = new GRReplicator(_resolver, NULL, 2);
 
     fakecurl_responses.clear();
     fakecurl_requests.clear();
