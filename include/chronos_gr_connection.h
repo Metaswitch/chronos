@@ -22,7 +22,8 @@ class ChronosGRConnection
 {
 public:
   ChronosGRConnection(const std::string& remote_site,
-                      HttpResolver* resolver);
+                      HttpResolver* resolver,
+                      BaseCommunicationMonitor* comm_monitor = NULL);
   virtual ~ChronosGRConnection();
 
   // Replicate the timer cross-site.
@@ -32,6 +33,7 @@ public:
 private:
   std::string _site_name;
   HttpConnection* _http;
+  BaseCommunicationMonitor* _comm_monitor;
 };
 
 #endif

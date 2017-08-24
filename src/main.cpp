@@ -18,6 +18,7 @@
 #include "http_callback.h"
 #include "globals.h"
 #include "alarm.h"
+#include "communicationmonitor.h"
 #include <boost/filesystem.hpp>
 #include "httpstack.h"
 #include "httpstack_utils.h"
@@ -244,6 +245,7 @@ int main(int argc, char** argv)
 
   AlarmManager* alarm_manager = NULL;
   Alarm* resync_operation_alarm = NULL;
+  CommunicationMonitor* remote_chronos_comm_monitor = NULL;
   SNMP::U32Scalar* remaining_nodes_scalar = NULL;
   SNMP::CounterTable* timers_processed_table = NULL;
   SNMP::CounterTable* invalid_timers_processed_table = NULL;
@@ -278,6 +280,13 @@ int main(int argc, char** argv)
                                      "chronos",
                                      AlarmDef::CHRONOS_RESYNC_IN_PROGRESS,
                                      AlarmDef::MINOR);
+
+  remote_chronos_comm_monitor = new CommunicationMonitor(new Alarm(alarm_manager,
+                                                                   "chronos",
+                                                                   AlarmDef::CHRONOS_REMOTE_CHRONOS_COMM_ERROR,
+                                                                   AlarmDef::MAJOR),
+                                                         "chronos",
+                                                         "remote chronos");
 
   // Explicitly clear resynchronization alarm in case we died while the alarm
   // was still active, to ensure that the alarm is not then stuck in a set
@@ -337,7 +346,8 @@ int main(int argc, char** argv)
   Replicator* handler_rep = new Replicator(exception_handler);
   GRReplicator* gr_rep = new GRReplicator(http_resolver,
                                           exception_handler,
-                                          gr_threads);
+                                          gr_threads,
+                                          remote_chronos_comm_monitor);
   HTTPCallback* callback = new HTTPCallback(http_resolver);
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
@@ -446,6 +456,7 @@ int main(int argc, char** argv)
 
   // Delete Chronos's alarm object
   delete resync_operation_alarm;
+  delete remote_chronos_comm_monitor;
   delete alarm_manager;
   delete http_stack; http_stack = NULL;
 

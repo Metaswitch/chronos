@@ -42,7 +42,8 @@ class GRReplicator
 public:
   GRReplicator(HttpResolver* http_resolver,
                ExceptionHandler* exception_handler,
-               int gr_threads);
+               int gr_threads,
+               BaseCommunicationMonitor* comm_monitor = NULL);
   virtual ~GRReplicator();
 
   void worker_thread_entry_point();

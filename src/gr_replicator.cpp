@@ -15,7 +15,8 @@
 
 GRReplicator::GRReplicator(HttpResolver* http_resolver,
                            ExceptionHandler* exception_handler,
-                           int gr_threads) :
+                           int gr_threads,
+                           BaseCommunicationMonitor* comm_monitor) :
   _q(),
   _exception_handler(exception_handler),
   _gr_threads(gr_threads)
@@ -25,7 +26,9 @@ GRReplicator::GRReplicator(HttpResolver* http_resolver,
 
   for (std::string site: remote_site_dns_records)
   {
-    ChronosGRConnection* conn = new ChronosGRConnection(site, http_resolver);
+    ChronosGRConnection* conn = new ChronosGRConnection(site,
+                                                        http_resolver,
+                                                        comm_monitor);
     _connections.push_back(conn);
   }
 

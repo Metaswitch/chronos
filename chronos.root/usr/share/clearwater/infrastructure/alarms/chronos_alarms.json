@@ -24,6 +24,29 @@
             ]
         },
         {
+            "index": 3001,
+            "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
+            "name": "CHRONOS_REMOTE_CHRONOS_COMM_ERROR",
+            "levels": [
+                {
+                    "severity": "CLEARED",
+                    "details": "The local Chronos process is able to successfully communicate with one or more Chronos processes in remote sites.",
+                    "description": "Chronos: Remote Chronos communication error cleared.",
+                    "cause": "The local Chronos process is able to successfully communicate with one or more Chronos processes in remote sites.",
+                    "effect": "The local Chronos process can successfully contact remote Chronos processes.",
+                    "action": "No action."
+                },
+                {
+                    "severity": "MAJOR",
+                    "details": "The local Chronos process is unable to contact any Chronos process in remote sites.",
+                    "description": "Chronos: Remote Chronos communication error",
+                    "cause": "The Chronos process is unable to contact any Chronos processes in remote sites. The likely cause depends on whether this is affecting all Chronos instances or just a subset. If the issue impacts just a subset of Chronos instances then it is likely to be due to a partial network outage or configuration issue on just those nodes. If it impacts all Chronos instances then it is likely to be due to a misconfiguration of the remote site option in chronos GR configuration, misconfiguration of the Chronos cluster DNS record, a significant network outage, or because all remote Chronos instances are currently failed.",
+                    "effect": "The deployment is no longer geographically redundant because the S-CSCF cannot synchronize timers between remote sites. In the event of a site failure, registration timeouts and other timer driven events will not happen in remote sites. Under normal operation there will not be any failures.",
+                    "action": "Investigate the issue that is preventing the local Chronos process from contacting Chronos processes in remote sites. The local Chronos will continue to attempt to contact the remote Chronos processes and this alarm will clear if connectivity is restored. If this alarm does not clear then contact your support representative."
+                }
+            ]
+        },
+        {
             "index": 3002,
             "cause": "DATABASE_INCONSISTENCY",
             "name": "CHRONOS_RESYNC_IN_PROGRESS",
