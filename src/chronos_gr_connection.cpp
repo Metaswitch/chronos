@@ -53,9 +53,7 @@ void ChronosGRConnection::send_put(std::string url,
   {
     if (_comm_monitor)
     {
-      // LCOV_EXCL_START - Don't run with communication monitor in UT.
       _comm_monitor->inform_success();
-      // LCOV_EXCL_STOP
     }
   }
 }
