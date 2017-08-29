@@ -15,6 +15,8 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   unique.cpp \
                   signalhandler.cpp \
                   alarm.cpp \
+                  base_communication_monitor.cpp \
+                  communicationmonitor.cpp \
                   httpstack.cpp \
                   httpstack_utils.cpp \
                   accesslogger.cpp \

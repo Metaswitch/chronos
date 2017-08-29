@@ -14,14 +14,16 @@
 #include "chronos_gr_connection.h"
 
 ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
-                                         HttpResolver* resolver) :
+                                         HttpResolver* resolver,
+                                         BaseCommunicationMonitor* comm_monitor) :
   _site_name(remote_site),
   _http(new HttpConnection(remote_site,
                            false,
                            resolver,
                            SASEvent::HttpLogLevel::NONE,
                            NULL,
-                           true))
+                           true)),
+  _comm_monitor(comm_monitor)
 {
 }
 
@@ -40,6 +42,18 @@ void ChronosGRConnection::send_put(std::string url,
     // LCOV_EXCL_START - No value in testing this log in UT
     TRC_ERROR("Unable to send replication to a remote site (%s)",
               _site_name.c_str());
+
+    if (_comm_monitor)
+    {
+      _comm_monitor->inform_failure();
+    }
     // LCOV_EXCL_STOP
+  }
+  else
+  {
+    if (_comm_monitor)
+    {
+      _comm_monitor->inform_success();
+    }
   }
 }

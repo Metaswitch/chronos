@@ -14,7 +14,10 @@
 #include "base.h"
 #include "fakecurl.hpp"
 #include "fakehttpresolver.hpp"
+#include "mockcommunicationmonitor.h"
 #include "timer_helper.h"
+
+using ::testing::_;
 
 /// Fixture for GRReplicatorTest.
 class TestGRReplicator : public Base
@@ -25,7 +28,9 @@ protected:
     Base::SetUp();
 
     _resolver = new FakeHttpResolver("10.42.42.42");
-    _gr = new GRReplicator(_resolver, NULL, 2);
+    _alarm_manager = new AlarmManager();
+    _comm_monitor = new MockCommunicationMonitor(_alarm_manager);
+    _gr = new GRReplicator(_resolver, NULL, 2, _comm_monitor);
 
     fakecurl_responses.clear();
     fakecurl_requests.clear();
@@ -34,12 +39,16 @@ protected:
   void TearDown()
   {
     delete _gr;
+    delete _comm_monitor;
+    delete _alarm_manager;
     delete _resolver;
 
     Base::TearDown();
   }
 
   FakeHttpResolver* _resolver;
+  AlarmManager* _alarm_manager;
+  MockCommunicationMonitor* _comm_monitor;
   GRReplicator* _gr;
 };
 
@@ -51,6 +60,7 @@ TEST_F(TestGRReplicator, ReplicateTimer)
   fakecurl_responses["http://10.42.42.42:80/timers/0000000000000001-1"] = CURLE_OK;
   Timer* timer1 = default_timer(1);
   EXPECT_FALSE(timer1->replicas.empty());
+  EXPECT_CALL(*_comm_monitor, inform_success(_));
   _gr->replicate(timer1);
 
   // The timer's been sent when fakecurl records the request. Sleep until then.
