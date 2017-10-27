@@ -75,6 +75,7 @@ public:
   GLOBAL(max_tokens, int);
   GLOBAL(initial_token_rate, int);
   GLOBAL(min_token_rate, int);
+  GLOBAL(max_token_rate, int);
   GLOBAL(local_site_name, std::string);
   GLOBAL(remote_sites, std::map<std::string, std::string>);
   GLOBAL(remote_site_names, std::vector<std::string>);
@@ -92,7 +93,7 @@ private:
   std::string _local_config_file;
   std::string _cluster_config_file;
   std::string _shared_config_file;
-  pthread_rwlock_t _lock; 
+  pthread_rwlock_t _lock;
   Updater<void, Globals>* _updater;
   boost::program_options::options_description _desc;
 };

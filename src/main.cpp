@@ -362,15 +362,19 @@ int main(int argc, char** argv)
   int max_tokens;
   int initial_token_rate;
   int min_token_rate;
+  int max_token_rate;
   __globals->get_target_latency(target_latency);
   __globals->get_max_tokens(max_tokens);
   __globals->get_initial_token_rate(initial_token_rate);
   __globals->get_min_token_rate(min_token_rate);
+  __globals->get_max_token_rate(max_token_rate);
 
   LoadMonitor* load_monitor = new LoadMonitor(target_latency,
                                               max_tokens,
                                               initial_token_rate,
-                                              min_token_rate);
+                                              min_token_rate,
+                                              max_token_rate);
+
 
   // Set up the HTTPStack and handlers
   int bind_port;
