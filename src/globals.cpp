@@ -56,6 +56,7 @@ Globals::Globals(std::string local_config_file,
     ("throttling.max_tokens", po::value<int>()->default_value(1000), "Maximum token bucket size for HTTP overload control")
     ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
     ("throttling.min_token_rate", po::value<int>()->default_value(10), "Minimum token bucket refill rate for HTTP overload control")
+    ("throttling.max_token_rate", po::value<int>()->default_value(0), "Maximum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
     ("dns.timeout", po::value<int>()->default_value(200), "The amount of time to wait for a DNS response")
     ;
@@ -161,6 +162,9 @@ void Globals::update_config()
 
   int min_token_rate = conf_map["throttling.min_token_rate"].as<int>();
   set_min_token_rate(min_token_rate);
+
+  int max_token_rate = conf_map["throttling.max_token_rate"].as<int>();
+  set_max_token_rate(max_token_rate);
 
   std::vector<std::string> dns_servers = conf_map["dns.servers"].as<std::vector<std::string>>();
   set_dns_servers(dns_servers);
