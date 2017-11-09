@@ -44,6 +44,11 @@ setup_environment()
   # Allow chronos to write out core files.
   ulimit -c unlimited
 
+  # Give chronos sofficient headroom to allow for order of 10 to 20 file handles 
+  # per thread
+  ulimit -Hn 10000
+  ulimit -Sn 10000
+
   # Include the libraries that come with chronos.
   export LD_LIBRARY_PATH=/usr/share/chronos/lib:$LD_LIBRARY_PATH
 }
