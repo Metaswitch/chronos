@@ -6,7 +6,7 @@
 
 # Currently untested Chronos files. These should only be in
 # here temporarily
-replicator.cpp
+#replicator.cpp
 
 # Murmur hash not covered by UTs
 murmur/MurmurHash3.cpp
