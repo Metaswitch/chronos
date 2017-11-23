@@ -4,9 +4,5 @@
 # New files should have 100% code coverage (by lines); it may
 # be acceptable to use exclusion markers to achieve this.
 
-# Currently untested Chronos files. These should only be in
-# here temporarily
-#replicator.cpp
-
 # Murmur hash not covered by UTs
 murmur/MurmurHash3.cpp
