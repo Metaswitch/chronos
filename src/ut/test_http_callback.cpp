@@ -27,7 +27,7 @@ protected:
 
     _resolver = new FakeHttpResolver("10.42.42.42");
     _th = new MockTimerHandler();
-    _callback = new HTTPCallback(_resolver);
+    _callback = new HTTPCallback(_resolver, NULL);
     _callback->start(_th);
 
     fakecurl_responses.clear();

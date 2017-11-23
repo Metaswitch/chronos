@@ -350,7 +350,8 @@ int main(int argc, char** argv)
                                           exception_handler,
                                           gr_threads,
                                           remote_chronos_comm_monitor);
-  HTTPCallback* callback = new HTTPCallback(http_resolver);
+  HTTPCallback* callback = new HTTPCallback(http_resolver,
+                                            exception_handler);
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
                                            handler_rep,

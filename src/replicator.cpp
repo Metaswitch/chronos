@@ -132,7 +132,6 @@ void Replicator::worker_thread_entry_point()
     }
     //LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)
-
     {
       // No recovery behaviour needed
     }
