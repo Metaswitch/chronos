@@ -15,10 +15,15 @@
 #include <cstring>
 #include <pthread.h>
 
-Replicator::Replicator(ExceptionHandler* exception_handler) :
+Replicator::Replicator(HttpResolver* resolver,
+                       ExceptionHandler* exception_handler) :
   _q(),
-  _headers(NULL),
-  _exception_handler(exception_handler)
+  _exception_handler(exception_handler),
+  _resolver(resolver),
+  _http_client(false,
+               _resolver,
+               SASEvent::HttpLogLevel::NONE,
+               NULL)
 {
   // Create a pool of replicator threads
   for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ++ii)
@@ -37,9 +42,6 @@ Replicator::Replicator(ExceptionHandler* exception_handler) :
 
     _worker_threads[ii] = thread;
   }
-
-  // Set up a content type header descriptor to use for our requests.
-  _headers = curl_slist_append(_headers, "Content-Type: application/json");
 }
 
 Replicator::~Replicator()
@@ -49,7 +51,6 @@ Replicator::~Replicator()
   {
     pthread_join(_worker_threads[ii], NULL);
   }
-  curl_slist_free_all(_headers);
 }
 
 /*****************************************************************************/
@@ -107,59 +108,38 @@ void Replicator::replicate_timer_to_node(Timer* timer,
 
 // The replication worker thread.  This loops, receiving cURL handles off a queue
 // and handling them synchronously.  We run a pool of these threads to mitigate
-// starvation.
+// starvation
 void Replicator::worker_thread_entry_point()
 {
-  CURL* curl = curl_easy_init();
-
-  // Tell cURL to perform a POST but to call it a PUT, this allows
-  // us to easily pass a JSON body as a string.
-  //
-  // http://curl.haxx.se/mail/lib-2009-11/0001.html
-  curl_easy_setopt(curl, CURLOPT_POST, 1);
-  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-
-  // Set up the content type (as POSTFIELDS doesn't)
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, _headers);
-
   ReplicationRequest* replication_request;
   while(_q.pop(replication_request))
   {
     CW_TRY
     {
-      // The customized bits of this request.
-      curl_easy_setopt(curl, CURLOPT_URL, replication_request->url.c_str());
-      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, replication_request->body.data());
-      curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, replication_request->body.length());
-
+      std::string replication_url = replication_request->url.c_str();
+      std::string replication_body = replication_request->body.data();
       // Send the request.
-      CURLcode rc = curl_easy_perform(curl);
-      if (rc == CURLE_HTTP_RETURNED_ERROR)
+      HTTPCode http_rc = _http_client.send_put(replication_url,
+                                               replication_body,
+                                               0L); // SAS trail
+
+      if (http_rc != HTTP_OK)
       {
-        long http_rc;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_rc);
-        TRC_WARNING("Failed to replicate timer to %s, HTTP error was %d %s",
-                    replication_request->url.c_str(),
-                    http_rc,
-                    curl_easy_strerror(rc));
-      }
-      else if (rc != CURLE_OK)
-      {
-        TRC_DEBUG("%s failed at server. %s(%d). fatal", replication_request->url.c_str(),
-                                                          curl_easy_strerror(rc), rc);
+        TRC_DEBUG("Failed to process replication for %s. HTTP rc %ld",
+                  replication_url.c_str(),
+                  http_rc);
       }
     }
+    //LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)
     {
       // No recovery behaviour needed
     }
     CW_END
-
+    // LCOV_EXCL_STOP
     // Clean up
     delete replication_request;
   }
-
-  curl_easy_cleanup(curl);
 }
 
 /*****************************************************************************/

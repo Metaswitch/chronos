@@ -19,7 +19,7 @@
 class MockReplicator : public Replicator
 {
 public:
-  MockReplicator() : Replicator(NULL) {}
+  MockReplicator() : Replicator(NULL, NULL) {}
 
   MOCK_METHOD1(replicate, void(Timer*));
   MOCK_METHOD2(replicate_timer_to_node, void(Timer*, std::string));

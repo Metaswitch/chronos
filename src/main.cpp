@@ -342,13 +342,16 @@ int main(int argc, char** argv)
   __globals->get_gr_threads(gr_threads);
 
   TimerStore* store = new TimerStore(hc);
-  Replicator* controller_rep = new Replicator(exception_handler);
-  Replicator* handler_rep = new Replicator(exception_handler);
+  Replicator* controller_rep = new Replicator(http_resolver,
+                                              exception_handler);
+  Replicator* handler_rep = new Replicator(http_resolver,
+                                           exception_handler);
   GRReplicator* gr_rep = new GRReplicator(http_resolver,
                                           exception_handler,
                                           gr_threads,
                                           remote_chronos_comm_monitor);
-  HTTPCallback* callback = new HTTPCallback(http_resolver);
+  HTTPCallback* callback = new HTTPCallback(http_resolver,
+                                            exception_handler);
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
                                            handler_rep,

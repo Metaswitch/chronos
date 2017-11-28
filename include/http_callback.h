@@ -18,6 +18,7 @@
 #include "timer.h"
 #include "httpresolver.h"
 #include "httpconnection.h"
+#include "exception_handler.h"
 
 #include <string>
 #include <curl/curl.h>
@@ -27,7 +28,8 @@
 class HTTPCallback : public Callback
 {
 public:
-  HTTPCallback(HttpResolver* resolver);
+  HTTPCallback(HttpResolver* resolver,
+               ExceptionHandler* exception_handler);
   ~HTTPCallback();
 
   void start(TimerHandler*);
@@ -40,11 +42,11 @@ public:
   void worker_thread_entry_point();
 
 private:
-  // Resolver to use to resolve callback URL server FQDNs to IP addresses.
-  HttpResolver* _resolver;
-
   pthread_t _worker_threads[HTTPCALLBACK_THREAD_COUNT];
   eventq<Timer*> _q;
+  ExceptionHandler* _exception_handler;
+  // Resolver to use to resolve callback URL server FQDNs to IP addresses.
+  HttpResolver* _resolver;
 
   bool _running;
   TimerHandler* _handler;
