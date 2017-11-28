@@ -108,7 +108,9 @@ void HTTPCallback::worker_thread_entry_point()
       _handler->return_timer(timer);
       timer = NULL; // We relinquish control of the timer when we give it back to the store.
 
-      //TODO The send_post function doesn't even HAVE a function to add headers on the request, and the store for response headers is helpfully just called headers. All round, it's pretty dumb
+      //TODO The send_post function currently has no method for sending headers
+      // on the request. Should fix this up soon, but we default the Content-Type
+      // header, and aren't using Sequence Number, so not a huge issue atm.
       // Send the request.
       HTTPCode http_rc = _http_client.send_post(callback_url,
                                                 headers,

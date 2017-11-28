@@ -222,8 +222,6 @@ TEST_F(TestReplicator, ReplicateToNode)
   Timer* timer1 = default_timer(1);
   timer1->_replication_factor = 1;
   EXPECT_TRUE(timer1->replicas.size() == 1);
-  fakecurl_responses["http://ReplicateToNode:9999/timers/0000000000000001-1"] = CURLE_OK;
-  // TODO get fakecurl to recognise ReplicateToNode, rather than seeing it as 10.42.42.42 
   fakecurl_responses["http://10.42.42.42:9999/timers/0000000000000001-1"] = CURLE_OK;
 
   _replicator->replicate_timer_to_node(timer1,"ReplicateToNode:9999");
