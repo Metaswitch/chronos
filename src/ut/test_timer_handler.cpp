@@ -385,7 +385,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTimer)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
@@ -422,7 +422,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
 
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
   // start time
@@ -442,7 +442,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_mock_scalar_table, increment("BIND", 3)).Times(1);
 
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // The timer is successfully updated
   EXPECT_EQ(insert_timer, timer2);
@@ -463,7 +463,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimer)
   EXPECT_CALL(*_store, fetch(timer3->id, _)).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer3);
+  _th->add_timer(timer3, 0);
 
   // The timer is successfully updated
   EXPECT_EQ(insert_timer, timer3);
@@ -485,7 +485,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // Update the timer. Make sure the newer timer is picked by giving it a later
   // start time.
@@ -500,7 +500,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddExistingTimerChangedTags)
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // The timer is successfully updated
   EXPECT_EQ(insert_timer, timer2);
@@ -521,7 +521,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSites)
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   ASSERT_EQ(insert_timer->sites.size(), 3);
   EXPECT_EQ(insert_timer->sites[0], "local_site_name");
@@ -542,7 +542,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSites)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // The timer is successfully updated, and the site ordering uses the existing
   // site ordering for any existing sites
@@ -569,7 +569,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSiteOrdering)
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   ASSERT_EQ(insert_timer->sites.size(), 3);
   EXPECT_EQ(insert_timer->sites[0], "local_site_name");
@@ -589,7 +589,7 @@ TEST_F(TestTimerHandlerAddAndReturn, UpdateTimerChangeSiteOrdering)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // The timer is successfully updated, and the site ordering uses the existing
   // site ordering
@@ -623,7 +623,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddOlderTimer)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // Add an older timer. This doesn't change the stored timer
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
@@ -631,7 +631,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddOlderTimer)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
 
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   EXPECT_EQ(insert_timer->interval_ms, (unsigned)10000);
 
@@ -661,7 +661,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddUpToDateTimer)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // Now update the current cluster view ID
   std::string updated_cluster_view_id = "updated-cluster-view-id";
@@ -676,7 +676,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddUpToDateTimer)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(0);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
 
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // Check that the timer time was updated.
   EXPECT_EQ(insert_timer->interval_ms, (unsigned)20000);
@@ -707,7 +707,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // Now add the tombstone. This should decrement the tags/counts from the
   // removed timer, not from the tombstone tags
@@ -719,7 +719,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddTombstoneToExisting)
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("NEWTAG", 1)).Times(0);
   EXPECT_CALL(*_mock_scalar_table, decrement("NEWTAG", 1)).Times(0);
-  _th->add_timer(tombstone);
+  _th->add_timer(tombstone, 0);
 
   // Check that the new tombstone has the correct interval
   EXPECT_EQ(insert_timer->interval_ms, (unsigned)1000000);
@@ -746,7 +746,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddNewTombstone)
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(0);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
 
-  _th->add_timer(tombstone);
+  _th->add_timer(tombstone, 0);
 
   // Check that the added timer is the tombstone
   EXPECT_TRUE(insert_timer->is_tombstone());
@@ -774,7 +774,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
   EXPECT_EQ(insert_timer->sequence_number, (unsigned)2);
 
   // Add a timer with a lower sequence number - this timer should not replace
@@ -782,7 +782,7 @@ TEST_F(TestTimerHandlerAddAndReturn, AddLowerSequenceNumber)
   EXPECT_CALL(*_store, fetch(timer2->id, _)).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // Check that the sequence number hasn't changed
   EXPECT_EQ(insert_timer->sequence_number, (unsigned)2);
@@ -891,7 +891,7 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
@@ -921,7 +921,7 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccessSiteChanges)
   EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
@@ -970,7 +970,7 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
+  _th->add_timer(timer, 0);
 
   // The timer is successfully added. As it's a new timer it's passed through to
   // the store unchanged.
@@ -1062,7 +1062,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNode)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   // Now update the current cluster view ID
   std::string updated_cluster_view_id = "updated-cluster-view-id";
@@ -1092,7 +1092,7 @@ TEST_F(TestTimerHandlerRealStore, SelectTimersNoMatchesReqNode)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   // Now update the current cluster view ID
   std::string updated_cluster_view_id = "updated-cluster-view-id";
@@ -1126,7 +1126,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeNoClusterChange)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   // Now just call get_timers_for_node (as if someone had done a resync without
   // changing the cluster configuration). No timers should be returned
@@ -1155,8 +1155,8 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeHitMaxResponses)
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG2", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG2", 1)).Times(1);
-  _th->add_timer(timer1);
-  _th->add_timer(timer2);
+  _th->add_timer(timer1, 0);
+  _th->add_timer(timer2, 0);
 
   // Now update the current cluster view ID
   std::string updated_cluster_view_id = "updated-cluster-view-id";
@@ -1208,15 +1208,15 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeMaxResponsesAndSamePopTime)
   EXPECT_CALL(*_mock_tag_table, increment(_, 1)).Times(6);
   EXPECT_CALL(*_mock_scalar_table, increment(_, 1)).Times(6);
 
-  _th->add_timer(diff_timer1);
-  _th->add_timer(diff_timer2);
-  _th->add_timer(diff_timer3);
-  _th->add_timer(tombstone1);
-  _th->add_timer(tombstone2);
-  _th->add_timer(tombstone3);
-  _th->add_timer(same_timer1);
-  _th->add_timer(same_timer2);
-  _th->add_timer(same_timer3);
+  _th->add_timer(diff_timer1, 0);
+  _th->add_timer(diff_timer2, 0);
+  _th->add_timer(diff_timer3, 0);
+  _th->add_timer(tombstone1, 0);
+  _th->add_timer(tombstone2, 0);
+  _th->add_timer(tombstone3, 0);
+  _th->add_timer(same_timer1, 0);
+  _th->add_timer(same_timer2, 0);
+  _th->add_timer(same_timer3, 0);
 
   // Now update the current cluster view ID
   std::string updated_cluster_view_id = "updated-cluster-view-id";
@@ -1275,15 +1275,15 @@ TEST_F(TestTimerHandlerRealStore, GetMultipleTimersFromLongWheel)
   Timer* timer1 = default_timer(1);
   timer1->interval_ms += 3000;
   timer1->repeat_for += 3000;
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   Timer* timer2 = default_timer(2);
   timer2->interval_ms += 2000;
   timer2->repeat_for += 2000;
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   Timer* timer3 = default_timer(3);
-  _th->add_timer(timer3);
+  _th->add_timer(timer3, 0);
 
   // Now update the current cluster nodes (to ensure that we're also picked
   // as a replica in the tests
@@ -1323,7 +1323,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   // Add a single timer that will end up in the short wheel
   Timer* timer2 = default_timer(2);
@@ -1332,7 +1332,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG2", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG2", 1)).Times(1);
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // Add a single timer that will end up in the heap
   Timer* timer3 = default_timer(3);
@@ -1341,7 +1341,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG3", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG3", 1)).Times(1);
-  _th->add_timer(timer3);
+  _th->add_timer(timer3, 0);
 
   // Add a single timer that will end up in the heap
   Timer* timer4 = default_timer(4);
@@ -1350,7 +1350,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG4", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG4", 1)).Times(1);
-  _th->add_timer(timer4);
+  _th->add_timer(timer4, 0);
 
   // Add a single timer that will end up in the heap
   Timer* timer5 = default_timer(5);
@@ -1359,7 +1359,7 @@ TEST_F(TestTimerHandlerRealStore, GetTimersForNodeFromAllStructures)
   EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, increment("TAG5", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, increment("TAG5", 1)).Times(1);
-  _th->add_timer(timer5);
+  _th->add_timer(timer5, 0);
 
   // Now update the current cluster nodes (to ensure that we're also picked
   // as a replica in the tests
@@ -1407,12 +1407,12 @@ TEST_F(TestTimerHandlerRealStore, TimeFromShortWheelTimers)
   Timer* timer1 = default_timer(1);
   timer1->interval_ms = 0;
   timer1->repeat_for = 0;
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   Timer* timer2 = default_timer(2);
   timer2->interval_ms = 10;
   timer2->repeat_for = 10;
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // Now update the current cluster nodes (to ensure that we're also picked
   // as a replica in the tests
@@ -1443,12 +1443,12 @@ TEST_F(TestTimerHandlerRealStore, TimeFromLongWheelTimers)
   EXPECT_CALL(*_mock_scalar_table, increment(_, _)).Times(2);
 
   Timer* timer1 = default_timer(1);
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   Timer* timer2 = default_timer(2);
   timer2->interval_ms = 200000;
   timer2->repeat_for = 200000;
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // Now update the current cluster nodes (to ensure that we're also picked
   // as a replica in the tests
@@ -1481,12 +1481,12 @@ TEST_F(TestTimerHandlerRealStore, TimeFromHeapTimers)
   Timer* timer1 = default_timer(1);
   timer1->interval_ms = 10000000;
   timer1->repeat_for = 10000000;
-  _th->add_timer(timer1);
+  _th->add_timer(timer1, 0);
 
   Timer* timer2 = default_timer(2);
   timer2->interval_ms = 20000000;
   timer2->repeat_for = 20000000;
-  _th->add_timer(timer2);
+  _th->add_timer(timer2, 0);
 
   // Now update the current cluster nodes (to ensure that we're also picked
   // as a replica in the tests

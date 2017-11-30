@@ -18,6 +18,7 @@
 #include "timer_handler.h"
 #include "log.h"
 #include "constants.h"
+#include "chronossasevent.h"
 
 void* TimerHandler::timer_handler_entry_func(void* arg)
 {
@@ -80,7 +81,9 @@ TimerHandler::~TimerHandler()
   delete _callback;
 }
 
-void TimerHandler::add_timer(Timer* timer, bool update_stats)
+void TimerHandler::add_timer(Timer* timer,
+                             SAS::TrailId trail,
+                             bool update_stats)
 {
   pthread_mutex_lock(&_mutex);
 
@@ -101,6 +104,13 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       // If the new timer matches the current cluster view ID, and the old timer
       // doesn't, always prioritise the new timer.
       TRC_DEBUG("Adding timer with current cluster view ID");
+
+      SAS::Event event(trail, SASEvent::ADD_TIMER_CLUSTER_ID, 0);
+      event.add_static_param(timer->id);
+      event.add_var_param(timer->cluster_view_id);
+      event.add_var_param(existing_timer->cluster_view_id);
+      event.add_static_param(timer->is_tombstone());
+      SAS::report_event(event);
     }
     else if (timer->sequence_number == existing_timer->sequence_number)
     {
@@ -112,6 +122,14 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       {
         TRC_DEBUG("Timer sequence numbers the same, but timer is older than the "
                   "timer in the store");
+
+        SAS::Event event(trail, SASEvent::DISCARD_TIMER_OLDER_IN_TIME, 0);
+        event.add_static_param(timer->id);
+        event.add_static_param(timer->start_time_mono_ms);
+        event.add_static_param(existing_timer->start_time_mono_ms);
+        event.add_static_param(timer->is_tombstone());
+        SAS::report_event(event);
+
         delete timer;
         timer = new Timer(*existing_timer);
         will_add_timer = false;
@@ -119,6 +137,13 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       else
       {
         TRC_DEBUG("Adding timer as it's newer than the timer in the store");
+
+        SAS::Event event(trail, SASEvent::ADD_TIMER_NEWER_IN_TIME, 0);
+        event.add_static_param(timer->id);
+        event.add_static_param(timer->start_time_mono_ms);
+        event.add_static_param(existing_timer->start_time_mono_ms);
+        event.add_static_param(timer->is_tombstone());
+        SAS::report_event(event);
       }
     }
     else
@@ -133,6 +158,14 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
         // These are probably the same timer, and the timer we are trying to add is both
         // not from the client, and has a lower sequence number (so is less "informed")
         TRC_DEBUG("Not adding timer as it's older than the timer in the store");
+
+        SAS::Event event(trail, SASEvent::DISCARD_TIMER_OLDER_IN_SEQUENCE, 0);
+        event.add_static_param(timer->id);
+        event.add_static_param(timer->sequence_number);
+        event.add_static_param(existing_timer->sequence_number);
+        event.add_static_param(timer->is_tombstone());
+        SAS::report_event(event);
+
         delete timer;
         timer = new Timer(*existing_timer);
         will_add_timer = false;
@@ -140,6 +173,13 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       else
       {
         TRC_DEBUG("Adding timer as it's newer than the timer in the store");
+
+        SAS::Event event(trail, SASEvent::ADD_TIMER_NEWER_IN_SEQUENCE, 0);
+        event.add_static_param(timer->id);
+        event.add_static_param(timer->sequence_number);
+        event.add_static_param(existing_timer->sequence_number);
+        event.add_static_param(timer->is_tombstone());
+        SAS::report_event(event);
       }
     }
 
@@ -157,6 +197,11 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
   else
   {
     TRC_DEBUG("Adding new timer");
+
+    SAS::Event event(trail, SASEvent::ADD_NEW_TIMER, 0);
+    event.add_static_param(timer->id);
+    event.add_static_param(timer->is_tombstone());
+    SAS::report_event(event);
   }
 
   // Would be good in future work to pull all statistics logic out into a
@@ -253,7 +298,7 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
     _replicator->replicate(timer);
     _gr_replicator->replicate(timer);
 
-    // Pass the timer pair back to the store, relinquishing responsibility for it.
+    // Pass the timer back to the store, relinquishing responsibility for it.
     _store->insert(timer);
   }
 

@@ -39,7 +39,9 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   timer_counter.cpp \
                   MurmurHash3.cpp \
                   chronos_gr_connection.cpp \
-                  gr_replicator.cpp
+                  gr_replicator.cpp \
+                  saslogger.cpp \
+                  namespace_hop.cpp
 
 chronos_SOURCES := ${COMMON_SOURCES} \
                    main.cpp \

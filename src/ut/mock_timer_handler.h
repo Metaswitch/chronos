@@ -19,7 +19,7 @@
 class MockTimerHandler : public TimerHandler
 {
 public:
-  MOCK_METHOD2(add_timer,void(Timer*,bool));
+  MOCK_METHOD3(add_timer,void(Timer*,SAS::TrailId,bool));
   MOCK_METHOD1(return_timer,void(Timer*));
   MOCK_METHOD1(handle_successful_callback,void(TimerID));
   MOCK_METHOD1(handle_failed_callback,void(TimerID));

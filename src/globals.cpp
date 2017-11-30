@@ -59,6 +59,9 @@ Globals::Globals(std::string local_config_file,
     ("throttling.max_token_rate", po::value<int>()->default_value(0), "Maximum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
     ("dns.timeout", po::value<int>()->default_value(200), "The amount of time to wait for a DNS response")
+    ("sas.server", po::value<std::string>()->default_value(""), "The Service Assurance Server. If this option isn't set then SAS is disabled")
+    ("sas.system_name", po::value<std::string>()->default_value(""), "The system name to identify to SAS with. If this option isn't set then SAS is disabled")
+    ("sas.use_signaling_interface", po::value<int>()->default_value(0), "Whether SAS traffic is to be dispatched over the signaling network rather than the default management interface")
     ;
 
 #ifndef UNIT_TEST
@@ -171,6 +174,17 @@ void Globals::update_config()
 
   int dns_timeout = conf_map["dns.timeout"].as<int>();
   set_dns_timeout(dns_timeout);
+
+  std::string sas_server = conf_map["sas.server"].as<std::string>();
+  set_sas_server(sas_server);
+  TRC_STATUS("SAS server is: %s", sas_server.c_str());
+
+  std::string sas_system_name = conf_map["sas.system_name"].as<std::string>();
+  set_sas_system_name(sas_system_name);
+  TRC_STATUS("SAS system name is: %s", sas_system_name.c_str());
+
+  int sas_signaling_if = conf_map["sas.use_signaling_interface"].as<int>();
+  set_sas_signaling_if(sas_signaling_if != 0);
 
   uint32_t instance_id = conf_map["identity.instance_id"].as<uint32_t>();
   uint32_t deployment_id = conf_map["identity.deployment_id"].as<uint32_t>();

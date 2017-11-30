@@ -37,6 +37,8 @@
 #include "snmp_scalar.h"
 #include "snmp_agent.h"
 #include "updater.h"
+#include "saslogger.h"
+#include "namespace_hop.h"
 
 #include <iostream>
 #include <cassert>
@@ -253,6 +255,21 @@ int main(int argc, char** argv)
   SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
   SNMP::InfiniteScalarTable* scalar_timers_table = NULL;
 
+  // Set up SAS
+  std::string sas_server;
+  __globals->get_sas_server(sas_server);
+  std::string sas_system_name;
+  __globals->get_sas_system_name(sas_system_name);
+  bool sas_signaling_if;
+  __globals->get_sas_signaling_if(sas_signaling_if);
+  SAS::init(sas_system_name,
+            "chronos",
+            SASEvent::CURRENT_RESOURCE_BUNDLE,
+            sas_server,
+            sas_write,
+            sas_signaling_if ? create_connection_in_signaling_namespace
+                             : create_connection_in_management_namespace);
+
   // Sets up SNMP statistics
   snmp_setup("chronos");
 
@@ -434,6 +451,8 @@ int main(int argc, char** argv)
     CL_CHRONOS_HTTP_INTERFACE_STOP_FAIL.log(e._func, e._rc);
     std::cerr << "Caught HttpStack::Exception" << std::endl;
   }
+
+  SAS::term();
 
   delete load_monitor; load_monitor = NULL;
   delete chronos_internal_connection; chronos_internal_connection = NULL;

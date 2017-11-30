@@ -97,7 +97,7 @@ TEST_F(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
   // to this node, and have a 200 response
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 
@@ -112,7 +112,7 @@ TEST_F(TestHandler, ValidJSONDeleteTimerWithReplicas)
   controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   _task->run();
 
@@ -137,7 +137,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
 
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -170,7 +170,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -401,7 +401,7 @@ TEST_F(TestHandler, TimerNoSites)
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -427,7 +427,7 @@ TEST_F(TestHandler, TimerWithSitesAndReplicas)
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"], \"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
   EXPECT_CALL(*_replicator, replicate(_)).Times(0);
   EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -444,7 +444,7 @@ TEST_F(TestHandler, TimerWithSitesNoReplicas)
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
   EXPECT_CALL(*_replicator, replicate(_)).Times(1);
   EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -462,7 +462,7 @@ TEST_F(TestHandler, TimerWithReplicasNoSites)
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"]}}", "");
   EXPECT_CALL(*_replicator, replicate(_)).Times(0);
   EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -479,7 +479,7 @@ TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasNew)
   controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 5 }}", "");
   EXPECT_CALL(*_replicator, replicate(_));
   EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 
@@ -501,7 +501,7 @@ TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasReplicated)
   HttpStack::Request req(NULL, NULL);
 
   controller_request("/timers/1231231231231231-5", htp_method_PUT, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [\"10.0.0.1:9999\"] }}", "");
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*_th, add_timer(_,_,_)).WillOnce(SaveArg<0>(&added_timer));
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
   _task->run();
 

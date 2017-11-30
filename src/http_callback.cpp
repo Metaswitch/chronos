@@ -11,6 +11,7 @@
 
 #include "http_callback.h"
 #include "log.h"
+#include "chronossasevent.h"
 
 #include <cstring>
 
@@ -103,16 +104,32 @@ void HTTPCallback::worker_thread_entry_point()
     _handler->return_timer(timer);
     timer = NULL; // We relinquish control of the timer when we give it back to the store.
 
+    SAS::TrailId trail = SAS::new_trail(0);
+
+    SAS::Marker start_marker(trail, MARKER_ID_START, 0u);
+    SAS::report_marker(start_marker);
+
+    SAS::Event event(trail, SASEvent::POP_TIMER, 0);
+    event.add_static_param(timer_id);
+    event.add_var_param(callback_url);
+    SAS::report_event(event);
+
     // Send the request.
     HTTPCode http_rc = _http_client.send_post(callback_url,
                                               headers,
                                               callback_body,
-                                              0L);
+                                              trail);
 
     if (http_rc == HTTP_OK)
     {
       // The callback succeeded, so we need to re-find the timer, and replicate it.
       TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
+
+      SAS::Event event(trail, SASEvent::SUCCESSFUL_CALLBACK, 0);
+      event.add_static_param(timer_id);
+      event.add_var_param(callback_url);
+      SAS::report_event(event);
+
       _handler->handle_successful_callback(timer_id);
     }
     else
@@ -120,9 +137,20 @@ void HTTPCallback::worker_thread_entry_point()
       TRC_DEBUG("Failed to process callback for %lu: URL %s, HTTP rc %ld", timer_id,
                 callback_url.c_str(), http_rc);
 
-      // The callback failed, and so we need to remove the timer from the store.
+      SAS::Event event(trail, SASEvent::FAILED_CALLBACK, 0);
+      event.add_static_param(timer_id);
+      event.add_var_param(callback_url);
+      event.add_static_param(http_rc);
+      SAS::report_event(event);
+
+      // The callback failed, and so we need to remove the timer from the store
+      // (note that the removal isn't replicated, so that another replica still
+      // has a chance to succeed).
       _handler->handle_failed_callback(timer_id);
     }
+
+    SAS::Marker end_marker(trail, MARKER_ID_END, 0u);
+    SAS::report_marker(end_marker);
   }
 
   return;

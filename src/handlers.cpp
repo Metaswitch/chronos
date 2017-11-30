@@ -13,6 +13,7 @@
 #include <boost/regex.hpp>
 #include "json_parse_utils.h"
 #include "constants.h"
+#include "chronossasevent.h"
 
 void ControllerTask::run()
 {
@@ -132,6 +133,7 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
 
   // Now we have a valid timer object, reply to the HTTP request.
   _req.add_header("Location", timer->url());
+
   send_http_reply(HTTP_OK);
 
   // Replicate the timer to the other replicas within the site if this is the
@@ -158,7 +160,21 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
     timer->become_tombstone();
   }
 
-  _cfg->_handler->add_timer(timer);
+  std::string replicas = "Replicas:";
+  for (std::string rep : timer->replicas)
+  {
+    replicas.append(" ").append(rep);
+  }
+
+  TRC_STATUS("Trail %d", this->trail());
+  SAS::Event event(this->trail(), SASEvent::HANDLE_TIMER_REQUEST, 0);
+  event.add_static_param(timer_id);
+  event.add_static_param(replicated_timer);
+  event.add_var_param(replicas);
+  event.add_static_param(gr_replicated_timer);
+  SAS::report_event(event);
+
+  _cfg->_handler->add_timer(timer, this->trail());
 
   // The store takes ownership of the timer.
   timer = NULL;
