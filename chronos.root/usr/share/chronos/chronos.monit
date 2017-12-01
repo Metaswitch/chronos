@@ -14,14 +14,14 @@ check process chronos_process with pidfile /var/run/chronos/chronos.pid
   group chronos
 
   # The start, stop and restart commands are linked to alarms
-  start program = "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos start'"
+  start program = "/bin/bash -c '/usr/share/clearwater/infrastructure/monit_stability/chronos-stability reset; /usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos start'"
   stop program  = "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos stop'"
-  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos restart'"
+  restart program = "/bin/bash -c '/usr/share/clearwater/infrastructure/monit_stability/chronos-stability reset; /usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos restart'"
 
   # Check the service's resource usage, and abort the process if it's too high. This will
   # generate a core file and trigger diagnostics collection. Monit will raise an alarm when
   # it restarts the process
-  if memory > 80% then exec "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos abort'"
+  if memory > 80% then exec "/bin/bash -c '/usr/share/clearwater/infrastructure/monit_stability/chronos-stability aborted; /usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos abort'"
 
 # Clear any alarms if the process has been running long enough.
 check program chronos_uptime with path /usr/share/clearwater/infrastructure/monit_uptime/check-chronos-uptime
@@ -38,4 +38,4 @@ check program poll_chronos with path "/usr/share/clearwater/bin/poll_chronos.sh"
 
   # Aborting generates a core file and triggers diagnostic collection. Monit will raise
   # an alarm when it restarts the process
-  if status != 0 for 2 cycles then exec "/bin/bash -c '/usr/share/chronos/write_monit_restart_diags; /usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos abort'"
+  if status != 0 for 2 cycles then exec "/bin/bash -c '/usr/share/clearwater/infrastructure/monit_stability/chronos-stability aborted; /usr/share/chronos/write_monit_restart_diags; /usr/share/clearwater/bin/issue-alarm monit 3000.4; /etc/init.d/chronos abort'"
