@@ -23,4 +23,4 @@ if [ $rc != 0 ]; then
   fi
 fi
 
-exit $?
+exit $rc
