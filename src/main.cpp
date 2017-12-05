@@ -243,6 +243,17 @@ int main(int argc, char** argv)
                           options.cluster_config_file,
                           options.shared_config_file);
 
+  // Redirect stderr to chronos_err.log. This is done here and not in the call
+  // to daemonize because we need to have __globals to know the logging folder.
+  std::string logging_folder;
+  __globals->get_logging_folder(logging_folder);
+  std::string err = logging_folder + "/chronos_err.log";
+  if (freopen(err.c_str(), "a", stderr) == NULL)
+  {
+    TRC_ERROR("Failed to redirect stderr");
+    exit(0);
+  }
+
   AlarmManager* alarm_manager = NULL;
   Alarm* resync_operation_alarm = NULL;
   CommunicationMonitor* remote_chronos_comm_monitor = NULL;
