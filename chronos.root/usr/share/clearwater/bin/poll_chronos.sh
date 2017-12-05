@@ -11,4 +11,16 @@
 
 . /etc/clearwater/config
 /usr/share/clearwater/bin/poll-http localhost:7253
-exit $?
+rc=$?
+
+# If the chronos process is not stable, we ignore a non-zero return code and
+# return zero.
+if [ $rc != 0 ]; then
+  /usr/share/clearwater/infrastructure/monit_stability/chronos-stability check
+  if [ $? != 0 ]; then
+    echo "return code $rc ignored" >&2
+    rc=0
+  fi
+fi
+
+exit $rc
