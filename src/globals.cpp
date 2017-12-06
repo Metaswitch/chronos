@@ -128,7 +128,6 @@ void Globals::update_config()
   // log the other settings
   std::string logging_folder = conf_map["logging.folder"].as<std::string>();
   set_logging_folder(logging_folder);
-  TRC_STATUS("Logging folder: %s", logging_folder.c_str());
 
 #ifndef UNIT_TEST
   Log::setLogger(new Logger(logging_folder, "chronos"));
