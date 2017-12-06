@@ -53,6 +53,7 @@ public:
   GLOBAL(bind_port, int);
   GLOBAL(threads, int);
   GLOBAL(gr_threads, int);
+  GLOBAL(logging_folder, std::string);
 
   // Clustering configuration
   GLOBAL(cluster_local_ip, std::string);

@@ -126,8 +126,11 @@ void Globals::update_config()
 
   // Set up the per node configuration. Set up logging early so we can
   // log the other settings
+  std::string logging_folder = conf_map["logging.folder"].as<std::string>();
+  set_logging_folder(logging_folder);
+
 #ifndef UNIT_TEST
-  Log::setLogger(new Logger(conf_map["logging.folder"].as<std::string>(), "chronos"));
+  Log::setLogger(new Logger(logging_folder, "chronos"));
   Log::setLoggingLevel(conf_map["logging.level"].as<int>());
 #endif
 
