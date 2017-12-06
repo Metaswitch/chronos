@@ -399,6 +399,7 @@ int main(int argc, char** argv)
   __globals->get_bind_port(bind_port);
   __globals->get_threads(http_threads);
 
+  HttpStack::DefaultSasLogger sas_logger(SASEvent::HttpLogLevel::DETAIL);
   HttpStack* http_stack = new HttpStack(http_threads,
                                         exception_handler,
                                         NULL,
@@ -407,7 +408,7 @@ int main(int argc, char** argv)
   HttpStackUtils::PingHandler ping_handler;
   ControllerTask::Config controller_config(controller_rep, gr_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
-                                                                                             &HttpStack::NULL_SAS_LOGGER);
+                                                                                             &sas_logger);
 
   try
   {

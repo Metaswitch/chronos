@@ -20,7 +20,7 @@ ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
   _http(new HttpConnection(remote_site,
                            false,
                            resolver,
-                           SASEvent::HttpLogLevel::NONE,
+                           SASEvent::HttpLogLevel::DETAIL,
                            NULL,
                            true)),
   _comm_monitor(comm_monitor)

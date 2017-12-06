@@ -36,7 +36,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                                                      SNMP::CounterTable* invalid_timers_processed_table) :
   _http(new HttpClient(false,
                        resolver,
-                       SASEvent::HttpLogLevel::NONE,
+                       SASEvent::HttpLogLevel::DETAIL,
                        NULL)),
   _handler(handler),
   _replicator(replicator),
