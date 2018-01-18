@@ -32,7 +32,8 @@ public:
 
 private:
   std::string _site_name;
-  HttpConnection* _http;
+  HttpClient* _http_client;
+  HttpConnection* _http_conn;
   BaseCommunicationMonitor* _comm_monitor;
 };
 

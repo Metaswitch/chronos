@@ -17,19 +17,24 @@ ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
                                          HttpResolver* resolver,
                                          BaseCommunicationMonitor* comm_monitor) :
   _site_name(remote_site),
-  _http(new HttpConnection(remote_site,
-                           false,
-                           resolver,
-                           SASEvent::HttpLogLevel::NONE,
-                           NULL,
-                           true)),
+  _http_client(new HttpClient(false,
+                              resolver,
+                              nullptr,
+                              nullptr,
+                              SASEvent::HttpLogLevel::NONE,
+                              nullptr,
+                              false,
+                              true)),
+  _http_conn(new HttpConnection(remote_site,
+                                _http_client)),
   _comm_monitor(comm_monitor)
 {
 }
 
 ChronosGRConnection::~ChronosGRConnection()
 {
-  delete _http; _http = NULL;
+  delete _http_conn; _http_conn = nullptr;
+  delete _http_client; _http_client = nullptr;
 }
 
 void ChronosGRConnection::send_put(std::string url,

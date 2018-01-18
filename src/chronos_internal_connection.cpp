@@ -33,7 +33,8 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                                                      Alarm* alarm,
                                                      SNMP::U32Scalar* remaining_nodes_scalar,
                                                      SNMP::CounterTable* timers_processed_table,
-                                                     SNMP::CounterTable* invalid_timers_processed_table) :
+                                                     SNMP::CounterTable* invalid_timers_processed_table,
+                                                     bool resync_on_start) :
   _http(new HttpClient(false,
                        resolver,
                        SASEvent::HttpLogLevel::NONE,
@@ -52,7 +53,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                    (this,
                    std::mem_fun(&ChronosInternalConnection::resynchronize),
                    &_sigusr1_handler,
-                   true);
+                   resync_on_start);
 
   // Zero the statistic to start with
   if (_remaining_nodes_scalar)
@@ -542,3 +543,15 @@ bool ChronosInternalConnection::get_replica_level(int& index,
   return false;
 }
 
+std::unique_ptr<HttpRequest> ChronosInternalConnection::build_request(
+                                                 const std::string& server,
+                                                 const std::string& path,
+                                                 HttpClient::RequestType method)
+{
+  std::unique_ptr<HttpRequest> req(new HttpRequest(server,
+                                                   "http",
+                                                   _http,
+                                                   method,
+                                                   path));
+  return req;
+}

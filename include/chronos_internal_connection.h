@@ -32,7 +32,8 @@ public:
                             Alarm* alarm,
                             SNMP::U32Scalar* _remaining_nodes_scalar = NULL,
                             SNMP::CounterTable* _timers_processed_table = NULL,
-                            SNMP::CounterTable* _invalid_timers_processed_table = NULL);
+                            SNMP::CounterTable* _invalid_timers_processed_table = NULL,
+                            bool resync_on_start = true);
   virtual ~ChronosInternalConnection();
 
   // Performs a resynchronization operation
@@ -87,6 +88,12 @@ private:
                             const std::string& server_to_sync,
                             std::vector<std::string> cluster_nodes,
                             std::string localhost);
+
+  // Builds an HttpRequest
+  virtual std::unique_ptr<HttpRequest> build_request(
+                            const std::string& server,
+                            const std::string& path,
+                            HttpClient::RequestType method);
 };
 
 #endif
