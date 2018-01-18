@@ -10,7 +10,8 @@
 # Metaswitch Networks in a separate written agreement.
 
 . /etc/clearwater/config
-/usr/share/clearwater/bin/poll-http localhost:7253
+http_ip=$(/usr/share/clearwater/bin/bracket-ipv6-address $local_ip)
+/usr/share/clearwater/bin/poll-http $http_ip:7253
 rc=$?
 
 # If the chronos process is not stable, we ignore a non-zero return code and
