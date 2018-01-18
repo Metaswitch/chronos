@@ -452,8 +452,14 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
 HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
                                                 const std::string& body)
 {
+  TRC_ERROR("sr2sr2 send_delete with body %s", body.c_str());
   std::string path = "/timers/references";
-  HTTPCode rc = _http->send_delete("http://" + server + path, 0, body);
+  std::unique_ptr<HttpRequest> req =
+    build_request(server, path, HttpClient::RequestType::DELETE);
+  req->set_req_body(body);
+  HttpResponse resp = req->send();
+  HTTPCode rc = resp.get_return_code();
+
   return rc;
 }
 
@@ -483,10 +489,16 @@ HTTPCode ChronosInternalConnection::send_get(const std::string& server,
 {
   std::string range_header = std::string(HEADER_RANGE) + ":" +
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
-  std::vector<std::string> headers;
-  headers.push_back(range_header);
 
-  return _http->send_get("http://" + server + path, response, headers, 0);
+  std::unique_ptr<HttpRequest> req = build_request(server,
+                                                   path,
+                                                   HttpClient::RequestType::GET);
+  req->add_req_header(range_header);
+  HttpResponse  resp = req->send();
+  HTTPCode rc = resp.get_return_code();
+  response = resp.get_resp_body();
+
+  return rc;
 }
 
 std::string ChronosInternalConnection::create_delete_body(std::map<TimerID, int> delete_map)

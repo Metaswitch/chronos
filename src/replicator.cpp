@@ -119,9 +119,11 @@ void Replicator::worker_thread_entry_point()
       std::string replication_url = replication_request->url.c_str();
       std::string replication_body = replication_request->body.data();
       // Send the request.
+      /*TODO sr2sr2
       HTTPCode http_rc = _http_client.send_put(replication_url,
                                                replication_body,
-                                               0L); // SAS trail
+                                               0L); // SAS trail */
+      HTTPCode http_rc = 100;
 
       if (http_rc != HTTP_OK)
       {

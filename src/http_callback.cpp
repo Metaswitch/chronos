@@ -112,11 +112,13 @@ void HTTPCallback::worker_thread_entry_point()
       // on the request. Should fix this up soon, but we default the Content-Type
       // header, and aren't using Sequence Number, so not a huge issue atm.
       // Send the request.
+      /*TODO sr2sr2
       HTTPCode http_rc = _http_client.send_post(callback_url,
                                                 headers,
                                                 callback_body,
-                                                0L);
+                                                0L); */
 
+      HTTPCode http_rc = 100;
       if (http_rc == HTTP_OK)
       {
         // The callback succeeded, so we need to re-find the timer, and replicate it.
