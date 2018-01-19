@@ -96,10 +96,8 @@ void HTTPCallback::worker_thread_entry_point()
       std::string callback_body = timer->callback_body;
 
       // Set up the headers.
-      std::map<std::string, std::string> headers;
-      headers.insert(std::make_pair("X-Sequence-Number",
-                                    std::to_string(timer->sequence_number)));
-      headers.insert(std::make_pair("Content-Type", "application/octet-stream"));
+      std::string seq_no_hdr = "X-Sequence-Number: " + std::to_string(timer->sequence_number);
+      std::string content_type_hdr = "Content-Type: application/octet-stream";
 
       // Return the timer to the store. This avoids the error case where the client
       // attempts to update the timer based on the pop, finds nothing in the store,
@@ -108,9 +106,6 @@ void HTTPCallback::worker_thread_entry_point()
       _handler->return_timer(timer);
       timer = NULL; // We relinquish control of the timer when we give it back to the store.
 
-      //TODO The send_post function currently has no method for sending headers
-      // on the request. Should fix this up soon, but we default the Content-Type
-      // header, and aren't using Sequence Number, so not a huge issue atm.
       // Send the request.
       std::string server;
       std::string scheme;
@@ -125,6 +120,8 @@ void HTTPCallback::worker_thread_entry_point()
                                                          HttpClient::RequestType::POST,
                                                          path));
         req->set_req_body(callback_body);
+        req->add_req_header(seq_no_hdr);
+        req->add_req_header(content_type_hdr);
         HttpResponse resp = req->send();
         HTTPCode http_rc = resp.get_return_code();
 
