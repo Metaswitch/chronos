@@ -39,9 +39,11 @@ ChronosGRConnection::~ChronosGRConnection()
 
 void ChronosGRConnection::send_put(std::string url,
                                    std::string body)
-{/* TODO sr2sr2
-  HTTPCode rc = _http->send_put(url, body, 0);*/
-  HTTPCode rc = 100;
+{
+  std::unique_ptr<HttpRequest> req = _http_conn->create_request(HttpClient::RequestType::PUT, url);
+  req->set_req_body(body);
+  HttpResponse resp = req->send();
+  HTTPCode rc = resp.get_return_code();
 
   if (rc != HTTP_OK)
   {
