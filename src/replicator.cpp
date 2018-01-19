@@ -142,10 +142,12 @@ void Replicator::worker_thread_entry_point()
                     http_rc);
         }
       }
+      //LCOV_EXCL_START
       else
       {
         TRC_DEBUG("Invalid URL for replication: %s", replication_url.c_str());
       }
+      // LCOV_EXCL_STOP
     }
     //LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)
