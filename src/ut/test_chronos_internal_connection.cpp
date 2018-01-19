@@ -76,7 +76,6 @@ class TestChronosInternalConnection : public ChronosInternalConnection
                             const std::string& path,
                             HttpClient::RequestType method) override
   {
-    TRC_ERROR("sr2sr2 build req with method %d \n server %s \n and parth %s", method, server.c_str(), path.c_str());
     std::unique_ptr<HttpRequest> req(build_request_proxy(server, path, method));
     return req;
   }
