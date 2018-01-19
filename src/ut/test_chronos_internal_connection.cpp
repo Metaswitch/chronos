@@ -251,6 +251,51 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimer)
   delete added_timer; added_timer = NULL;
 }
 
+TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerDeleteError)
+{
+  Timer* added_timer;
+
+  MockHttpRequest* resync_mock_req = new MockHttpRequest();
+  HttpResponse resp(HTTP_OK, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}", {});
+  // Expect that we'll build the GET request for the resync, and then three DELETE
+  // requests which we send to each of the cluster nodes
+  EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.1:9999",
+                                             "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
+                                             HttpClient::RequestType::GET))
+    .WillOnce(Return(resync_mock_req));
+
+  // Expect that we'll add a header and send the GET request
+  EXPECT_CALL(*resync_mock_req, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req, send()).WillOnce(Return(resp));
+
+  // Expect that the delete requests are sent with the correct body, and one of
+  // them returns a 503
+  expect_delete("10.0.0.1:9999", "{\"IDs\":[{\"ID\":4,\"ReplicaIndex\":0}]}");
+  expect_delete("10.0.0.2:9999", "{\"IDs\":[{\"ID\":4,\"ReplicaIndex\":0}]}");
+
+  MockHttpRequest* mock_delete = new MockHttpRequest();
+  HttpResponse resp_error(HTTP_SERVER_UNAVAILABLE, "{}", {});
+
+  EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.3:9999",
+                                             "/timers/references",
+                                             HttpClient::RequestType::DELETE))
+    .WillOnce(Return(mock_delete));
+  EXPECT_CALL(*mock_delete, set_req_body("{\"IDs\":[{\"ID\":4,\"ReplicaIndex\":0}]}")).Times(1);
+  EXPECT_CALL(*mock_delete, send()).WillOnce(Return(resp_error));
+
+  // Expect that we'll add the timer, and save it off
+  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+
+  // Expect that the timer is replicated
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(IsNotTombstone(), "10.0.0.3:9999")); // Update
+  EXPECT_CALL(*_replicator, replicate_timer_to_node(IsTombstone(), "10.0.0.2:9999")); // Tombstone
+
+  HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
+  EXPECT_EQ(200, status);
+
+  delete added_timer; added_timer = NULL;
+}
+
 TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerWithTombstoneAndLeaving)
 {
   // Set leaving addresses in globals so that we look there as well.
