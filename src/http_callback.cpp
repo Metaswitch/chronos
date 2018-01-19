@@ -118,21 +118,44 @@ void HTTPCallback::worker_thread_entry_point()
                                                 callback_body,
                                                 0L); */
 
-      HTTPCode http_rc = 100;
-      if (http_rc == HTTP_OK)
+      std::string server;
+      std::string scheme;
+      std::string path;
+      bool valid_url = Utils::parse_http_url(callback_url, scheme, server, path);
+
+      if (valid_url)
       {
-        // The callback succeeded, so we need to re-find the timer, and replicate it.
-        TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
-        _handler->handle_successful_callback(timer_id);
+        std::unique_ptr<HttpRequest> req(new HttpRequest(server,
+                                                         scheme,
+                                                         &_http_client,
+                                                         HttpClient::RequestType::POST,
+                                                         path));
+        req->set_req_body(callback_body);
+        HttpResponse resp = req->send();
+        HTTPCode http_rc = resp.get_return_code();
+
+        if (http_rc == HTTP_OK)
+        {
+          // The callback succeeded, so we need to re-find the timer, and replicate it.
+          TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
+          _handler->handle_successful_callback(timer_id);
+        }
+        else
+        {
+          TRC_DEBUG("Failed to process callback for %lu: URL %s, HTTP rc %ld", timer_id,
+                    callback_url.c_str(), http_rc);
+
+          // The callback failed, and so we need to remove the timer from the store.
+          _handler->handle_failed_callback(timer_id);
+        }
       }
+      //LCOV_EXCL_START
       else
       {
-        TRC_DEBUG("Failed to process callback for %lu: URL %s, HTTP rc %ld", timer_id,
-                  callback_url.c_str(), http_rc);
-
-        // The callback failed, and so we need to remove the timer from the store.
+        TRC_ERROR("Invalid callback url: %s", callback_url.c_str());
         _handler->handle_failed_callback(timer_id);
       }
+      // LCOV_EXCL_STOP
     }
     //LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)
