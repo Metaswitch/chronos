@@ -452,7 +452,6 @@ HTTPCode ChronosInternalConnection::resynchronise_with_single_node(
 HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
                                                 const std::string& body)
 {
-  TRC_ERROR("sr2sr2 send_delete with body %s", body.c_str());
   std::string path = "/timers/references";
   std::unique_ptr<HttpRequest> req =
     build_request(server, path, HttpClient::RequestType::DELETE);
