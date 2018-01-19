@@ -555,6 +555,8 @@ bool ChronosInternalConnection::get_replica_level(int& index,
   return false;
 }
 
+// LCOV_EXCL_START - In UTs, we test a subclass that overrides this method, to
+// allow us to return a MockHttpRequest
 std::unique_ptr<HttpRequest> ChronosInternalConnection::build_request(
                                                  const std::string& server,
                                                  const std::string& path,
@@ -567,3 +569,4 @@ std::unique_ptr<HttpRequest> ChronosInternalConnection::build_request(
                                                    path));
   return req;
 }
+// LCOV_EXCL_STOP
