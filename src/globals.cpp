@@ -59,6 +59,7 @@ Globals::Globals(std::string local_config_file,
     ("throttling.max_token_rate", po::value<int>()->default_value(0), "Maximum token bucket refill rate for HTTP overload control")
     ("dns.servers", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(1, "127.0.0.1"), "HOST"), "The addresses of the DNS servers used by the Chronos process")
     ("dns.timeout", po::value<int>()->default_value(200), "The amount of time to wait for a DNS response")
+    ("dns.port", po::value<int>()->default_value(53), "The port on which to contact the DNS servers")
     ;
 
 #ifndef UNIT_TEST
@@ -174,6 +175,9 @@ void Globals::update_config()
 
   int dns_timeout = conf_map["dns.timeout"].as<int>();
   set_dns_timeout(dns_timeout);
+
+  int dns_port = conf_map["dns.port"].as<int>();
+  set_dns_port(dns_port);
 
   uint32_t instance_id = conf_map["identity.instance_id"].as<uint32_t>();
   uint32_t deployment_id = conf_map["identity.deployment_id"].as<uint32_t>();
