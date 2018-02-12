@@ -64,6 +64,10 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   test_global->get_dns_timeout(dns_timeout);
   EXPECT_EQ(dns_timeout, 200);
 
+  int dns_port;
+  test_global->get_dns_port(dns_port);
+  EXPECT_EQ(dns_port, 53);
+
   std::string cluster_local_address;
   test_global->get_cluster_local_ip(cluster_local_address);
   EXPECT_EQ(cluster_local_address, "127.0.0.1:7253");
@@ -146,6 +150,10 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   int dns_timeout;
   test_global->get_dns_timeout(dns_timeout);
   EXPECT_EQ(dns_timeout, 500);
+
+  int dns_port;
+  test_global->get_dns_port(dns_port);
+  EXPECT_EQ(dns_port, 5353);
 
   std::string cluster_local_address;
   test_global->get_cluster_local_ip(cluster_local_address);
