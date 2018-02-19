@@ -10,6 +10,7 @@
 # Metaswitch Networks in a separate written agreement.
 
 from flask import Flask, request
+import flask
 import logging
 import json
 import requests
