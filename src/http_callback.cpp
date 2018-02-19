@@ -11,6 +11,7 @@
 
 #include "http_callback.h"
 #include "log.h"
+#include "globals.h"
 
 #include <cstring>
 
@@ -21,12 +22,22 @@ HTTPCallback::HTTPCallback(HttpResolver* resolver,
   _exception_handler(exception_handler),
   _resolver(resolver),
   _running(false),
-  _handler(NULL),
-  _http_client(false,
-               _resolver,
-               SASEvent::HttpLogLevel::NONE,
-               NULL)
+  _handler(NULL)
 {
+  std::string bind_address;
+  __globals->get_bind_address(bind_address);
+  _http_client = new HttpClient(false,
+                                _resolver,
+                                nullptr,
+                                nullptr,
+                                SASEvent::HttpLogLevel::NONE,
+                                nullptr,
+                                false,
+                                false,
+                                -1,
+                                false,
+                                "",
+                                bind_address);
 }
 
 HTTPCallback::~HTTPCallback()
@@ -112,10 +123,10 @@ void HTTPCallback::worker_thread_entry_point()
       // on the request. Should fix this up soon, but we default the Content-Type
       // header, and aren't using Sequence Number, so not a huge issue atm.
       // Send the request.
-      HTTPCode http_rc = _http_client.send_post(callback_url,
-                                                headers,
-                                                callback_body,
-                                                0L);
+      HTTPCode http_rc = _http_client->send_post(callback_url,
+                                                 headers,
+                                                 callback_body,
+                                                 0L);
 
       if (http_rc == HTTP_OK)
       {
