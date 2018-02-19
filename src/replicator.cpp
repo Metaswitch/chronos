@@ -19,12 +19,23 @@ Replicator::Replicator(HttpResolver* resolver,
                        ExceptionHandler* exception_handler) :
   _q(),
   _exception_handler(exception_handler),
-  _resolver(resolver),
-  _http_client(false,
-               _resolver,
-               SASEvent::HttpLogLevel::NONE,
-               NULL)
+  _resolver(resolver)
 {
+  std::string bind_address;
+  __globals->get_bind_address(bind_address);
+  _http_client = new HttpClient(false,
+                                _resolver,
+                                nullptr,
+                                nullptr,
+                                SASEvent::HttpLogLevel::NONE,
+                                nullptr,
+                                false,
+                                false,
+                                -1,
+                                false,
+                                "",
+                                bind_address);
+
   // Create a pool of replicator threads
   for (int ii = 0; ii < REPLICATOR_THREAD_COUNT; ++ii)
   {
@@ -51,6 +62,8 @@ Replicator::~Replicator()
   {
     pthread_join(_worker_threads[ii], NULL);
   }
+
+  delete _http_client; _http_client = nullptr;
 }
 
 /*****************************************************************************/
@@ -119,9 +132,9 @@ void Replicator::worker_thread_entry_point()
       std::string replication_url = replication_request->url.c_str();
       std::string replication_body = replication_request->body.data();
       // Send the request.
-      HTTPCode http_rc = _http_client.send_put(replication_url,
-                                               replication_body,
-                                               0L); // SAS trail
+      HTTPCode http_rc = _http_client->send_put(replication_url,
+                                                replication_body,
+                                                0L); // SAS trail
 
       if (http_rc != HTTP_OK)
       {

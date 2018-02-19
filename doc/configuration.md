@@ -50,6 +50,7 @@ The shared configuration file has the following format:
     [dns]
     servers = 127.0.0.1                      # DNS servers to use (up to three allowed)
     timeout = 200                            # Amount of time to wait for a DNS response
+    port = 5353                              # Port to use when contacting the DNS server
 
     [sites]
     local_site = local-site-name             # The name of the local site

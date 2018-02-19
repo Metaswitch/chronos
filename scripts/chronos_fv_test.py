@@ -40,7 +40,7 @@ LOG_FILE_DIR = 'scripts/log/'
 LOG_FILE_PATTERN = LOG_FILE_DIR + 'chronos%s'
 
 Node = namedtuple('Node', 'ip port')
-flask_server = Node(ip='127.0.0.10', port='5001')
+flask_server = Node(ip='127.0.0.10', port=5001)
 chronos_nodes = [
     Node(ip='127.0.0.11', port='7253'),
     Node(ip='127.0.0.12', port='7254'),

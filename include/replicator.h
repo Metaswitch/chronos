@@ -51,7 +51,7 @@ private:
   struct curl_slist* _headers;
   ExceptionHandler* _exception_handler;
   HttpResolver* _resolver;
-  HttpClient _http_client;
+  HttpClient* _http_client;
 };
 
 #endif

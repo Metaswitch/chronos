@@ -329,9 +329,12 @@ int main(int argc, char** argv)
   __globals->get_dns_servers(dns_servers);
   int dns_timeout;
   __globals->get_dns_timeout(dns_timeout);
+  int dns_port;
+  __globals->get_dns_port(dns_port);
   DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
                                                           dns_timeout,
-                                                          options.dns_config_file);
+                                                          options.dns_config_file,
+                                                          dns_port);
 
 
   // Create an Updater that listens for SIGUSR2 and, in response, reloads the

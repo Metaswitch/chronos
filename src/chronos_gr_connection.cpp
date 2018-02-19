@@ -11,20 +11,31 @@
 
 #include "log.h"
 #include "sasevent.h"
+#include "globals.h"
 #include "chronos_gr_connection.h"
 
 ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
                                          HttpResolver* resolver,
                                          BaseCommunicationMonitor* comm_monitor) :
   _site_name(remote_site),
-  _http(new HttpConnection(remote_site,
-                           false,
-                           resolver,
-                           SASEvent::HttpLogLevel::NONE,
-                           NULL,
-                           true)),
   _comm_monitor(comm_monitor)
 {
+  std::string bind_address;
+  __globals->get_bind_address(bind_address);
+  _http = new HttpConnection(remote_site,
+                             false,
+                             resolver,
+                             nullptr,
+                             nullptr,
+                             SASEvent::HttpLogLevel::NONE,
+                             nullptr,
+                             "http",
+                             false,
+                             true,
+                             -1,
+                             false,
+                             "",
+                             bind_address);
 }
 
 ChronosGRConnection::~ChronosGRConnection()

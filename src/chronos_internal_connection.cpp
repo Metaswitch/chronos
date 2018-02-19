@@ -34,10 +34,6 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                                                      SNMP::U32Scalar* remaining_nodes_scalar,
                                                      SNMP::CounterTable* timers_processed_table,
                                                      SNMP::CounterTable* invalid_timers_processed_table) :
-  _http(new HttpClient(false,
-                       resolver,
-                       SASEvent::HttpLogLevel::NONE,
-                       NULL)),
   _handler(handler),
   _replicator(replicator),
   _alarm(alarm),
@@ -45,6 +41,21 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _timers_processed_table(timers_processed_table),
   _invalid_timers_processed_table(invalid_timers_processed_table)
 {
+  std::string bind_address;
+  __globals->get_bind_address(bind_address);
+  _http = new HttpClient(false,
+                         resolver,
+                         nullptr,
+                         nullptr,
+                         SASEvent::HttpLogLevel::NONE,
+                         nullptr,
+                         false,
+                         false,
+                         -1,
+                         false,
+                         "",
+                         bind_address);
+
   // Create an updater to control when Chronos should resynchronise. This uses
   // SIGUSR1 rather than the default SIGHUP, and we should resynchronise on
   // start up
