@@ -46,6 +46,8 @@ HTTPCallback::~HTTPCallback()
   {
     stop();
   }
+
+  delete _http_client; _http_client = nullptr;
 }
 
 void HTTPCallback::start(TimerHandler* handler)
