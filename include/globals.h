@@ -72,6 +72,7 @@ public:
   GLOBAL(max_ttl, int);
   GLOBAL(dns_servers, std::vector<std::string>);
   GLOBAL(dns_timeout, int);
+  GLOBAL(dns_port, int);
   GLOBAL(target_latency, int);
   GLOBAL(max_tokens, int);
   GLOBAL(initial_token_rate, int);

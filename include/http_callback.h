@@ -51,7 +51,7 @@ private:
   bool _running;
   TimerHandler* _handler;
 
-  HttpClient _http_client;
+  HttpClient* _http_client;
 };
 
 #endif

@@ -329,9 +329,12 @@ int main(int argc, char** argv)
   __globals->get_dns_servers(dns_servers);
   int dns_timeout;
   __globals->get_dns_timeout(dns_timeout);
+  int dns_port;
+  __globals->get_dns_port(dns_port);
   DnsCachedResolver* dns_resolver = new DnsCachedResolver(dns_servers,
                                                           dns_timeout,
-                                                          options.dns_config_file);
+                                                          options.dns_config_file,
+                                                          dns_port);
 
 
   // Create an Updater that listens for SIGUSR2 and, in response, reloads the
@@ -360,10 +363,8 @@ int main(int argc, char** argv)
   __globals->get_gr_threads(gr_threads);
 
   TimerStore* store = new TimerStore(hc);
-  Replicator* controller_rep = new Replicator(http_resolver,
-                                              exception_handler);
-  Replicator* handler_rep = new Replicator(http_resolver,
-                                           exception_handler);
+  Replicator* local_rep = new Replicator(http_resolver,
+                                         exception_handler);
   GRReplicator* gr_rep = new GRReplicator(http_resolver,
                                           exception_handler,
                                           gr_threads,
@@ -372,7 +373,7 @@ int main(int argc, char** argv)
                                             exception_handler);
   TimerHandler* handler = new TimerHandler(store,
                                            callback,
-                                           handler_rep,
+                                           local_rep,
                                            gr_rep,
                                            all_timers_table,
                                            total_timers_table,
@@ -409,7 +410,7 @@ int main(int argc, char** argv)
                                         load_monitor,
                                         NULL);
   HttpStackUtils::PingHandler ping_handler;
-  ControllerTask::Config controller_config(controller_rep, gr_rep, handler);
+  ControllerTask::Config controller_config(local_rep, gr_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
                                                                                              &HttpStack::NULL_SAS_LOGGER);
 
@@ -436,7 +437,7 @@ int main(int argc, char** argv)
   ChronosInternalConnection* chronos_internal_connection =
             new ChronosInternalConnection(http_resolver,
                                           handler,
-                                          handler_rep,
+                                          local_rep,
                                           resync_operation_alarm,
                                           remaining_nodes_scalar,
                                           timers_processed_table,
@@ -461,8 +462,7 @@ int main(int argc, char** argv)
   delete handler; handler = NULL;
   // Callback is deleted by the handler
   delete gr_rep; gr_rep = NULL;
-  delete handler_rep; handler_rep = NULL;
-  delete controller_rep; controller_rep = NULL;
+  delete local_rep; local_rep = NULL;
   delete store; store = NULL;
   delete http_resolver; http_resolver = NULL;
   delete dns_updater; dns_updater = NULL;

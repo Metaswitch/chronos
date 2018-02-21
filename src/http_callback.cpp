@@ -11,6 +11,7 @@
 
 #include "http_callback.h"
 #include "log.h"
+#include "globals.h"
 
 #include <cstring>
 
@@ -21,12 +22,22 @@ HTTPCallback::HTTPCallback(HttpResolver* resolver,
   _exception_handler(exception_handler),
   _resolver(resolver),
   _running(false),
-  _handler(NULL),
-  _http_client(false,
-               _resolver,
-               SASEvent::HttpLogLevel::NONE,
-               NULL)
+  _handler(NULL)
 {
+  std::string bind_address;
+  __globals->get_bind_address(bind_address);
+  _http_client = new HttpClient(false,
+                                _resolver,
+                                nullptr,
+                                nullptr,
+                                SASEvent::HttpLogLevel::NONE,
+                                nullptr,
+                                false,
+                                false,
+                                -1,
+                                false,
+                                "",
+                                bind_address);
 }
 
 HTTPCallback::~HTTPCallback()
@@ -35,6 +46,8 @@ HTTPCallback::~HTTPCallback()
   {
     stop();
   }
+
+  delete _http_client; _http_client = nullptr;
 }
 
 void HTTPCallback::start(TimerHandler* handler)
@@ -116,7 +129,7 @@ void HTTPCallback::worker_thread_entry_point()
       {
         std::unique_ptr<HttpRequest> req(new HttpRequest(server,
                                                          scheme,
-                                                         &_http_client,
+                                                         _http_client,
                                                          HttpClient::RequestType::POST,
                                                          path));
         req->set_req_body(callback_body);
