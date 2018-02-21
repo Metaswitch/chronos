@@ -127,10 +127,10 @@ void Replicator::worker_thread_entry_point()
       if (valid_url)
       {
         std::unique_ptr<HttpRequest> req(new HttpRequest(server,
-                                                        scheme,
-                                                        &_http_client,
-                                                        HttpClient::RequestType::PUT,
-                                                        path));
+                                                         scheme,
+                                                         &_http_client,
+                                                         HttpClient::RequestType::PUT,
+                                                         path));
         req->set_req_body(replication_body);
         HttpResponse resp = req->send();
         HTTPCode http_rc = resp.get_return_code();
