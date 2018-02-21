@@ -37,7 +37,7 @@ ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
                                 bind_address);
 
   _http_conn = new HttpConnection(remote_site,
-                                  _http_client)),
+                                  _http_client);
 }
 
 ChronosGRConnection::~ChronosGRConnection()
