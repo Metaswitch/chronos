@@ -235,7 +235,7 @@ def write_cluster_conf(filename, this_node, joining, nodes, leaving):
             f.write('leaving = {node.ip}:{node.port}\n'.format(**locals()))
 
 
-def write_shared_conf(filename, local_site, remote_sites):
+def write_shared_conf(filename, local_site, remote_sites, replicate_across_sites):
     # Create a shared configuration file for a chronos process.
     with open(filename, 'w') as f:
         f.write(dedent("""\
@@ -244,6 +244,13 @@ def write_shared_conf(filename, local_site, remote_sites):
         """).format(local_site))
         for site in remote_sites:
             f.write('remote_site = {site}\n'.format(**locals()))
+        # TODO - make this neater
+        replicate = 0
+        if replicate_across_sites
+        {
+            replicate = 1
+        }
+        f.write(('replicate_timers_across_sites = {}'.format(replicate))
 
 # Test the resynchronization operations for Chronos.
 class ChronosFVTest(unittest.TestCase):
@@ -313,7 +320,7 @@ class ChronosFVTest(unittest.TestCase):
                                [chronos_nodes[i] for i in staying],
                                [chronos_nodes[i] for i in leaving])
 
-    def write_shared_config_for_nodes(self, nodes, local_site, remote_sites):
+    def write_shared_config_for_nodes(self, nodes, local_site, remote_sites, replicate_across_sites):
         # Write configuration files for the nodes
         for num in nodes:
             write_conf(CONFIG_FILE_PATTERN % num,
@@ -324,4 +331,4 @@ class ChronosFVTest(unittest.TestCase):
                                nodes=[chronos_nodes[i] for i in nodes],
                                leaving=[])
             write_shared_conf(SHARED_CONFIG_FILE_PATTERN % num,
-                              local_site, remote_sites)
+                              local_site, remote_sites, replicate_across_sites)

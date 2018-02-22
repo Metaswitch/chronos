@@ -106,6 +106,10 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   EXPECT_EQ(remote_site_names.size(), 0);
   EXPECT_EQ(remote_site_dns_records.size(), 0);
 
+  int replicate_timers_across_sites;
+  test_global->get_replicate_timers_across_sites(replicate_timers_across_sites);
+  EXPECT_EQ(replicate_timers_across_sites, 0);
+
   delete test_global; test_global = NULL;
 }
 
@@ -211,6 +215,10 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   expected_remote_site_dns_records.push_back("foo.com:800");
   expected_remote_site_dns_records.push_back("bar.com:7254");
   EXPECT_THAT(expected_remote_site_dns_records, UnorderedElementsAreArray(remote_site_dns_records));
+
+  int replicate_timers_across_sites;
+  test_global->get_replicate_timers_across_sites(replicate_timers_across_sites);
+  EXPECT_EQ(replicate_timers_across_sites, 0);
 
   delete test_global; test_global = NULL;
 }
