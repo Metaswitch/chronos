@@ -248,10 +248,15 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
 
   if (timer)
   {
-    // Update the sites
+    // Update the locate sites, and, if the GR replicator exists, also update
+    // the remote sites (it will only exist if the system has been configured to
+    // replicate across sites).
     timer->update_sites_on_timer_pop();
     _replicator->replicate(timer);
-    _gr_replicator->replicate(timer);
+    if (_gr_replicator != NULL)
+    {
+      _gr_replicator->replicate(timer);
+    }
 
     // Pass the timer pair back to the store, relinquishing responsibility for it.
     _store->insert(timer);

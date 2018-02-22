@@ -141,8 +141,9 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
     _cfg->_replicator->replicate(timer);
 
     // Replicate the timer cross site if this is the first Chronos in this
-    // deployment to handle the request
-    if (!gr_replicated_timer)
+    // deployment to handle the request, and the GR replicator exists (it will
+    // only exist if the system has been configured to replicate across sites).
+    if ((!gr_replicated_timer) && (_gr_replicator != NULL))
     {
       _cfg->_gr_replicator->replicate(timer);
     }

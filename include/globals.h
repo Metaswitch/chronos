@@ -82,6 +82,11 @@ public:
   GLOBAL(remote_sites, std::map<std::string, std::string>);
   GLOBAL(remote_site_names, std::vector<std::string>);
   GLOBAL(remote_site_dns_records, std::vector<std::string>);
+  // This config option has been added as a clean way to disable GR replication.
+  // This was required as GR replication does not currently work at load. If
+  // this config option is set to true, the user should be aware that their
+  // system will not be fully GR replicated.
+  GLOBAL(replicate_timers_across_sites, int);
 
 public:
   void update_config();

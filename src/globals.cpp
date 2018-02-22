@@ -52,6 +52,7 @@ Globals::Globals(std::string local_config_file,
     ("exceptions.max_ttl", po::value<int>()->default_value(600), "Maximum time before the process exits after hitting an exception")
     ("sites.local_site", po::value<std::string>()->default_value("site1"), "The name of the local site")
     ("sites.remote_site", po::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>(), "SITE"), "The name and address of the remote sites in the cluster")
+    ("sites.replicate_timers_across_sites", po::value<int>()->default_value(0), "Whether or not timers should be replicated to remote sites")
     ("throttling.target_latency", po::value<int>()->default_value(500000), "Target latency (in microseconds) for HTTP responses")
     ("throttling.max_tokens", po::value<int>()->default_value(1000), "Maximum token bucket size for HTTP overload control")
     ("throttling.initial_token_rate", po::value<int>()->default_value(500), "Initial token bucket refill rate for HTTP overload control")
@@ -154,6 +155,9 @@ void Globals::update_config()
   int ttl = conf_map["exceptions.max_ttl"].as<int>();
   set_max_ttl(ttl);
   TRC_STATUS("Maximum post-exception TTL: %d", ttl);
+
+  int replicate_timers_across_sites = conf_map["sites.replicate_timers_across_sites"].as<int>();
+  set_replicate_timers_across_sites(replicate_timers_across_sites);
 
   int target_latency = conf_map["throttling.target_latency"].as<int>();
   set_target_latency(target_latency);
