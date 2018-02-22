@@ -144,9 +144,9 @@ void Replicator::worker_thread_entry_point()
                                                          _http_client,
                                                          HttpClient::RequestType::PUT,
                                                          path));
-        req->set_req_body(replication_body);
+        req->set_body(replication_body);
         HttpResponse resp = req->send();
-        HTTPCode http_rc = resp.get_return_code();
+        HTTPCode http_rc = resp.get_rc();
 
         if (http_rc != HTTP_OK)
         {

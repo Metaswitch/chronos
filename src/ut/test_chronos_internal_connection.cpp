@@ -135,7 +135,7 @@ protected:
                                                "/timers/references",
                                                HttpClient::RequestType::DELETE))
       .WillOnce(Return(mock_req)).RetiresOnSaturation();
-    EXPECT_CALL(*mock_req, set_req_body(timer)).Times(1);
+    EXPECT_CALL(*mock_req, set_body(timer)).Times(1);
     EXPECT_CALL(*mock_req, send()).WillOnce(Return(resp_accepted));
   }
 
@@ -157,7 +157,7 @@ TEST_F(ChronosInternalConnectionTest, SendDelete)
                                              HttpClient::RequestType::DELETE))
     .WillOnce(Return(mock_req));
 
-  EXPECT_CALL(*mock_req, set_req_body("{}")).Times(1);
+  EXPECT_CALL(*mock_req, set_body("{}")).Times(1);
   EXPECT_CALL(*mock_req, send()).WillOnce(Return(ok));
 
   HTTPCode status = _chronos->send_delete("10.42.42.42:80", "{}");
@@ -184,7 +184,7 @@ TEST_F(ChronosInternalConnectionTest, SendGet)
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
 
   // Expect that we add the correct range header to the request, then send it
-  EXPECT_CALL(*mock_req, add_req_header(range_header)).Times(1);
+  EXPECT_CALL(*mock_req, add_header(range_header)).Times(1);
   EXPECT_CALL(*mock_req, send()).WillOnce(Return(resp));
 
   std::string path = _chronos->create_path("10.0.0.1:9999", "cluster-view-id", 10000, use_time_from);
@@ -207,7 +207,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerNoResults)
     .WillOnce(Return(resync_mock_req));
 
   // Expect that we'll add a header and send this request
-  EXPECT_CALL(*resync_mock_req, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req, send()).WillOnce(Return(resp));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
@@ -230,7 +230,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimer)
     .WillOnce(Return(resync_mock_req));
 
   // Expect that we'll add a header and send the GET request
-  EXPECT_CALL(*resync_mock_req, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req, send()).WillOnce(Return(resp));
 
   // Expect that the delete requests are sent with the correct body
@@ -265,7 +265,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerDeleteError)
     .WillOnce(Return(resync_mock_req));
 
   // Expect that we'll add a header and send the GET request
-  EXPECT_CALL(*resync_mock_req, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req, send()).WillOnce(Return(resp));
 
   // Expect that the delete requests are sent with the correct body, and one of
@@ -280,7 +280,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerDeleteError)
                                              "/timers/references",
                                              HttpClient::RequestType::DELETE))
     .WillOnce(Return(mock_delete));
-  EXPECT_CALL(*mock_delete, set_req_body("{\"IDs\":[{\"ID\":4,\"ReplicaIndex\":0}]}")).Times(1);
+  EXPECT_CALL(*mock_delete, set_body("{\"IDs\":[{\"ID\":4,\"ReplicaIndex\":0}]}")).Times(1);
   EXPECT_CALL(*mock_delete, send()).WillOnce(Return(resp_error));
 
   // Expect that we'll add the timer, and save it off
@@ -318,7 +318,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerWithTombstoneAndLeaving
     .WillOnce(Return(resync_mock_req));
 
   // Expect that we'll add a header and send the GET request
-  EXPECT_CALL(*resync_mock_req, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req, send()).WillOnce(Return(resp));
 
   // Expect that we'll add the timer, and save it off
@@ -361,7 +361,7 @@ TEST_F(ChronosInternalConnectionTest, RepeatedTimers)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(resp_partial));
 
   // Expect that we'll build and send the second request with time-from based on
@@ -372,7 +372,7 @@ TEST_F(ChronosInternalConnectionTest, RepeatedTimers)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=" + std::to_string(100000 - 235 + 1),
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_2));
-  EXPECT_CALL(*resync_mock_req_2, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_2, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_2, send()).WillOnce(Return(resp_ok));
 
   // Expect that we'll send deletes to all cluster nodes
@@ -414,28 +414,28 @@ TEST_F(ChronosInternalConnectionTest, ResynchronizeWithTimers)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.2:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_2));
-  EXPECT_CALL(*resync_mock_req_2, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_2, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_2, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.3:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_3));
-  EXPECT_CALL(*resync_mock_req_3, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_3, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_3, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.4:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_4));
-  EXPECT_CALL(*resync_mock_req_4, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_4, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_4, send()).WillOnce(Return(response));
 
 
@@ -478,21 +478,21 @@ TEST_F(ChronosInternalConnectionTest, ResynchronizeWithInvalidGetResponse)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.2:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_2));
-  EXPECT_CALL(*resync_mock_req_2, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_2, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_2, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.3:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_3));
-  EXPECT_CALL(*resync_mock_req_3, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_3, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_3, send()).WillOnce(Return(response));
 
   // There should be no calls to add/replicate a timer
@@ -514,21 +514,21 @@ TEST_F(ChronosInternalConnectionTest, ResynchronizeWithGetRequestFailed)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.2:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_2));
-  EXPECT_CALL(*resync_mock_req_2, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_2, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_2, send()).WillOnce(Return(response));
 
   EXPECT_CALL(*_chronos, build_request_proxy("10.0.0.3:9999",
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_3));
-  EXPECT_CALL(*resync_mock_req_3, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_3, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_3, send()).WillOnce(Return(response));
 
   // There should be no calls to add/replicate a timer
@@ -546,7 +546,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidResultsInvalidJSON)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
@@ -562,7 +562,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidResultsNoTimers)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
@@ -578,7 +578,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidEntryNoTimerObject)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
@@ -594,7 +594,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidEntryNoReplicas)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
@@ -610,7 +610,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidResultNoTimer)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);
@@ -626,7 +626,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidResultInvalidTimers)
                                              "/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id",
                                              HttpClient::RequestType::GET))
     .WillOnce(Return(resync_mock_req_1));
-  EXPECT_CALL(*resync_mock_req_1, add_req_header(_)).Times(1);
+  EXPECT_CALL(*resync_mock_req_1, add_header(_)).Times(1);
   EXPECT_CALL(*resync_mock_req_1, send()).WillOnce(Return(response));
 
   HTTPCode status = _chronos->resynchronise_with_single_node("10.0.0.1:9999", _cluster_addresses, _local_ip);

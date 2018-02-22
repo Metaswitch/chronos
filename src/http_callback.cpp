@@ -132,11 +132,11 @@ void HTTPCallback::worker_thread_entry_point()
                                                          _http_client,
                                                          HttpClient::RequestType::POST,
                                                          path));
-        req->set_req_body(callback_body);
-        req->add_req_header(seq_no_hdr);
-        req->add_req_header(content_type_hdr);
+        req->set_body(callback_body);
+        req->add_header(seq_no_hdr);
+        req->add_header(content_type_hdr);
         HttpResponse resp = req->send();
-        HTTPCode http_rc = resp.get_return_code();
+        HTTPCode http_rc = resp.get_rc();
 
         if (http_rc == HTTP_OK)
         {
