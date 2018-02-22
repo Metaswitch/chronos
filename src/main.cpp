@@ -370,16 +370,17 @@ int main(int argc, char** argv)
 
   // If the config option to replicate timers to other sites is set to false,
   // then set the GRReplicator to NULL, as it will never be needed.
+  GRReplicator* gr_rep;
   if (replicate_timers_across_sites)
   {
-    GRReplicator* gr_rep = new GRReplicator(http_resolver,
-                                            exception_handler,
-                                            gr_threads,
-                                            remote_chronos_comm_monitor);
+    gr_rep = new GRReplicator(http_resolver,
+                              exception_handler,
+                              gr_threads,
+                              remote_chronos_comm_monitor);
   }
   else
   {
-    GRReplicator* gr_rep = NULL;
+    gr_rep = NULL;
   }
 
   HTTPCallback* callback = new HTTPCallback(http_resolver,

@@ -218,7 +218,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 
   int replicate_timers_across_sites;
   test_global->get_replicate_timers_across_sites(replicate_timers_across_sites);
-  EXPECT_EQ(replicate_timers_across_sites, 0);
+  EXPECT_EQ(replicate_timers_across_sites, 1);
 
   delete test_global; test_global = NULL;
 }
