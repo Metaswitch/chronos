@@ -30,6 +30,22 @@ using ::testing::MatchesRegex;
 using ::testing::ContainerEq;
 using ::testing::UnorderedElementsAreArray;
 
+class WithGR {
+  static MockGRReplicator* return_gr_replicator() {
+    // Return a mock GR replicator.
+    MockGRReplicator* gr_replicator = new MockGRReplicator();
+    return gr_replicator;
+  }
+};
+
+class WithoutGR {
+  static MockGRReplicator* return_gr_replicator() {
+    // Return NULL. This is how GR is disabled.
+    return NULL;
+  }
+};
+
+template <class T>
 class TestHandler : public Base
 {
 protected:
@@ -40,7 +56,7 @@ protected:
     cwtest_completely_control_time();
 
     _replicator = new MockReplicator();
-    _gr_replicator = new MockGRReplicator();
+    _gr_replicator = T::return_gr_replicator();
     _th = new MockTimerHandler();
     _httpstack = new MockHttpStack();
   }
@@ -86,41 +102,50 @@ protected:
   ControllerTask* _task;
 };
 
+typedef ::testing::Types<WithGR, WithoutGR> GRTypes;
+TYPED_TEST_CASE(TestHandler, GRTypes);
+
 // Tests a valid request to delete an existing timer
-TEST_F(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
+TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
 {
   Timer* added_timer;
 
-  controller_request("/timers/1234123412341234-2", htp_method_DELETE, "", "");
+  TestFixture::controller_request("/timers/1234123412341234-2", htp_method_DELETE, "", "");
 
   // It's a valid timer so we expect it to be replicated in/cross-site, added
   // to this node, and have a 200 response
-  EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 
   delete added_timer; added_timer = NULL;
 }
 
 // Tests a valid request to delete an existing timer
-TEST_F(TestHandler, ValidJSONDeleteTimerWithReplicas)
+TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithReplicas)
 {
   Timer* added_timer;
 
-  controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
-  EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  TestFixture::controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 
   delete added_timer; added_timer = NULL;
 }
 
 // Tests a valid request to create a new timer that is on the local node
-TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
+TYPED_TEST(TestHandler, ValidJSONCreateTimerOnNode)
 {
   // Only have a single node in the cluster so we can guarantee the local node
   // is chosen as a replica
@@ -133,13 +158,16 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
 
-  EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   // Check that the timer is plausible.
   EXPECT_EQ(added_timer->callback_url, "localhost");
@@ -154,7 +182,7 @@ TEST_F(TestHandler, ValidJSONCreateTimerOnNode)
 }
 
 // Tests a valid request to create a new timer that won't be on the local node
-TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
+TYPED_TEST(TestHandler, ValidJSONCreateTimerNotOnNode)
 {
   // Change the cluser replicas to not include the local node so we
   // can guarantee that the node isn't chosen as a replica
@@ -167,12 +195,15 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
-  EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   // Check that the timer is a tombstone
   EXPECT_TRUE(added_timer->is_tombstone());
@@ -180,80 +211,80 @@ TEST_F(TestHandler, ValidJSONCreateTimerNotOnNode)
 }
 
 // Tests that a delete request for timer references always returns 202
-TEST_F(TestHandler, ValidTimerReference)
+TYPED_TEST(TestHandler, ValidTimerReference)
 {
-  controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": []}", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 202, _));
-  _task->run();
+  TestFixture::controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": []}", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 202, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references with a
 // lead to the store being queried, using the range header if set.
-TEST_F(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
+TYPED_TEST(TestHandler, ValidTimerGetCurrentNodeNoRangeHeader)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 0, "cluster-view-id", _, _)).WillOnce(Return(200));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.1:9999", 0, "cluster-view-id", _, _)).WillOnce(Return(200));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references with a
 // lead to the store being queried, using the range header if set.
-TEST_F(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
+TYPED_TEST(TestHandler, ValidTimerGetCurrentNodeRangeHeader)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000");
-  _req->add_header_to_incoming_req("Range", "100");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", 100, _, _, _)).WillOnce(Return(206));
-  EXPECT_CALL(*_httpstack, send_reply(_, 206, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=10000");
+  TestFixture::_req->add_header_to_incoming_req("Range", "100");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.1:9999", 100, _, _, _)).WillOnce(Return(206));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 206, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer resync with a time-from parameter
 // lead to the store being queried with the correct time-from value
-TEST_F(TestHandler, ValidTimerValidTimeFromParameter)
+TYPED_TEST(TestHandler, ValidTimerValidTimeFromParameter)
 {
   // Get the current time (time is controlled in this test so we know it won't
   // move on unless we tell it).
   uint32_t current_time = Utils::get_time();
 
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=12345", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=12345");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time + 12345, _)).WillOnce(Return(200));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=12345", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=12345");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time + 12345, _)).WillOnce(Return(200));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references with no time-from parameter
 // lead to the store being queried with time-from value of the current time
-TEST_F(TestHandler, ValidTimerGetNoTimeFromParameter)
+TYPED_TEST(TestHandler, ValidTimerGetNoTimeFromParameter)
 {
   // Get the current time (time is controlled in this test so we know it won't
   // move on unless we tell it).
   uint32_t current_time = Utils::get_time();
 
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(200));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(200));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references with an invalid time-from
 // parameter leads to the store being queried with the time-from value being
 // the current value
-TEST_F(TestHandler, ValidTimerGetInvalidTimeFromParameter)
+TYPED_TEST(TestHandler, ValidTimerGetInvalidTimeFromParameter)
 {
   // Get the current time (time is controlled in this test so we know it won't
   // move on unless we tell it).
   uint32_t current_time = Utils::get_time();
 
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=notanumber", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=notanumber");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(206));
-  EXPECT_CALL(*_httpstack, send_reply(_, 206, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=notanumber", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=cluster-view-id;time-from=notanumber");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.1:9999", _, _, current_time, _)).WillOnce(Return(206));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 206, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references for a leaving node
 // are correctly processed
-TEST_F(TestHandler, ValidTimerGetLeavingNode)
+TYPED_TEST(TestHandler, ValidTimerGetLeavingNode)
 {
   // Set leaving addresses in globals so that we look there as well.
   std::vector<std::string> leaving_cluster_addresses;
@@ -263,15 +294,15 @@ TEST_F(TestHandler, ValidTimerGetLeavingNode)
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   __globals->unlock();
 
-  controller_request("/timers?node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _, _)).WillOnce(Return(200));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.4:9999", _, _, _, _)).WillOnce(Return(200));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references for a joining node
 // are correctly processed
-TEST_F(TestHandler, ValidTimerGetJoiningNode)
+TYPED_TEST(TestHandler, ValidTimerGetJoiningNode)
 {
   // Set joining addresses in globals so that we look there as well.
   std::vector<std::string> joining_cluster_addresses;
@@ -281,105 +312,105 @@ TEST_F(TestHandler, ValidTimerGetJoiningNode)
   __globals->set_cluster_joining_addresses(joining_cluster_addresses);
   __globals->unlock();
 
-  controller_request("/timers?node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_th, get_timers_for_node("10.0.0.4:9999", _, _, _, _)).WillOnce(Return(200));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.4:9999;cluster-view-id=cluster-view-id;time-from=10000");
+  EXPECT_CALL(*TestFixture::_th, get_timers_for_node("10.0.0.4:9999", _, _, _, _)).WillOnce(Return(200));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests the case where we attempt to create a new timer,
 // but we can't create the timer from the request
-TEST_F(TestHandler, InvalidNoTimerNoBody)
+TYPED_TEST(TestHandler, InvalidNoTimerNoBody)
 {
-  controller_request("/timers/", htp_method_POST, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
+  TestFixture::controller_request("/timers/", htp_method_POST, "", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 400, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that requests to create a timer but the method is
 // wrong get rejected.
-TEST_F(TestHandler, InvalidMethodNoTimer)
+TYPED_TEST(TestHandler, InvalidMethodNoTimer)
 {
-  controller_request("/timers/", htp_method_PUT, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
-  _task->run();
+  TestFixture::controller_request("/timers/", htp_method_PUT, "", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 405, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that requests to create a timer but the method is
 // wrong get rejected.
-TEST_F(TestHandler, InvalidMethodWithTimerWithoutReplicas)
+TYPED_TEST(TestHandler, InvalidMethodWithTimerWithoutReplicas)
 {
-  controller_request("/timers/1234123412341234-1", htp_method_POST, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
-  _task->run();
+  TestFixture::controller_request("/timers/1234123412341234-1", htp_method_POST, "", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 405, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that requests to create a timer but the method is
 // wrong get rejected.
-TEST_F(TestHandler, InvalidMethodWithTimerWithReplicas)
+TYPED_TEST(TestHandler, InvalidMethodWithTimerWithReplicas)
 {
-  controller_request("/timers/12341234123412341234123412341234", htp_method_POST, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
-  _task->run();
+  TestFixture::controller_request("/timers/12341234123412341234123412341234", htp_method_POST, "", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 405, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that requests to modify a timer but timer ID is invalid
 // get rejected.
-TEST_F(TestHandler, InvalidTimer)
+TYPED_TEST(TestHandler, InvalidTimer)
 {
-  controller_request("/timers/1234", htp_method_PUT, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 404, _));
-  _task->run();
+  TestFixture::controller_request("/timers/1234", htp_method_PUT, "", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 404, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that requests for timer references that aren't deletes
 // get rejected.
-TEST_F(TestHandler, InvalidMethodTimerReferences)
+TYPED_TEST(TestHandler, InvalidMethodTimerReferences)
 {
-  controller_request("/timers/references", htp_method_PUT, "", "");
-  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
-  _task->run();
+  TestFixture::controller_request("/timers/references", htp_method_PUT, "", "");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 405, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that get requests for timer references with a
 // missing node-for-replicas parameter gets rejected
-TEST_F(TestHandler, InvalidTimerGetMissingRequestNode)
+TYPED_TEST(TestHandler, InvalidTimerGetMissingRequestNode)
 {
-  controller_request("/timers?cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "cluster-view-id=cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
+  TestFixture::controller_request("/timers?cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "cluster-view-id=cluster-view-id;time-from=10000");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 400, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that get requests for timer references with a
 // missing cluster-view-id parameter gets rejected
-TEST_F(TestHandler, InvalidTimerGetMissingClusterID)
+TYPED_TEST(TestHandler, InvalidTimerGetMissingClusterID)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;time-from=10000");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;time-from=10000");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 400, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that get requests for timer references with a
 // invalid node-for-replicas parameter gets rejected
-TEST_F(TestHandler, InvalidTimerGetInvalidRequestNode)
+TYPED_TEST(TestHandler, InvalidTimerGetInvalidRequestNode)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.5:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.5:9999;cluster-view-id=cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.5:9999;cluster-view-id=cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.5:9999;cluster-view-id=cluster-view-id;time-from=10000");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 400, _));
+  TestFixture::_task->run();
 }
 
 // Invalid request: Tests that get requests for timer references with a
 // invalid cluster-view-id parameter gets rejected
-TEST_F(TestHandler, InvalidTimerGetInvalidClusterID)
+TYPED_TEST(TestHandler, InvalidTimerGetInvalidClusterID)
 {
-  controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=old-cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=old-cluster-view-id;time-from=10000");
-  EXPECT_CALL(*_httpstack, send_reply(_, 400, _));
-  _task->run();
+  TestFixture::controller_request("/timers?node-for-replicas=10.0.0.1:9999;cluster-view-id=old-cluster-view-id;time-from=10000", htp_method_GET, "", "node-for-replicas=10.0.0.1:9999;cluster-view-id=old-cluster-view-id;time-from=10000");
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 400, _));
+  TestFixture::_task->run();
 }
 
 // Test that a request that doesn't have any site information is GR replicated,
 // and the sites are populated as expected
-TEST_F(TestHandler, TimerNoSites)
+TYPED_TEST(TestHandler, TimerNoSites)
 {
   // Extend how many remote sites there are for this test
   std::vector<std::string> old_remote_site_names;
@@ -398,12 +429,15 @@ TEST_F(TestHandler, TimerNoSites)
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
-  EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}}", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   // Check that the timer is plausible. The local site should be first in the
   // list, and all the other sites should be present
@@ -419,34 +453,40 @@ TEST_F(TestHandler, TimerNoSites)
 }
 
 // Tests that a timer with site and replica information isn't replicated further
-TEST_F(TestHandler, TimerWithSitesAndReplicas)
+TYPED_TEST(TestHandler, TimerWithSitesAndReplicas)
 {
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"], \"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
-  EXPECT_CALL(*_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"], \"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_)).Times(0);
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_)).Times(0);
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   delete added_timer; added_timer = NULL;
 }
 
 // Tests that a timer with site information but no replica information is
 // only replicated within the site
-TEST_F(TestHandler, TimerWithSitesNoReplicas)
+TYPED_TEST(TestHandler, TimerWithSitesNoReplicas)
 {
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
-  EXPECT_CALL(*_replicator, replicate(_)).Times(1);
-  EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"sites\":[\"remote_site_1_name\", \"remote_site_2_name\"] }}", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_)).Times(1);
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_)).Times(0);
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   delete added_timer; added_timer = NULL;
 }
@@ -454,34 +494,40 @@ TEST_F(TestHandler, TimerWithSitesNoReplicas)
 // Tests that a timer with replica information but no site information isn't
 // replicated. This situation should only occur in the reregistration period
 // after upgrade to Chronos with GR support
-TEST_F(TestHandler, TimerWithReplicasNoSites)
+TYPED_TEST(TestHandler, TimerWithReplicasNoSites)
 {
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"]}}", "");
-  EXPECT_CALL(*_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_gr_replicator, replicate(_)).Times(0);
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {\"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\"]}}", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_)).Times(0);
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_)).Times(0);
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   delete added_timer; added_timer = NULL;
 }
 
 // Tests that the replication factor is maintained even when there aren't
 // enough replicas - for a new timer
-TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasNew)
+TYPED_TEST(TestHandler, ReplicationFactorGreaterThanReplicasNew)
 {
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 5 }}", "");
-  EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers", htp_method_POST, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replication-factor\": 5 }}", "");
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   // Check the Timer ID has 5 for the replication factor
   std::string exp_rsp = "/timers/.*-5";
@@ -495,15 +541,15 @@ TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasNew)
 
 // Tests that the replication factor is maintained even when there aren't
 // enough replicas - for an already replicated timer
-TEST_F(TestHandler, ReplicationFactorGreaterThanReplicasReplicated)
+TYPED_TEST(TestHandler, ReplicationFactorGreaterThanReplicasReplicated)
 {
   Timer* added_timer;
   HttpStack::Request req(NULL, NULL);
 
-  controller_request("/timers/1231231231231231-5", htp_method_PUT, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [\"10.0.0.1:9999\"] }}", "");
-  EXPECT_CALL(*_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
-  _task->run();
+  TestFixture::controller_request("/timers/1231231231231231-5", htp_method_PUT, "{\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [\"10.0.0.1:9999\"] }}", "");
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _)).WillOnce(SaveArg<0>(&req));
+  TestFixture::_task->run();
 
   // Check the Timer ID still has 5 for the replication factor
   EXPECT_EQ(std::string(evhtp_header_find(req.req()->headers_out, "Location")), "/timers/1231231231231231-5");

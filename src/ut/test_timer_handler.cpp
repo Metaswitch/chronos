@@ -46,7 +46,7 @@ protected:
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
-    _gr_replicator = new MockGRReplicator();
+    _gr_replicator = NULL; // GR is disabled by default
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -57,7 +57,6 @@ protected:
     delete _th;
     delete _store;
     delete _replicator;
-    delete _gr_replicator;
     delete _mock_tag_table;
     delete _mock_scalar_table;
     delete _mock_increment_table;
@@ -328,7 +327,7 @@ protected:
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
-    _gr_replicator = new MockGRReplicator();
+    _gr_replicator = NULL; // GR is disabled by default
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -346,7 +345,6 @@ protected:
     delete _th;
     delete _store;
     delete _replicator;
-    delete _gr_replicator;
     delete _mock_tag_table;
     delete _mock_scalar_table;
     delete _mock_increment_table;
@@ -902,7 +900,6 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_replicator, replicate(insert_timer));
-  EXPECT_CALL(*_gr_replicator, replicate(insert_timer));
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->handle_successful_callback(id);
 
@@ -944,7 +941,6 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccessSiteChanges)
   EXPECT_CALL(*_store, fetch(_, _)).Times(1).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_replicator, replicate(_));
-  EXPECT_CALL(*_gr_replicator, replicate(_));
   EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
   _th->handle_successful_callback(id);
 
@@ -984,7 +980,6 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackFailure)
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_replicator, replicate(insert_timer)).Times(0);
-  EXPECT_CALL(*_gr_replicator, replicate(insert_timer)).Times(0);
   EXPECT_CALL(*_mock_increment_table, decrement(1)).Times(1);
   EXPECT_CALL(*_mock_tag_table, decrement("TAG1", 1)).Times(1);
   EXPECT_CALL(*_mock_scalar_table, decrement("TAG1", 1)).Times(1);
@@ -1502,4 +1497,98 @@ TEST_F(TestTimerHandlerRealStore, TimeFromHeapTimers)
   std::string exp_rsp = "\\\{\"Timers\":\\\[\\\{\"TimerID\":2,.*}]}";
   EXPECT_THAT(get_response, MatchesRegex(exp_rsp));
   EXPECT_EQ(rc, 200);
+}
+
+/*****************************************************************************/
+/* Test fixture                                                              */
+/*****************************************************************************/
+
+class TestTimerHandlerWithGR : public Base
+{
+protected:
+  void SetUp()
+  {
+    // There are fixed points throughout time where things must stay exactly the
+    // way they are. Whatever happens here will create its own timeline, its own
+    // reality, a temporal tipping point. The future revolves around you, here,
+    // now, so do good!
+    cwtest_completely_control_time();
+
+    Base::SetUp();
+    _store = new MockTimerStore();
+    _callback = new MockCallback();
+    _replicator = new MockReplicator();
+    _gr_replicator = new MockGRReplicator();
+    _mock_tag_table = new MockInfiniteTable();
+    _mock_scalar_table = new MockInfiniteScalarTable();
+    _mock_increment_table = new MockIncrementTable();
+  }
+
+  void TearDown()
+  {
+    delete _th;
+    delete _store;
+    delete _replicator;
+    delete _gr_replicator;
+    delete _mock_tag_table;
+    delete _mock_scalar_table;
+    delete _mock_increment_table;
+    // _callback is deleted by the timer handler.
+
+    Base::TearDown();
+
+    // I always will be. But times change, and so must I... we all change. When
+    // you think about it, we are all different people, all through our lives
+    // and that's okay, that's good!
+    cwtest_reset_time();
+  }
+
+  // Accessor functions into the timer handler's private variables
+  MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
+
+  MockInfiniteTable* _mock_tag_table;
+  MockInfiniteScalarTable* _mock_scalar_table;
+  MockIncrementTable* _mock_increment_table;
+  MockTimerStore* _store;
+  MockCallback* _callback;
+  MockReplicator* _replicator;
+  MockGRReplicator* _gr_replicator;
+  TimerHandler* _th;
+};
+
+
+/*****************************************************************************/
+/* Instance function tests                                                   */
+/*****************************************************************************/
+
+// Test that the handle_callback_success function fetches the timer specified,
+// replicates it, and re-inserts it into the store
+TEST_F(TestTimerHandlerWithGR, HandleCallbackSuccess)
+{
+  // Add a timer. This is a new timer, so should cause the stats to
+  // increment (counts and tags).
+  Timer* timer = default_timer(1);
+  TimerID id = timer->id;
+  Timer* insert_timer;
+  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
+  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
+  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
+  _th->add_timer(timer);
+
+  // The timer is successfully added. As it's a new timer it's passed through to
+  // the store unchanged.
+  EXPECT_EQ(insert_timer, timer);
+  timer = NULL;
+
+  // Now call handle_successful_callback as if called from http_callback
+  EXPECT_CALL(*_store, fetch(id, _)).Times(1).
+                       WillOnce(SetArgPointee<1>(insert_timer));
+  EXPECT_CALL(*_replicator, replicate(insert_timer));
+  EXPECT_CALL(*_gr_replicator, replicate(insert_timer));
+  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
+  _th->handle_successful_callback(id);
+
+  delete insert_timer;
 }
