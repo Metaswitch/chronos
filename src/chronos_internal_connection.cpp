@@ -449,9 +449,9 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
                                                 const std::string& body)
 {
   std::string path = "/timers/references";
-  HttpRequest req(server, "http", _http, HttpClient::RequestType::DELETE, path);
-  req.set_body(body);
-  HttpResponse resp = req.send();
+  HttpResponse resp = HttpRequest(server, "http", _http, HttpClient::RequestType::DELETE, path)
+    .set_body(body)
+    .send();
   HTTPCode rc = resp.get_rc();
 
   return rc;
@@ -484,9 +484,9 @@ HTTPCode ChronosInternalConnection::send_get(const std::string& server,
   std::string range_header = std::string(HEADER_RANGE) + ":" +
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
 
-  HttpRequest req(server, "http", _http, HttpClient::RequestType::GET, path);
-  req.add_header(range_header);
-  HttpResponse  resp = req.send();
+  HttpResponse resp = HttpRequest(server, "http", _http, HttpClient::RequestType::GET, path)
+    .add_header(range_header)
+    .send();
   HTTPCode rc = resp.get_rc();
   response = resp.get_body();
 
