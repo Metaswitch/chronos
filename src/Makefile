@@ -68,7 +68,7 @@ chronos_test_SOURCES := ${COMMON_SOURCES} \
                         test_http_callback.cpp \
                         fakelogger.cpp \
                         mock_sas.cpp \
-                        mock_http_request.cpp \
+                        mock_httpclient.cpp \
                         mockhttpstack.cpp \
                         fakecurl.cpp \
                         pthread_cond_var_helper.cpp \
