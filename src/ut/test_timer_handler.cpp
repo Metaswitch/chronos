@@ -1522,6 +1522,13 @@ protected:
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
+
+    // Set up the Timer Handler
+    EXPECT_CALL(*_store, fetch_next_timers(_)).
+                         WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                         WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+    _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+    _cond()->block_till_waiting();
   }
 
   void TearDown()
