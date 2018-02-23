@@ -465,10 +465,9 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
                                                 const std::string& body)
 {
   std::string path = "/timers/references";
-  std::unique_ptr<HttpRequest> req =
-    build_request(server, path, HttpClient::RequestType::DELETE);
-  req->set_body(body);
-  HttpResponse resp = req->send();
+  HttpRequest req = build_request(server, path, HttpClient::RequestType::DELETE);
+  req.set_body(body);
+  HttpResponse resp = req.send();
   HTTPCode rc = resp.get_rc();
 
   return rc;
@@ -501,11 +500,9 @@ HTTPCode ChronosInternalConnection::send_get(const std::string& server,
   std::string range_header = std::string(HEADER_RANGE) + ":" +
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
 
-  std::unique_ptr<HttpRequest> req = build_request(server,
-                                                   path,
-                                                   HttpClient::RequestType::GET);
-  req->add_header(range_header);
-  HttpResponse  resp = req->send();
+  HttpRequest req = build_request(server, path, HttpClient::RequestType::GET);
+  req.add_header(range_header);
+  HttpResponse  resp = req.send();
   HTTPCode rc = resp.get_rc();
   response = resp.get_body();
 
@@ -568,16 +565,16 @@ bool ChronosInternalConnection::get_replica_level(int& index,
 
 // LCOV_EXCL_START - In UTs, we test a subclass that overrides this method, to
 // allow us to return a MockHttpRequest
-std::unique_ptr<HttpRequest> ChronosInternalConnection::build_request(
+HttpRequest ChronosInternalConnection::build_request(
                                                  const std::string& server,
                                                  const std::string& path,
                                                  HttpClient::RequestType method)
 {
-  std::unique_ptr<HttpRequest> req(new HttpRequest(server,
-                                                   "http",
-                                                   _http,
-                                                   method,
-                                                   path));
+  HttpRequest req(server,
+                                  "http",
+                                  _http,
+                                  method,
+                                  path);
   return req;
 }
 // LCOV_EXCL_STOP

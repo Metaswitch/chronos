@@ -90,7 +90,7 @@ private:
                             std::string localhost);
 
   // Builds an HttpRequest
-  virtual std::unique_ptr<HttpRequest> build_request(
+  virtual HttpRequest build_request(
                             const std::string& server,
                             const std::string& path,
                             HttpClient::RequestType method);
