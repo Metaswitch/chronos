@@ -1,6 +1,8 @@
 # Geographic Redundancy in Chronos
 
-Geographic redundancy (GR) is supported in Chronos by using essentially the same methods as we ensure in-site redundancy. These are described [here](https://github.com/Metaswitch/chronos/blob/dev/doc/technical.md).
+Geographic redundancy (GR) is supported in Chronos, but is disabled by default. To enable GR, the chronos configuration can be edited (by setting `replicate_timers_across_sites` to 1). Details on how to change this configuration are [here](https://github.com/Metaswitch/chronos/blob/dev/doc/configuration.md).
+
+GR is supported in Chronos by using essentially the same methods as we ensure in-site redundancy. These are described [here](https://github.com/Metaswitch/chronos/blob/dev/doc/technical.md).
 
 At a high level, when a timer is added (or first modified after a deployment becomes GR) it creates a site ordering list. This list simply takes the available sites, makes the local site the primary site, and then orders the rest of the sites randomly after it. Chronos knows what sites are available as these are configured in the [GR config](https://github.com/Metaswitch/chronos/blob/dev/doc/configuration.md).
 
@@ -19,7 +21,7 @@ For example, in a 3 site deployment with two replicas per site you can get a tim
  * Replica 2 - 10 sec delay
 
 When a timer pops in a Chronos process, Chronos handles the timer as normal (e.g. handling the callback, replicating the timer/tombstone to all other replicas of the timer).
- 
+
 This solution provides the desired data resiliency. A timer can be delayed by `((number of sites - 1) * number of replicas * 2) + 2 + site latencies)` seconds in the case of a multi-site failure.
 
 There's no active timer resynchronisation on site failure - when a site recovers it won't have any Chronos timers until the timers are modified by a client or they pop (which triggers a replication cross-site).
