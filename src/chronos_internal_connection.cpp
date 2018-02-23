@@ -27,7 +27,7 @@
 #include "globals.h"
 #include "chronos_pd_definitions.h"
 
-ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
+ChronosInternalConnection::ChronosInternalConnection(HttpClient* client,
                                                      TimerHandler* handler,
                                                      Replicator* replicator,
                                                      Alarm* alarm,
@@ -35,6 +35,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                                                      SNMP::CounterTable* timers_processed_table,
                                                      SNMP::CounterTable* invalid_timers_processed_table,
                                                      bool resync_on_start) :
+  _http(client),
   _handler(handler),
   _replicator(replicator),
   _alarm(alarm),
@@ -42,22 +43,6 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _timers_processed_table(timers_processed_table),
   _invalid_timers_processed_table(invalid_timers_processed_table)
 {
-  std::string bind_address;
-  __globals->get_bind_address(bind_address);
-
-  _http = new HttpClient(false,
-                         resolver,
-                         nullptr,
-                         nullptr,
-                         SASEvent::HttpLogLevel::NONE,
-                         nullptr,
-                         false,
-                         false,
-                         -1,
-                         false,
-                         "",
-                         bind_address);
-
   // Create an updater to control when Chronos should resynchronise. This uses
   // SIGUSR1 rather than the default SIGHUP, and we should resynchronise on
   // start up
@@ -77,7 +62,6 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
 ChronosInternalConnection::~ChronosInternalConnection()
 {
   delete _updater; _updater = NULL;
-  delete _http; _http = NULL;
 }
 
 void ChronosInternalConnection::resynchronize()
@@ -562,19 +546,3 @@ bool ChronosInternalConnection::get_replica_level(int& index,
 
   return false;
 }
-
-// LCOV_EXCL_START - In UTs, we test a subclass that overrides this method, to
-// allow us to return a MockHttpRequest
-HttpRequest ChronosInternalConnection::build_request(
-                                                 const std::string& server,
-                                                 const std::string& path,
-                                                 HttpClient::RequestType method)
-{
-  HttpRequest req(server,
-                                  "http",
-                                  _http,
-                                  method,
-                                  path);
-  return req;
-}
-// LCOV_EXCL_STOP

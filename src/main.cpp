@@ -67,14 +67,14 @@ enum OptionTypes
 
 const static struct option long_opt[] =
 {
-  {"local-config-file", required_argument, NULL, LOCAL_CONFIG_FILE},
-  {"cluster-config-file", required_argument, NULL, CLUSTER_CONFIG_FILE},
-  {"shared-config-file", required_argument, NULL, SHARED_CONFIG_FILE},
-  {"dns-config-file", required_argument, NULL, DNS_CONFIG_FILE},
-  {"pidfile", required_argument, NULL, PIDFILE},
-  {"daemon", no_argument, NULL, DAEMON},
-  {"help", no_argument, NULL, HELP},
-  {NULL, 0, NULL, 0},
+  {"local-config-file", required_argument, nullptr, LOCAL_CONFIG_FILE},
+  {"cluster-config-file", required_argument, nullptr, CLUSTER_CONFIG_FILE},
+  {"shared-config-file", required_argument, nullptr, SHARED_CONFIG_FILE},
+  {"dns-config-file", required_argument, nullptr, DNS_CONFIG_FILE},
+  {"pidfile", required_argument, nullptr, PIDFILE},
+  {"daemon", no_argument, nullptr, DAEMON},
+  {"help", no_argument, nullptr, HELP},
+  {nullptr, 0, nullptr, 0},
 };
 
 void usage(void)
@@ -241,7 +241,7 @@ int main(int argc, char** argv)
   }
 
   start_signal_handlers();
-  srand(time(NULL));
+  srand(time(nullptr));
 
   // Initialize the global configuration. Creating the __globals object
   // updates the global configuration. It also creates an updater thread,
@@ -255,21 +255,21 @@ int main(int argc, char** argv)
   std::string logging_folder;
   __globals->get_logging_folder(logging_folder);
   std::string err = logging_folder + "/chronos_err.log";
-  if (freopen(err.c_str(), "a", stderr) == NULL)
+  if (freopen(err.c_str(), "a", stderr) == nullptr)
   {
     TRC_ERROR("Failed to redirect stderr");
     exit(0);
   }
 
-  AlarmManager* alarm_manager = NULL;
-  Alarm* resync_operation_alarm = NULL;
-  CommunicationMonitor* remote_chronos_comm_monitor = NULL;
-  SNMP::U32Scalar* remaining_nodes_scalar = NULL;
-  SNMP::CounterTable* timers_processed_table = NULL;
-  SNMP::CounterTable* invalid_timers_processed_table = NULL;
-  SNMP::ContinuousIncrementTable* all_timers_table = NULL;
-  SNMP::InfiniteTimerCountTable* total_timers_table = NULL;
-  SNMP::InfiniteScalarTable* scalar_timers_table = NULL;
+  AlarmManager* alarm_manager = nullptr;
+  Alarm* resync_operation_alarm = nullptr;
+  CommunicationMonitor* remote_chronos_comm_monitor = nullptr;
+  SNMP::U32Scalar* remaining_nodes_scalar = nullptr;
+  SNMP::CounterTable* timers_processed_table = nullptr;
+  SNMP::CounterTable* invalid_timers_processed_table = nullptr;
+  SNMP::ContinuousIncrementTable* all_timers_table = nullptr;
+  SNMP::InfiniteTimerCountTable* total_timers_table = nullptr;
+  SNMP::InfiniteScalarTable* scalar_timers_table = nullptr;
 
   // Sets up SNMP statistics
   snmp_setup("chronos");
@@ -406,9 +406,9 @@ int main(int argc, char** argv)
 
   HttpStack* http_stack = new HttpStack(http_threads,
                                         exception_handler,
-                                        NULL,
+                                        nullptr,
                                         load_monitor,
-                                        NULL);
+                                        nullptr);
   HttpStackUtils::PingHandler ping_handler;
   ControllerTask::Config controller_config(local_rep, gr_rep, handler);
   HttpStackUtils::SpawningHandler<ControllerTask, ControllerTask::Config> controller_handler(&controller_config,
@@ -434,8 +434,21 @@ int main(int argc, char** argv)
 
   // Create a Chronos internal connection class for resynchronization operations.
   // We do this after creating the HTTPStack as it triggers a resync operation.
+  HttpClient* client = new HttpClient(false,
+                                      http_resolver,
+                                      nullptr,
+                                      nullptr,
+                                      SASEvent::HttpLogLevel::NONE,
+                                      nullptr,
+                                      false,
+                                      false,
+                                      -1,
+                                      false,
+                                      "",
+                                      bind_address);
+
   ChronosInternalConnection* chronos_internal_connection =
-            new ChronosInternalConnection(http_resolver,
+            new ChronosInternalConnection(client,
                                           handler,
                                           local_rep,
                                           resync_operation_alarm,
@@ -457,40 +470,41 @@ int main(int argc, char** argv)
     std::cerr << "Caught HttpStack::Exception" << std::endl;
   }
 
-  delete load_monitor; load_monitor = NULL;
-  delete chronos_internal_connection; chronos_internal_connection = NULL;
-  delete handler; handler = NULL;
+  delete load_monitor; load_monitor = nullptr;
+  delete chronos_internal_connection; chronos_internal_connection = nullptr;
+  delete client; client = nullptr;
+  delete handler; handler = nullptr;
   // Callback is deleted by the handler
-  delete gr_rep; gr_rep = NULL;
-  delete local_rep; local_rep = NULL;
-  delete store; store = NULL;
-  delete http_resolver; http_resolver = NULL;
-  delete dns_updater; dns_updater = NULL;
-  delete dns_resolver; dns_resolver = NULL;
+  delete gr_rep; gr_rep = nullptr;
+  delete local_rep; local_rep = nullptr;
+  delete store; store = nullptr;
+  delete http_resolver; http_resolver = nullptr;
+  delete dns_updater; dns_updater = nullptr;
+  delete dns_resolver; dns_resolver = nullptr;
 
-  delete scalar_timers_table; scalar_timers_table = NULL;
-  delete total_timers_table; total_timers_table = NULL;
-  delete all_timers_table; all_timers_table = NULL;
-  delete invalid_timers_processed_table; invalid_timers_processed_table = NULL;
-  delete timers_processed_table; timers_processed_table = NULL;
-  delete remaining_nodes_scalar; remaining_nodes_scalar = NULL;
+  delete scalar_timers_table; scalar_timers_table = nullptr;
+  delete total_timers_table; total_timers_table = nullptr;
+  delete all_timers_table; all_timers_table = nullptr;
+  delete invalid_timers_processed_table; invalid_timers_processed_table = nullptr;
+  delete timers_processed_table; timers_processed_table = nullptr;
+  delete remaining_nodes_scalar; remaining_nodes_scalar = nullptr;
 
-  delete exception_handler; exception_handler = NULL;
+  delete exception_handler; exception_handler = nullptr;
   hc->stop_thread();
-  delete hc; hc = NULL;
+  delete hc; hc = nullptr;
 
   // Delete Chronos's alarm object
   delete resync_operation_alarm;
   delete remote_chronos_comm_monitor;
   delete alarm_manager;
-  delete http_stack; http_stack = NULL;
+  delete http_stack; http_stack = nullptr;
 
   sem_destroy(&term_sem);
 
   // After this point nothing will use __globals so it's safe to delete
   // it here.
   CL_CHRONOS_ENDED.log();
-  delete __globals; __globals = NULL;
+  delete __globals; __globals = nullptr;
   curl_global_cleanup();
 
   return 0;

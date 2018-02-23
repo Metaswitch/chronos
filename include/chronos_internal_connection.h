@@ -26,7 +26,7 @@
 class ChronosInternalConnection
 {
 public:
-  ChronosInternalConnection(HttpResolver* resolver,
+  ChronosInternalConnection(HttpClient* client,
                             TimerHandler* handler,
                             Replicator* replicator,
                             Alarm* alarm,
@@ -88,12 +88,6 @@ private:
                             const std::string& server_to_sync,
                             std::vector<std::string> cluster_nodes,
                             std::string localhost);
-
-  // Builds an HttpRequest
-  virtual HttpRequest build_request(
-                            const std::string& server,
-                            const std::string& path,
-                            HttpClient::RequestType method);
 };
 
 #endif
