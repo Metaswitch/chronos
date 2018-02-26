@@ -207,7 +207,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerDeleteError)
                                               "\"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}",
                     {});
 
-  // Expect that we'll send the GET request for the resync, and then three DELETE
+  // Expect that we'll send the GET request for the resync, and then 2 DELETE
   // requests which we send to each of the cluster nodes
   EXPECT_CALL(*_client, send_request(AllOf(IsGet(),
                                            HasServer("10.0.0.1:9999"),
@@ -258,7 +258,7 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerWithTombstoneAndLeaving
 
   Timer* added_timer;
 
-  // Expect that we'll send the GET request for the resync, and then three DELETE
+  // Expect that we'll send the GET request for the resync, and then 4 DELETE
   // requests which we send to each of the cluster nodes
   EXPECT_CALL(*_client, send_request(AllOf(IsGet(),
                                            HasServer("10.0.0.1:9999"),
