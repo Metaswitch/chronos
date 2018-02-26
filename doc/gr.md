@@ -1,6 +1,6 @@
 # Geographic Redundancy in Chronos
 
-Geographic redundancy (GR) is supported in Chronos, but is disabled by default. To enable GR, the chronos configuration can be edited (by setting `replicate_timers_across_sites` to 1). Details on how to change this configuration are [here](https://github.com/Metaswitch/chronos/blob/dev/doc/configuration.md).
+Geographic redundancy (GR) is supported in Chronos, but is disabled by default. To enable GR, the chronos configuration can be edited (by setting `replicate_timers_across_sites` to true). Details on how to change this configuration are [here](https://github.com/Metaswitch/chronos/blob/dev/doc/configuration.md).
 
 GR is supported in Chronos by using essentially the same methods as we ensure in-site redundancy. These are described [here](https://github.com/Metaswitch/chronos/blob/dev/doc/technical.md).
 

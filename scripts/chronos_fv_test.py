@@ -254,11 +254,8 @@ def write_shared_conf(filename, local_site, remote_sites, replicate_across_sites
         """).format(local_site))
         for site in remote_sites:
             f.write('remote_site = {site}\n'.format(**locals()))
-        # TODO - make this neater
-        replicate = 0
-        if replicate_across_sites:
-            replicate = 1
-        f.write('replicate_timers_across_sites = {}'.format(replicate))
+        replicate_across_sites_config = str(replicate_across_sites).lower()
+        f.write('replicate_timers_across_sites = {}'.format(replicate_across_sites_config))
 
 # Test the resynchronization operations for Chronos.
 class ChronosFVTest(unittest.TestCase):

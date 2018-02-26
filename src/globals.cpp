@@ -158,6 +158,7 @@ void Globals::update_config()
 
   bool replicate_timers_across_sites = conf_map["sites.replicate_timers_across_sites"].as<bool>();
   set_replicate_timers_across_sites(replicate_timers_across_sites);
+  TRC_STATUS("replicate_timers_across_sites: %d", replicate_timers_across_sites);
 
   int target_latency = conf_map["throttling.target_latency"].as<int>();
   set_target_latency(target_latency);
