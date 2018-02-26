@@ -89,15 +89,6 @@ protected:
   // for the specified timer
   void expect_delete(const std::string& server, const std::string& timer, int times=1)
   {
-    //MockHttpRequest* mock_req = new MockHttpRequest();
-    /*
-    EXPECT_CALL(*_chronos, build_request_proxy(server,
-                                               "/timers/references",
-                                               HttpClient::RequestType::DELETE))
-      .WillOnce(Return(mock_req)).RetiresOnSaturation();
-    EXPECT_CALL(*mock_req, set_body(timer)).Times(1);
-    EXPECT_CALL(*mock_req, send()).WillOnce(Return(resp_accepted));
-    */
     EXPECT_CALL(*_client, send_request(AllOf(IsDelete(),
                                              HasServer(server),
                                              HasBody(timer))))
@@ -172,7 +163,13 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerNoResults)
 TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimer)
 {
   Timer* added_timer;
-  HttpResponse resp(HTTP_OK, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}", {});
+  HttpResponse resp(HTTP_OK,
+                    "{\"Timers\":[{\"TimerID\":4, "
+                                  "\"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], "
+                                  "\"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, "
+                                              "\"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, "
+                                              "\"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}",
+                    {});
 
   // Expect that we'll send the GET request for the resync, and then three DELETE
   // requests which we send to each of the cluster nodes
@@ -202,7 +199,13 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimer)
 TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerDeleteError)
 {
   Timer* added_timer;
-  HttpResponse resp(HTTP_OK, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}", {});
+  HttpResponse resp(HTTP_OK,
+                    "{\"Timers\":[{\"TimerID\":4, "
+                                  "\"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.3:9999\"], "
+                                  "\"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, "
+                                              "\"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, "
+                                              "\"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}",
+                    {});
 
   // Expect that we'll send the GET request for the resync, and then three DELETE
   // requests which we send to each of the cluster nodes
@@ -245,7 +248,13 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerWithTombstoneAndLeaving
   __globals->set_cluster_leaving_addresses(leaving_cluster_addresses);
   _cluster_addresses.push_back("10.0.0.4:9999");
 
-  HttpResponse resp(HTTP_OK, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.4:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}", {});
+  HttpResponse resp(HTTP_OK,
+                    "{\"Timers\":[{\"TimerID\":4, "
+                                  "\"OldReplicas\":[\"10.0.0.2:9999\", \"10.0.0.4:9999\"], "
+                                  "\"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, "
+                                              "\"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, "
+                                              "\"reliability\": { \"replicas\": [ \"10.0.0.1:9999\", \"10.0.0.3:9999\" ] }}}]}",
+                    {});
 
   Timer* added_timer;
 
@@ -281,7 +290,13 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerOneTimerWithTombstoneAndLeaving
 // more timers available. This also checks the time-from parameter.
 TEST_F(ChronosInternalConnectionTest, RepeatedTimers)
 {
-  HttpResponse resp_partial(HTTP_PARTIAL_CONTENT, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {\"timing\": { \"start-time-delta\": -235, \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.1:9999\" ] }}}]}", {});
+  HttpResponse resp_partial(HTTP_PARTIAL_CONTENT,
+                            "{\"Timers\":[{\"TimerID\":4, "
+                                          "\"OldReplicas\":[\"10.0.0.2:9999\"], "
+                                          "\"Timer\": {\"timing\": { \"start-time-delta\": -235, \"interval\": 100, \"repeat-for\": 200 }, "
+                                                      "\"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, "
+                                                      "\"reliability\": { \"replicas\": [ \"10.0.0.1:9999\" ] }}}]}",
+                            {});
   HttpResponse resp_ok(HTTP_OK, "{\"Timers\":[]}", {});
 
   // Expect that we'll build and send the first resync request with time-from
@@ -330,7 +345,13 @@ TEST_F(ChronosInternalConnectionTest, ResynchronizeWithTimers)
 
   // Timers from 10.0.0.2/10.0.0.3/10.0.0.4 - One timer that's having its replica list reordered.
   // This isn't a valid response (as it should be different for .2/.3/.4), but it's sufficient
-  HttpResponse response(HTTP_OK, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.1:9999\", \"10.0.0.2:9999\", \"10.0.0.3:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": { \"replicas\": [ \"10.0.0.3:9999\", \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}}]}", {});
+  HttpResponse response(HTTP_OK,
+                        "{\"Timers\":[{\"TimerID\":4, "
+                                      "\"OldReplicas\":[\"10.0.0.1:9999\", \"10.0.0.2:9999\", \"10.0.0.3:9999\"], "
+                                      "\"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, "
+                                                  "\"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, "
+                                                  "\"reliability\": { \"replicas\": [ \"10.0.0.3:9999\", \"10.0.0.1:9999\", \"10.0.0.2:9999\" ] }}}]}",
+                        {});
 
   EXPECT_CALL(*_client, send_request(AllOf(IsGet(),
                                            HasServer("10.0.0.1:9999"),
@@ -494,7 +515,16 @@ TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidResultNoTimer)
 
 TEST_F(ChronosInternalConnectionTest, SendTriggerInvalidResultInvalidTimers)
 {
-  HttpResponse response(HTTP_OK, "{\"Timers\":[{\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {}}, {\"TimerID\":4, \"OldReplicas\":[\"10.0.0.2:9999\"], \"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, \"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, \"reliability\": {}}}]}", {});
+  HttpResponse response(HTTP_OK,
+                        "{\"Timers\":[{\"TimerID\":4, "
+                                      "\"OldReplicas\":[\"10.0.0.2:9999\"], "
+                                      "\"Timer\": {}}, "
+                                     "{\"TimerID\":4, "
+                                      "\"OldReplicas\":[\"10.0.0.2:9999\"], "
+                                      "\"Timer\": {\"timing\": { \"interval\": 100, \"repeat-for\": 200 }, "
+                                                                "\"callback\": { \"http\": { \"uri\": \"localhost\", \"opaque\": \"stuff\" }}, "
+                                                                "\"reliability\": {}}}]}",
+                        {});
   EXPECT_CALL(*_client, send_request(IsGet()))
     .WillOnce(Return(response))
     .RetiresOnSaturation();
