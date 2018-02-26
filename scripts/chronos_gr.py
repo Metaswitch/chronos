@@ -14,7 +14,7 @@ from time import sleep
 
 from os import sys, path
 sys.path.append(path.dirname(path.abspath(__file__)))
-from chronos_fv_test import ChronosFVTest, start_nodes, create_timers, kill_nodes, chronos_nodes, delete_timers, kill_random_nodes
+from chronos_fv_test import ChronosFVTest, start_nodes, create_timers, kill_nodes, chronos_nodes, delete_timers, kill_random_nodes, kill_specific_nodes
 
 # Test the GR capabilities of Chronos.
 class ChronosGRTest(ChronosFVTest):
@@ -88,7 +88,7 @@ class ChronosGRTest(ChronosFVTest):
         self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], False)
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 0, 25)
-        create_timers(chronos_nodes[1], 0, 25)
+        create_timers(chronos_nodes[1], 25, 50)
 
         # Check that all the timers have popped (10 secs with a slight delay
         # for replication)
@@ -109,16 +109,16 @@ class ChronosGRTest(ChronosFVTest):
         self.write_shared_config_for_nodes([3], 'site4', ['site1=127.0.0.11:7253','site2=127.0.0.12:7254','site3=127.0.0.13:7255'], False)
         start_nodes(0, 4)
         create_timers(chronos_nodes[0], 0, 25)
-        create_timers(chronos_nodes[1], 0, 25)
-        create_timers(chronos_nodes[2], 0, 25)
-        create_timers(chronos_nodes[3], 0, 25)
+        create_timers(chronos_nodes[1], 25, 50)
+        create_timers(chronos_nodes[2], 50, 75)
+        create_timers(chronos_nodes[3], 75, 100)
         sleep(4)
 
         # Now kill all but a single site, wait a sufficient time for any
         # existing timers to pop (10 seconds, plus 6 seconds delay for the site
         # failures, plus a slight delay for replication), and check that only
         # the timers set in that site pop.
-        kill_random_nodes(3)
+        kill_specific_nodes([1, 2, 3])
         sleep(18)
         self.assert_correct_timers_received(25)
 

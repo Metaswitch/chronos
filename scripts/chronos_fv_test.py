@@ -152,6 +152,16 @@ def kill_random_nodes(count):
         os.kill(int(p), signal.SIGKILL)
 
 
+def kill_specific_nodes(nodes):
+    # Kill a set of specified nodes. These are specified by the order in which
+    # they were set up (ie. node set up first is node 0, etc.).
+    kill_list = []
+    for node in nodes:
+        kill_list.append(processes[node])
+    for p in kill_list:
+        os.kill(int(p), signal.SIGKILL)
+
+
 def node_reload_config(lower, upper):
     # SIGHUP nodes with indexes [lower, upper)
     for p in processes[lower: upper]:
