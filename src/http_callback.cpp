@@ -127,15 +127,15 @@ void HTTPCallback::worker_thread_entry_point()
 
       if (valid_url)
       {
-        std::unique_ptr<HttpRequest> req(new HttpRequest(server,
-                                                         scheme,
-                                                         _http_client,
-                                                         HttpClient::RequestType::POST,
-                                                         path));
-        req->set_body(callback_body);
-        req->add_header(seq_no_hdr);
-        req->add_header(content_type_hdr);
-        HttpResponse resp = req->send();
+        HttpResponse resp = HttpRequest(server,
+                                        scheme,
+                                        _http_client,
+                                        HttpClient::RequestType::POST,
+                                        path)
+                            .set_body(callback_body)
+                            .add_header(seq_no_hdr)
+                            .add_header(content_type_hdr)
+                            .send();
         HTTPCode http_rc = resp.get_rc();
 
         if (http_rc == HTTP_OK)
