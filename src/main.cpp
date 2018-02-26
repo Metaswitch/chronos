@@ -360,7 +360,7 @@ int main(int argc, char** argv)
 
   // Create the timer store, handlers, replicators...
   int gr_threads;
-  int replicate_timers_across_sites;
+  bool replicate_timers_across_sites;
   __globals->get_gr_threads(gr_threads);
   __globals->get_replicate_timers_across_sites(replicate_timers_across_sites);
 

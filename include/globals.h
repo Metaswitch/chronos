@@ -86,7 +86,7 @@ public:
   // This was required as GR replication does not currently work at load. If
   // this config option is set to true, the user should be aware that their
   // system will not be fully GR replicated.
-  GLOBAL(replicate_timers_across_sites, int);
+  GLOBAL(replicate_timers_across_sites, bool);
 
 public:
   void update_config();
