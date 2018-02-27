@@ -27,9 +27,6 @@
 
 using namespace ::testing;
 
-/*****************************************************************************/
-/* Test fixture                                                              */
-/*****************************************************************************/
 
 class TestTimerHandlerFetchAndPop : public Base
 {
@@ -82,11 +79,6 @@ protected:
   MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
-
-
-/*****************************************************************************/
-/* Instance function tests                                                   */
-/*****************************************************************************/
 
 TEST_F(TestTimerHandlerFetchAndPop, StartUpAndShutDown)
 {
@@ -308,9 +300,6 @@ TEST_F(TestTimerHandlerFetchAndPop, PopTombstoneTimer)
   _cond()->block_till_waiting();
 }
 
-/*****************************************************************************/
-/* Test fixture                                                              */
-/*****************************************************************************/
 
 class TestTimerHandlerAddAndReturn : public Base
 {
@@ -900,7 +889,7 @@ TEST_F(TestTimerHandlerAddAndReturn, HandleCallbackSuccess)
   EXPECT_CALL(*_store, fetch(id, _)).Times(1).
                        WillOnce(SetArgPointee<1>(insert_timer));
   EXPECT_CALL(*_replicator, replicate(insert_timer));
-  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
+  EXPECT_CALL(*_store, insert(_));
   _th->handle_successful_callback(id);
 
   delete insert_timer;
@@ -1499,11 +1488,8 @@ TEST_F(TestTimerHandlerRealStore, TimeFromHeapTimers)
   EXPECT_EQ(rc, 200);
 }
 
-/*****************************************************************************/
-/* Test fixture                                                              */
-/*****************************************************************************/
 
-class TestTimerHandlerWithGR : public Base
+class TestTimerHandlerWithGREnabled : public Base
 {
 protected:
   void SetUp()
@@ -1516,18 +1502,19 @@ protected:
 
     Base::SetUp();
     _store = new MockTimerStore();
-    _callback = new MockCallback();
     _replicator = new MockReplicator();
     _gr_replicator = new MockGRReplicator();
-    _mock_tag_table = new MockInfiniteTable();
-    _mock_scalar_table = new MockInfiniteScalarTable();
-    _mock_increment_table = new MockIncrementTable();
+    // Stats are not tested using this test base
+    _mock_tag_table = NULL;
+    _mock_scalar_table = NULL;
+    _mock_increment_table = NULL;
 
     // Set up the Timer Handler
     EXPECT_CALL(*_store, fetch_next_timers(_)).
                          WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                          WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-    _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+    // The TimerHandler deletes the MockCallback object
+    _th = new TimerHandler(_store, new MockCallback(), _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
     _cond()->block_till_waiting();
   }
 
@@ -1537,10 +1524,6 @@ protected:
     delete _store;
     delete _replicator;
     delete _gr_replicator;
-    delete _mock_tag_table;
-    delete _mock_scalar_table;
-    delete _mock_increment_table;
-    // _callback is deleted by the timer handler.
 
     Base::TearDown();
 
@@ -1557,45 +1540,25 @@ protected:
   MockInfiniteScalarTable* _mock_scalar_table;
   MockIncrementTable* _mock_increment_table;
   MockTimerStore* _store;
-  MockCallback* _callback;
   MockReplicator* _replicator;
   MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
-
-/*****************************************************************************/
-/* Instance function tests                                                   */
-/*****************************************************************************/
-
-// Test that the handle_callback_success function fetches the timer specified,
-// replicates it, and re-inserts it into the store
-TEST_F(TestTimerHandlerWithGR, HandleCallbackSuccess)
+// Test that a successful callback is replicated to the remote sites if GR is
+// enabled.
+TEST_F(TestTimerHandlerWithGREnabled, HandleCallbackSuccess)
 {
-  // Add a timer. This is a new timer, so should cause the stats to
-  // increment (counts and tags).
   Timer* timer = default_timer(1);
   TimerID id = timer->id;
-  Timer* insert_timer;
-  EXPECT_CALL(*_store, fetch(timer->id, _)).Times(1);
-  EXPECT_CALL(*_mock_tag_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_scalar_table, increment("TAG1", 1)).Times(1);
-  EXPECT_CALL(*_mock_increment_table, increment(1)).Times(1);
-  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
-  _th->add_timer(timer);
 
-  // The timer is successfully added. As it's a new timer it's passed through to
-  // the store unchanged.
-  EXPECT_EQ(insert_timer, timer);
-  timer = NULL;
-
-  // Now call handle_successful_callback as if called from http_callback
-  EXPECT_CALL(*_store, fetch(id, _)).Times(1).
-                       WillOnce(SetArgPointee<1>(insert_timer));
-  EXPECT_CALL(*_replicator, replicate(insert_timer));
-  EXPECT_CALL(*_gr_replicator, replicate(insert_timer));
-  EXPECT_CALL(*_store, insert(_)).WillOnce(SaveArg<0>(&insert_timer));
+  // Call handle_successful_callback as if called from http_callback.
+  EXPECT_CALL(*_store, fetch(_, _)).Times(1).
+                       WillOnce(SetArgPointee<1>(timer));
+  EXPECT_CALL(*_replicator, replicate(timer));
+  EXPECT_CALL(*_gr_replicator, replicate(timer)); // check replicated to remote sites
+  EXPECT_CALL(*_store, insert(_));
   _th->handle_successful_callback(id);
 
-  delete insert_timer;
+  delete timer;
 }
