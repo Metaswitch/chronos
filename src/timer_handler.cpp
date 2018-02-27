@@ -253,6 +253,7 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
     // replicate across sites).
     timer->update_sites_on_timer_pop();
     _replicator->replicate(timer);
+
     if (_gr_replicator != NULL)
     {
       _gr_replicator->replicate(timer);

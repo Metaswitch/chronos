@@ -24,8 +24,8 @@ class ChronosGRTest(ChronosFVTest):
         # different sites, adds 100 timers, then checks that 100 timers pop.
 
         # Start initial nodes and add timers
-        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254'], True)
-        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], True)
+        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254'], 'true')
+        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], 'true')
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 0, 100)
 
@@ -41,10 +41,10 @@ class ChronosGRTest(ChronosFVTest):
         # 100 timers pop.
 
         # Start initial nodes and add timers
-        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], True)
-        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], True)
-        self.write_shared_config_for_nodes([2], 'site3', ['site1=127.0.0.11:7253','site2=127.0.0.12:7254','site4=127.0.0.14:7256'], True)
-        self.write_shared_config_for_nodes([3], 'site4', ['site1=127.0.0.11:7253','site2=127.0.0.12:7254','site3=127.0.0.13:7255'], True)
+        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], 'true')
+        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], 'true')
+        self.write_shared_config_for_nodes([2], 'site3', ['site1=127.0.0.11:7253','site2=127.0.0.12:7254','site4=127.0.0.14:7256'], 'true')
+        self.write_shared_config_for_nodes([3], 'site4', ['site1=127.0.0.11:7253','site2=127.0.0.12:7254','site3=127.0.0.13:7255'], 'true')
         start_nodes(0, 4)
         create_timers(chronos_nodes[0], 0, 25)
         create_timers(chronos_nodes[1], 25, 50)
@@ -65,8 +65,8 @@ class ChronosGRTest(ChronosFVTest):
         # then deletes them from site 2 and checks that no timers pop.
 
         # Start initial nodes and add timers
-        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254'], True)
-        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], True)
+        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254'], 'true')
+        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], 'true')
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 0, 50)
         create_timers(chronos_nodes[1], 50, 100)
@@ -85,8 +85,8 @@ class ChronosGRTest(ChronosFVTest):
 
         # Start initial noders and add timers.
         # GR is disabled through a shared config option.
-        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254'], False)
-        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], False)
+        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254'], 'false')
+        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253'], 'false')
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 0, 25)
         create_timers(chronos_nodes[1], 25, 50)
@@ -105,8 +105,8 @@ class ChronosGRTest(ChronosFVTest):
 
         # Start initial nodes and add timers.
         # GR is disabled through a shared config option.
-        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], False)
-        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], False)
+        self.write_shared_config_for_nodes([0], 'site1', ['site2=127.0.0.12:7254','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], 'false')
+        self.write_shared_config_for_nodes([1], 'site2', ['site1=127.0.0.11:7253','site3=127.0.0.13:7255','site4=127.0.0.14:7256'], 'false')
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 0, 25)
         create_timers(chronos_nodes[1], 25, 50)

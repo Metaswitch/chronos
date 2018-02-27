@@ -30,16 +30,20 @@ using ::testing::MatchesRegex;
 using ::testing::ContainerEq;
 using ::testing::UnorderedElementsAreArray;
 
-class WithGR {
-  static MockGRReplicator* return_gr_replicator() {
+class WithGR
+{
+  static MockGRReplicator* return_gr_replicator()
+  {
     // Return a mock GR replicator.
     MockGRReplicator* gr_replicator = new MockGRReplicator();
     return gr_replicator;
   }
 };
 
-class WithoutGR {
-  static MockGRReplicator* return_gr_replicator() {
+class WithoutGR
+{
+  static MockGRReplicator* return_gr_replicator()
+  {
     // Return NULL. This is how GR is disabled.
     return NULL;
   }
