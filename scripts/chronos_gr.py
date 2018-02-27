@@ -31,7 +31,7 @@ class ChronosGRTest(ChronosFVTest):
 
         # Check that all the timers have popped (10 secs with a slight delay
         # for replication)
-        sleep(12)
+        sleep(13)
         self.assert_correct_timers_received(100)
 
     def test_gr_site_failures(self):
@@ -53,10 +53,10 @@ class ChronosGRTest(ChronosFVTest):
         sleep(4)
 
         # Now kill all but a single site, and check that all timers pop within
-        # expected delay (10 seconds, plus 6 seconds delay for the site failures,
-        # plus a slight delay for replication)
+        # expected delay (10 seconds, plus 6 seconds delay for the site
+        # failures, plus a slight delay for replication)
         kill_random_nodes(3)
-        sleep(18)
+        sleep(19)
         self.assert_correct_timers_received(100)
 
     def test_gr_deleted_timers(self):
@@ -70,7 +70,7 @@ class ChronosGRTest(ChronosFVTest):
         start_nodes(0, 2)
         create_timers(chronos_nodes[0], 0, 50)
         create_timers(chronos_nodes[1], 50, 100)
-        sleep(2)
+        sleep(3)
 
         # Check that no timers pop (where we'd expect them to take a maximum
         # of 10 seconds plus 2 second site delay plus replication delay)
@@ -93,7 +93,7 @@ class ChronosGRTest(ChronosFVTest):
 
         # Check that all the timers have popped (after 10 secs with a slight
         # delay for replication).
-        sleep(12)
+        sleep(13)
         self.assert_correct_timers_received(50)
 
     def test_no_gr_site_failures(self):
@@ -117,7 +117,7 @@ class ChronosGRTest(ChronosFVTest):
         # failures, plus a slight delay for replication), and check that only
         # the timers set in the first site pop.
         kill_specific_nodes([1])
-        sleep(18)
+        sleep(19)
         self.assert_correct_timers_received(25)
 
 if __name__ == '__main__':
