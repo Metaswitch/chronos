@@ -1547,7 +1547,7 @@ protected:
 
 // Test that a successful callback is replicated to the remote sites if GR is
 // enabled.
-TEST_F(TestTimerHandlerWithGREnabled, HandleCallbackSuccess)
+TEST_F(TestTimerHandlerWithGREnabled, ReplicateCallbackSuccess)
 {
   Timer* timer = default_timer(1);
   TimerID id = timer->id;
@@ -1560,5 +1560,75 @@ TEST_F(TestTimerHandlerWithGREnabled, HandleCallbackSuccess)
   EXPECT_CALL(*_store, insert(_));
   _th->handle_successful_callback(id);
 
+  delete timer;
+}
+
+
+class TestHandleNullStats : public Base
+{
+protected:
+  void SetUp()
+  {
+    // There are fixed points throughout time where things must stay exactly the
+    // way they are. Whatever happens here will create its own timeline, its own
+    // reality, a temporal tipping point. The future revolves around you, here,
+    // now, so do good!
+    cwtest_completely_control_time();
+
+    Base::SetUp();
+    _store = new MockTimerStore();
+    _replicator = new MockReplicator();
+    _gr_replicator = NULL; // GR is disabled by default
+    // Test suite covers checking there are no failures when the stats tables
+    // are set to NULL.
+    _mock_tag_table = NULL;
+    _mock_scalar_table = NULL;
+    _mock_increment_table = NULL;
+
+    // Set up the Timer Handler
+    EXPECT_CALL(*_store, fetch_next_timers(_)).
+                         WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
+                         WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
+    // The TimerHandler deletes the MockCallback object
+    _th = new TimerHandler(_store, new MockCallback(), _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+    _cond()->block_till_waiting();
+  }
+
+  void TearDown()
+  {
+    delete _th;
+    delete _store;
+    delete _replicator;
+
+    Base::TearDown();
+
+    // I always will be. But times change, and so must I... we all change. When
+    // you think about it, we are all different people, all through our lives
+    // and that's okay, that's good!
+    cwtest_reset_time();
+  }
+
+  // Accessor functions into the timer handler's private variables
+  MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
+
+  MockInfiniteTable* _mock_tag_table;
+  MockInfiniteScalarTable* _mock_scalar_table;
+  MockIncrementTable* _mock_increment_table;
+  MockTimerStore* _store;
+  MockReplicator* _replicator;
+  MockGRReplicator* _gr_replicator;
+  TimerHandler* _th;
+};
+
+TEST_F(TestHandleNullStats, NoIncrementOnTimerCreation)
+{
+  // Add a timer. This is a new timer, so should cause the stats to
+  // increment (counts and tags). However, since NULL was passed in for the
+  // stats tables, no stats are expected to increment, and no failures should be
+  // hit either.
+  Timer* timer = default_timer(1);
+  EXPECT_CALL(*_store, fetch(_, _)).Times(1);
+  EXPECT_CALL(*_store, insert(_));
+  _th->add_timer(timer);
   delete timer;
 }
