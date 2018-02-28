@@ -50,7 +50,8 @@ void ControllerTask::run()
     }
   }
   // For a PUT or a DELETE the URL should be of the format
-  // <timer_id>-<replication_factor> or <timer_id><replica_hash>
+  // <timer_id>-<replication_factor><anything>. The <anything> is ignored, but
+  // accepted to make the API extensible.
   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
@@ -65,7 +66,9 @@ void ControllerTask::run()
       add_or_update_timer(timer_id, 0, replica_hash);
     }
   }
-  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)")))
+  else if (boost::regex_match(path,
+                              matches,
+                              boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)(.*)")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
     {
