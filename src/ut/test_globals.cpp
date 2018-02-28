@@ -224,7 +224,7 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 }
 
 // Confirm that error is thrown if invalid config is used.
-TEST_F(TestGlobals, ParseGlobalsInvalidThrowsError)
+TEST_F(TestGlobals, DeathTest_ParseGlobalsInvalidThrowsError)
 {
   // Initialize the global configuration. Use specified files, one of which contains an invalid value
   Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos_invalid.conf"),
