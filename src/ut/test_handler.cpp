@@ -148,10 +148,10 @@ TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithReplicas)
   delete added_timer; added_timer = NULL;
 }
 
-// Tests a valid request to delete an existing timer, where the timer ID follows
-// the form <timer_id>-<replication_factor><random>. This tests that the URL
-// parsing is flexible, so the URL can be extended in the future if necessary.
-// Currently this random content is ignored.
+// Tests that requests containing a URL of the form
+// /timers/<timer_id>-<replication_factor><random> are accepted. This tests that
+// the URL parsing is flexible, so the URL can be extended in the future if
+// necessary. Currently this random content is ignored.
 TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithExtendedTimerID)
 {
   Timer* added_timer;
