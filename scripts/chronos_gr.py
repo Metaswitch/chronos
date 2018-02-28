@@ -14,7 +14,7 @@ from time import sleep
 
 from os import sys, path
 sys.path.append(path.dirname(path.abspath(__file__)))
-from chronos_fv_test import ChronosFVTest, start_nodes, create_timers, kill_nodes, chronos_nodes, delete_timers, kill_random_nodes, kill_specific_nodes
+from chronos_fv_test import ChronosFVTest, start_nodes, create_timers, kill_nodes, chronos_nodes, delete_timers, kill_random_nodes
 
 # Test the GR capabilities of Chronos.
 class ChronosGRTest(ChronosFVTest):
@@ -116,7 +116,7 @@ class ChronosGRTest(ChronosFVTest):
         # existing timers to pop (10 seconds, plus 6 seconds delay for the site
         # failures, plus a slight delay for replication), and check that only
         # the timers set in the first site pop.
-        kill_specific_nodes([1])
+        kill_nodes(1, 2)
         sleep(19)
         self.assert_correct_timers_received(25)
 

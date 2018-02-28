@@ -133,7 +133,7 @@ def start_nodes(lower, upper):
 
 
 def kill_nodes(lower, upper):
-    # Kill nodes with indexes [lower, upper)
+    # Kill nodes with indexes [lower, upper]
     for p in processes[lower: upper]:
         try:
             os.kill(int(p), signal.SIGKILL)
@@ -148,16 +148,6 @@ def kill_nodes(lower, upper):
 def kill_random_nodes(count):
     # Kill a random count of the processes
     kill_list = random.sample(processes, count)
-    for p in kill_list:
-        os.kill(int(p), signal.SIGKILL)
-
-
-def kill_specific_nodes(nodes):
-    # Kill a set of specified nodes. These are specified by the order in which
-    # they were set up (ie. node set up first is node 0, etc.).
-    kill_list = []
-    for node in nodes:
-        kill_list.append(processes[node])
     for p in kill_list:
         os.kill(int(p), signal.SIGKILL)
 
