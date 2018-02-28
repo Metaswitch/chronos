@@ -37,34 +37,8 @@ void ControllerTask::run()
       add_or_update_timer(Timer::generate_timer_id(), 0, 0);
     }
   }
-  else if (path == "/timers/references")
-  {
-    if (_req.method() != htp_method_DELETE)
-    {
-      TRC_DEBUG("Dealing with timer references, but the method wasn't DELETE");
-      send_http_reply(HTTP_BADMETHOD);
-    }
-    else
-    {
-      handle_delete();
-    }
-  }
   // For a PUT or a DELETE the URL should be of the format
-  // <timer_id>-<replication_factor> or <timer_id><replica_hash>
-  else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})([[:xdigit:]]{16})")))
-  {
-    if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
-    {
-      TRC_DEBUG("Timer present, but the method wasn't PUT or DELETE");
-      send_http_reply(HTTP_BADMETHOD);
-    }
-    else
-    {
-      TimerID timer_id = std::stoull(matches[1].str(), NULL, 16);
-      uint64_t replica_hash = std::stoull(matches[2].str(), NULL, 16);
-      add_or_update_timer(timer_id, 0, replica_hash);
-    }
-  }
+  // <timer_id>-<replication_factor>
   else if (boost::regex_match(path, matches, boost::regex("/timers/([[:xdigit:]]{16})-([[:digit:]]+)")))
   {
     if ((_req.method() != htp_method_PUT) && (_req.method() != htp_method_DELETE))
@@ -163,13 +137,6 @@ void ControllerTask::add_or_update_timer(TimerID timer_id,
 
   // The store takes ownership of the timer.
   timer = NULL;
-}
-
-void ControllerTask::handle_delete()
-{
-  // We no longer need to handle deletes on resync.
-  // Return Accepted for backwards compatibility.
-  send_http_reply(HTTP_ACCEPTED);
 }
 
 void ControllerTask::handle_get()

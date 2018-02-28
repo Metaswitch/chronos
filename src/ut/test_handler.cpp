@@ -130,24 +130,6 @@ TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
   delete added_timer; added_timer = NULL;
 }
 
-// Tests a valid request to delete an existing timer
-TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithReplicas)
-{
-  Timer* added_timer;
-
-  TestFixture::controller_request("/timers/12341234123412341234123412341234", htp_method_DELETE, "", "");
-  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
-  if (TestFixture::_gr_replicator != NULL)
-  {
-    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
-  }
-  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
-  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
-  TestFixture::_task->run();
-
-  delete added_timer; added_timer = NULL;
-}
-
 // Tests a valid request to create a new timer that is on the local node
 TYPED_TEST(TestHandler, ValidJSONCreateTimerOnNode)
 {
@@ -212,14 +194,6 @@ TYPED_TEST(TestHandler, ValidJSONCreateTimerNotOnNode)
   // Check that the timer is a tombstone
   EXPECT_TRUE(added_timer->is_tombstone());
   delete added_timer; added_timer = NULL;
-}
-
-// Tests that a delete request for timer references always returns 202
-TYPED_TEST(TestHandler, ValidTimerReference)
-{
-  TestFixture::controller_request("/timers/references", htp_method_DELETE, "{\"IDs\": []}", "");
-  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 202, _));
-  TestFixture::_task->run();
 }
 
 // Tests that get requests for timer references with a
@@ -349,30 +323,12 @@ TYPED_TEST(TestHandler, InvalidMethodWithTimerWithoutReplicas)
   TestFixture::_task->run();
 }
 
-// Invalid request: Tests that requests to create a timer but the method is
-// wrong get rejected.
-TYPED_TEST(TestHandler, InvalidMethodWithTimerWithReplicas)
-{
-  TestFixture::controller_request("/timers/12341234123412341234123412341234", htp_method_POST, "", "");
-  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 405, _));
-  TestFixture::_task->run();
-}
-
 // Invalid request: Tests that requests to modify a timer but timer ID is invalid
 // get rejected.
 TYPED_TEST(TestHandler, InvalidTimer)
 {
   TestFixture::controller_request("/timers/1234", htp_method_PUT, "", "");
   EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 404, _));
-  TestFixture::_task->run();
-}
-
-// Invalid request: Tests that requests for timer references that aren't deletes
-// get rejected.
-TYPED_TEST(TestHandler, InvalidMethodTimerReferences)
-{
-  TestFixture::controller_request("/timers/references", htp_method_PUT, "", "");
-  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 405, _));
   TestFixture::_task->run();
 }
 
