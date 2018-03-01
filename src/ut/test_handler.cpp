@@ -130,6 +130,35 @@ TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithoutReplicas)
   delete added_timer; added_timer = NULL;
 }
 
+// Tests that requests containing a URL of the form
+// /timers/<timer_id>-<replication_factor><random> are accepted. This tests that
+// the URL parsing is flexible, so the URL can be extended in the future if
+// necessary. Currently this random content is ignored.
+TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithExtendedTimerID)
+{
+  Timer* added_timer;
+
+  TestFixture::controller_request("/timers/1234123412341234-2RANDOMSTUFF!<>!!@123", htp_method_DELETE, "", "");
+
+  // It's a valid timer so we expect it to be replicated in/cross-site, added
+  // to this node, and have a 200 response
+  EXPECT_CALL(*TestFixture::_replicator, replicate(_));
+  if (TestFixture::_gr_replicator != NULL)
+  {
+    EXPECT_CALL(*TestFixture::_gr_replicator, replicate(_));
+  }
+  EXPECT_CALL(*TestFixture::_th, add_timer(_,_)).WillOnce(SaveArg<0>(&added_timer));
+  EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
+  TestFixture::_task->run();
+
+  // Check that the timer ID and replication factor have been parsed correctly.
+  EXPECT_EQ(added_timer->_replication_factor, 2);
+  // The ID is the passed in ID converted to base 10.
+  EXPECT_EQ(added_timer->id, 1311693406324658740);
+
+  delete added_timer; added_timer = NULL;
+}
+
 // Tests a valid request to create a new timer that is on the local node
 TYPED_TEST(TestHandler, ValidJSONCreateTimerOnNode)
 {
