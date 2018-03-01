@@ -34,7 +34,7 @@ public:
       _gr_replicator(gr_replicator),
       _handler(handler)
     {}
-  
+
     ~Config()
     {}
 
@@ -59,7 +59,6 @@ public:
                            uint32_t replication_factor,
                            uint64_t replica_hash);
   void handle_get();
-  void handle_delete();
   bool node_is_in_cluster(std::string requesting_node);
 
 protected:
