@@ -43,7 +43,6 @@ protected:
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
-    _gr_replicator = NULL; // GR is disabled by default
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -76,7 +75,6 @@ protected:
   MockTimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
-  MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
@@ -85,7 +83,8 @@ TEST_F(TestTimerHandlerFetchAndPop, StartUpAndShutDown)
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 }
 
@@ -102,7 +101,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopOneTimer)
 
   EXPECT_CALL(*_callback, perform(timer));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer; timer = NULL;
 }
@@ -122,7 +122,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopRepeatedTimer)
 
   EXPECT_CALL(*_callback, perform(timer)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer;
 }
@@ -143,7 +144,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSimultaneously)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -167,7 +169,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleTimersSeries)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -195,7 +198,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopMultipleRepeatingTimers)
   EXPECT_CALL(*_callback, perform(timer1)).Times(2);
   EXPECT_CALL(*_callback, perform(timer2)).Times(2);
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
   delete timer1;
   delete timer2;
@@ -220,7 +224,8 @@ TEST_F(TestTimerHandlerFetchAndPop, EmptyStore)
   EXPECT_CALL(*_callback, perform(timer1));
   EXPECT_CALL(*_callback, perform(timer2));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
   // The first timer has been handled, but the store's now empty.  Pretend the store
@@ -243,7 +248,8 @@ TEST_F(TestTimerHandlerFetchAndPop, LeakTest)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(timers));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 }
 
@@ -274,7 +280,8 @@ TEST_F(TestTimerHandlerFetchAndPop, FutureTimerPop)
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
   EXPECT_CALL(*_callback, perform(_));
 
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
   cwtest_advance_time_ms(100);
@@ -293,7 +300,8 @@ TEST_F(TestTimerHandlerFetchAndPop, PopTombstoneTimer)
   EXPECT_CALL(*_store, fetch_next_timers(_)).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                        WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-  _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+  // NULL is passed in for the GRReplicator, as it is disabled by default.
+  _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
   _cond()->block_till_waiting();
 
   _th->pop(timer1);
@@ -316,7 +324,6 @@ protected:
     _store = new MockTimerStore();
     _callback = new MockCallback();
     _replicator = new MockReplicator();
-    _gr_replicator = NULL; // GR is disabled by default
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
@@ -325,7 +332,8 @@ protected:
     EXPECT_CALL(*_store, fetch_next_timers(_)).
                          WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                          WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-    _th = new TimerHandler(_store, _callback, _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+    // NULL is passed in for the GRReplicator, as it is disabled by default.
+    _th = new TimerHandler(_store, _callback, _replicator, NULL, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
     _cond()->block_till_waiting();
   }
 
@@ -356,7 +364,6 @@ protected:
   MockTimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
-  MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
@@ -991,15 +998,15 @@ protected:
     _store = new TimerStore(_health_checker);
     _callback = new MockCallback();
     _replicator = new MockReplicator();
-    _gr_replicator = new MockGRReplicator();
     _mock_tag_table = new MockInfiniteTable();
     _mock_scalar_table = new MockInfiniteScalarTable();
     _mock_increment_table = new MockIncrementTable();
 
+    // NULL is passed in for the GRReplicator, as it is disabled by default.
     _th = new TimerHandler(_store,
                            _callback,
                            _replicator,
-                           _gr_replicator,
+                           NULL,
                            _mock_increment_table,
                            _mock_tag_table,
                            _mock_scalar_table);
@@ -1012,7 +1019,6 @@ protected:
     delete _store;
     delete _health_checker;
     delete _replicator;
-    delete _gr_replicator;
     delete _mock_tag_table;
     delete _mock_scalar_table;
     delete _mock_increment_table;
@@ -1032,7 +1038,6 @@ protected:
   TimerStore* _store;
   MockCallback* _callback;
   MockReplicator* _replicator;
-  MockGRReplicator* _gr_replicator;
   TimerHandler* _th;
 };
 
@@ -1504,17 +1509,13 @@ protected:
     _store = new MockTimerStore();
     _replicator = new MockReplicator();
     _gr_replicator = new MockGRReplicator();
-    // Stats are not tested using this test base
-    _mock_tag_table = NULL;
-    _mock_scalar_table = NULL;
-    _mock_increment_table = NULL;
 
     // Set up the Timer Handler
     EXPECT_CALL(*_store, fetch_next_timers(_)).
                          WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>())).
                          WillOnce(SetArgReferee<0>(std::unordered_set<Timer*>()));
-    // The TimerHandler deletes the MockCallback object
-    _th = new TimerHandler(_store, new MockCallback(), _replicator, _gr_replicator, _mock_increment_table, _mock_tag_table, _mock_scalar_table);
+    // Stats are not tested in this test base, so pass in NULL for the stats tables.
+    _th = new TimerHandler(_store, new MockCallback(), _replicator, _gr_replicator, NULL, NULL, NULL);
     _cond()->block_till_waiting();
   }
 
@@ -1524,6 +1525,7 @@ protected:
     delete _store;
     delete _replicator;
     delete _gr_replicator;
+    // MockCallback is deleted in the TimerHandler
 
     Base::TearDown();
 
@@ -1536,9 +1538,6 @@ protected:
   // Accessor functions into the timer handler's private variables
   MockPThreadCondVar* _cond() { return (MockPThreadCondVar*)_th->_cond; }
 
-  MockInfiniteTable* _mock_tag_table;
-  MockInfiniteScalarTable* _mock_scalar_table;
-  MockIncrementTable* _mock_increment_table;
   MockTimerStore* _store;
   MockReplicator* _replicator;
   MockGRReplicator* _gr_replicator;
