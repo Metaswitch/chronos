@@ -151,6 +151,11 @@ TYPED_TEST(TestHandler, ValidJSONDeleteTimerWithExtendedTimerID)
   EXPECT_CALL(*TestFixture::_httpstack, send_reply(_, 200, _));
   TestFixture::_task->run();
 
+  // Check that the timer ID and replication factor have been parsed correctly.
+  EXPECT_EQ(added_timer->_replication_factor, 2);
+  // The ID is the passed in ID converted to base 10.
+  EXPECT_EQ(added_timer->id, 1311693406324658740);
+
   delete added_timer; added_timer = NULL;
 }
 
