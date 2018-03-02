@@ -82,6 +82,13 @@ public:
   GLOBAL(remote_sites, std::map<std::string, std::string>);
   GLOBAL(remote_site_names, std::vector<std::string>);
   GLOBAL(remote_site_dns_records, std::vector<std::string>);
+  // GR replication of timers is resource intensive. There is therefore a
+  // tradeoff between having redundancy of timers and impacting performance.
+  // The long term plan is to allow the client to determine whether a timer is
+  // GR replicated or not, as it is best placed to understand the requirements
+  // for a timer. In the meantime, this option controls whether the Chronos
+  // process does any GR replication (where the default is no GR replication).
+  GLOBAL(replicate_timers_across_sites, bool);
 
 public:
   void update_config();

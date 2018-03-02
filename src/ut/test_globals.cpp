@@ -106,12 +106,16 @@ TEST_F(TestGlobals, ParseGlobalsDefaults)
   EXPECT_EQ(remote_site_names.size(), 0);
   EXPECT_EQ(remote_site_dns_records.size(), 0);
 
+  bool replicate_timers_across_sites;
+  test_global->get_replicate_timers_across_sites(replicate_timers_across_sites);
+  EXPECT_FALSE(replicate_timers_across_sites);
+
   delete test_global; test_global = NULL;
 }
 
 TEST_F(TestGlobals, ParseGlobalsNotDefaults)
 {
-  // Initialize the global configuration. Use default configuration
+  // Initialize the global configuration. Use specified files, containing non-default values
   Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos.conf"),
                                      std::string(UT_DIR).append("/chronos_cluster.conf"),
                                      std::string(UT_DIR).append("/chronos_shared.conf"));
@@ -211,6 +215,27 @@ TEST_F(TestGlobals, ParseGlobalsNotDefaults)
   expected_remote_site_dns_records.push_back("foo.com:800");
   expected_remote_site_dns_records.push_back("bar.com:7254");
   EXPECT_THAT(expected_remote_site_dns_records, UnorderedElementsAreArray(remote_site_dns_records));
+
+  bool replicate_timers_across_sites;
+  test_global->get_replicate_timers_across_sites(replicate_timers_across_sites);
+  EXPECT_TRUE(replicate_timers_across_sites);
+
+  delete test_global; test_global = NULL;
+}
+
+// Confirm that error is thrown if invalid config is used.
+TEST_F(TestGlobals, DeathTest_ParseGlobalsInvalidThrowsError)
+{
+  // Initialize the global configuration. Use specified files, one of which contains an invalid value
+  Globals* test_global = new Globals(std::string(UT_DIR).append("/chronos_invalid.conf"),
+                                     std::string(UT_DIR).append("./no_chronos_cluster_file"),
+                                     std::string(UT_DIR).append("./no_chronos_shared_file"));
+
+
+  // Confirm error is trown when trying to read all global entries
+  ASSERT_EXIT(test_global->update_config(),
+              ::testing::ExitedWithCode(1),
+              "Error parsing config file.*");
 
   delete test_global; test_global = NULL;
 }

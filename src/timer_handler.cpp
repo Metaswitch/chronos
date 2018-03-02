@@ -180,7 +180,10 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       {
         tags_to_remove = existing_timer->tags;
         TRC_DEBUG("New timer is a tombstone overwriting an existing timer");
-        _all_timers_table->decrement(1);
+        if (_all_timers_table)
+        {
+          _all_timers_table->decrement(1);
+        }
       }
     }
     else
@@ -199,7 +202,10 @@ void TimerHandler::add_timer(Timer* timer, bool update_stats)
       else
       {
         TRC_DEBUG("New timer being added, and no existing timer");
-        _all_timers_table->increment(1);
+        if (_all_timers_table)
+        {
+          _all_timers_table->increment(1);
+        }
       }
     }
 
@@ -230,7 +236,10 @@ void TimerHandler::return_timer(Timer* timer)
 
     // Decrement global timer count for tombstoned timer
     TRC_DEBUG("Timer won't pop again and is being tombstoned");
-    _all_timers_table->decrement(1);
+    if (_all_timers_table)
+    {
+      _all_timers_table->decrement(1);
+    }
   }
 
   // Timer will be re-added, but stats should not be updated, as
@@ -248,10 +257,16 @@ void TimerHandler::handle_successful_callback(TimerID timer_id)
 
   if (timer)
   {
-    // Update the sites
+    // Update the locate sites, and, if the GR replicator exists, also update
+    // the remote sites (it will only exist if the system has been configured to
+    // replicate across sites).
     timer->update_sites_on_timer_pop();
     _replicator->replicate(timer);
-    _gr_replicator->replicate(timer);
+
+    if (_gr_replicator != NULL)
+    {
+      _gr_replicator->replicate(timer);
+    }
 
     // Pass the timer pair back to the store, relinquishing responsibility for it.
     _store->insert(timer);
@@ -274,7 +289,10 @@ void TimerHandler::handle_failed_callback(TimerID timer_id)
     if (!timer->is_tombstone())
     {
       update_statistics(std::map<std::string, uint32_t>(), timer->tags);
-      _all_timers_table->decrement(1);
+      if (_all_timers_table)
+      {
+        _all_timers_table->decrement(1);
+      }
     }
   }
 
@@ -593,7 +611,7 @@ void TimerHandler::save_site_information(Timer* new_timer, Timer* old_timer)
 void TimerHandler::update_statistics(std::map<std::string, uint32_t> new_tags,
                                      std::map<std::string, uint32_t> old_tags)
 {
-  if (_tagged_timers_table)
+  if (_tagged_timers_table && _scalar_timers_table)
   {
     std::map<std::string, uint32_t> tags_to_add;
     std::map<std::string, uint32_t> tags_to_remove;
