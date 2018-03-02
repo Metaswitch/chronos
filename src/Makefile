@@ -29,6 +29,7 @@ COMMON_SOURCES := chronos_internal_connection.cpp \
                   statistic.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
+                  static_dns_cache.cpp \
                   dnsparser.cpp \
                   zmq_lvc.cpp \
                   a_record_resolver.cpp \

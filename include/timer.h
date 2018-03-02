@@ -40,7 +40,7 @@ public:
 
   // Returns the next time to pop in ms after epoch
   uint32_t next_pop_time() const;
-  
+
   // Required method for use in a heap
   uint64_t get_pop_time() const;
 
@@ -92,8 +92,8 @@ public:
   // cluster view ID)
   void update_cluster_information();
 
-  // Member variables (mostly public since this is pretty much a struct with utility
-  // functions, rather than a full-blown object).
+  // Member variables (mostly public since this is pretty much a struct with
+  // utility functions, rather than a full-blown object).
   TimerID id;
   uint32_t start_time_mono_ms;
   uint32_t interval_ms;

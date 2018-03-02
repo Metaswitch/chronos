@@ -63,4 +63,4 @@ Chronos uses our common infrastructure to run the unit tests. How to run the UTs
 
 ## Running Functional Tests
 
-To run the Chronos FV tests, run `make fv_test`.
+To run the Chronos FV tests, change to the top-level `chronos` directory and run `make fv_test`.

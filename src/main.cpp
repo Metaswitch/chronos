@@ -360,15 +360,25 @@ int main(int argc, char** argv)
 
   // Create the timer store, handlers, replicators...
   int gr_threads;
+  bool replicate_timers_across_sites;
   __globals->get_gr_threads(gr_threads);
+  __globals->get_replicate_timers_across_sites(replicate_timers_across_sites);
 
   TimerStore* store = new TimerStore(hc);
   Replicator* local_rep = new Replicator(http_resolver,
                                          exception_handler);
-  GRReplicator* gr_rep = new GRReplicator(http_resolver,
-                                          exception_handler,
-                                          gr_threads,
-                                          remote_chronos_comm_monitor);
+
+  // If the config option to replicate timers to other sites is set to false,
+  // then set the GRReplicator to NULL, as it will never be needed.
+  GRReplicator* gr_rep =  NULL;
+  if (replicate_timers_across_sites)
+  {
+    gr_rep = new GRReplicator(http_resolver,
+                              exception_handler,
+                              gr_threads,
+                              remote_chronos_comm_monitor);
+  }
+
   HTTPCallback* callback = new HTTPCallback(http_resolver,
                                             exception_handler);
   TimerHandler* handler = new TimerHandler(store,

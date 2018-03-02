@@ -47,7 +47,7 @@ Chronos is made up of 8 major components:
  * Timer Handler - Handles the worker threads that pop the timers.
  * Timer Wheel - The local timer wheel.
  * HTTP Callback Client - A simple HTTP client that calls back to the client.
- * Chronos connection - Responsible for resynchronizing timers between Chronos nodes 
+ * Chronos connection - Responsible for resynchronizing timers between Chronos nodes
  * GR replicator - Responsible for replicating timers between sites
 
 ![Architecture Diagram](architecture.png?raw=true)
