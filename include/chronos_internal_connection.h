@@ -26,13 +26,14 @@
 class ChronosInternalConnection
 {
 public:
-  ChronosInternalConnection(HttpResolver* resolver,
+  ChronosInternalConnection(HttpClient* client,
                             TimerHandler* handler,
                             Replicator* replicator,
                             Alarm* alarm,
                             SNMP::U32Scalar* _remaining_nodes_scalar = NULL,
                             SNMP::CounterTable* _timers_processed_table = NULL,
-                            SNMP::CounterTable* _invalid_timers_processed_table = NULL);
+                            SNMP::CounterTable* _invalid_timers_processed_table = NULL,
+                            bool resync_on_start = true);
   virtual ~ChronosInternalConnection();
 
   // Performs a resynchronization operation

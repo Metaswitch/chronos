@@ -131,17 +131,36 @@ void Replicator::worker_thread_entry_point()
     {
       std::string replication_url = replication_request->url.c_str();
       std::string replication_body = replication_request->body.data();
-      // Send the request.
-      HTTPCode http_rc = _http_client->send_put(replication_url,
-                                                replication_body,
-                                                0L); // SAS trail
 
-      if (http_rc != HTTP_OK)
+      std::string server;
+      std::string scheme;
+      std::string path;
+      bool valid_url = Utils::parse_http_url(replication_url, scheme, server, path);
+
+      if (valid_url)
       {
-        TRC_DEBUG("Failed to process replication for %s. HTTP rc %ld",
-                  replication_url.c_str(),
-                  http_rc);
+        HttpResponse resp = HttpRequest(server,
+                                        scheme,
+                                        _http_client,
+                                        HttpClient::RequestType::PUT,
+                                        path)
+                            .set_body(replication_body)
+                            .send();
+        HTTPCode http_rc = resp.get_rc();
+
+        if (http_rc != HTTP_OK)
+        {
+          TRC_DEBUG("Failed to process replication for %s. HTTP rc %ld",
+                    replication_url.c_str(),
+                    http_rc);
+        }
       }
+      //LCOV_EXCL_START
+      else
+      {
+        TRC_DEBUG("Invalid URL for replication: %s", replication_url.c_str());
+      }
+      // LCOV_EXCL_STOP
     }
     //LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)

@@ -109,10 +109,8 @@ void HTTPCallback::worker_thread_entry_point()
       std::string callback_body = timer->callback_body;
 
       // Set up the headers.
-      std::map<std::string, std::string> headers;
-      headers.insert(std::make_pair("X-Sequence-Number",
-                                    std::to_string(timer->sequence_number)));
-      headers.insert(std::make_pair("Content-Type", "application/octet-stream"));
+      std::string seq_no_hdr = "X-Sequence-Number: " + std::to_string(timer->sequence_number);
+      std::string content_type_hdr = "Content-Type: application/octet-stream";
 
       // Return the timer to the store. This avoids the error case where the client
       // attempts to update the timer based on the pop, finds nothing in the store,
@@ -121,29 +119,47 @@ void HTTPCallback::worker_thread_entry_point()
       _handler->return_timer(timer);
       timer = NULL; // We relinquish control of the timer when we give it back to the store.
 
-      //TODO The send_post function currently has no method for sending headers
-      // on the request. Should fix this up soon, but we default the Content-Type
-      // header, and aren't using Sequence Number, so not a huge issue atm.
       // Send the request.
-      HTTPCode http_rc = _http_client->send_post(callback_url,
-                                                 headers,
-                                                 callback_body,
-                                                 0L);
+      std::string server;
+      std::string scheme;
+      std::string path;
+      bool valid_url = Utils::parse_http_url(callback_url, scheme, server, path);
 
-      if (http_rc == HTTP_OK)
+      if (valid_url)
       {
-        // The callback succeeded, so we need to re-find the timer, and replicate it.
-        TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
-        _handler->handle_successful_callback(timer_id);
+        HttpResponse resp = HttpRequest(server,
+                                        scheme,
+                                        _http_client,
+                                        HttpClient::RequestType::POST,
+                                        path)
+                            .set_body(callback_body)
+                            .add_header(seq_no_hdr)
+                            .add_header(content_type_hdr)
+                            .send();
+        HTTPCode http_rc = resp.get_rc();
+
+        if (http_rc == HTTP_OK)
+        {
+          // The callback succeeded, so we need to re-find the timer, and replicate it.
+          TRC_DEBUG("Callback for timer \"%lu\" was successful", timer_id);
+          _handler->handle_successful_callback(timer_id);
+        }
+        else
+        {
+          TRC_DEBUG("Failed to process callback for %lu: URL %s, HTTP rc %ld", timer_id,
+                    callback_url.c_str(), http_rc);
+
+          // The callback failed, and so we need to remove the timer from the store.
+          _handler->handle_failed_callback(timer_id);
+        }
       }
+      //LCOV_EXCL_START
       else
       {
-        TRC_DEBUG("Failed to process callback for %lu: URL %s, HTTP rc %ld", timer_id,
-                  callback_url.c_str(), http_rc);
-
-        // The callback failed, and so we need to remove the timer from the store.
+        TRC_ERROR("Invalid callback url: %s", callback_url.c_str());
         _handler->handle_failed_callback(timer_id);
       }
+      // LCOV_EXCL_STOP
     }
     //LCOV_EXCL_START - No exception testing in UT
     CW_EXCEPT(_exception_handler)

@@ -27,13 +27,15 @@
 #include "globals.h"
 #include "chronos_pd_definitions.h"
 
-ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
+ChronosInternalConnection::ChronosInternalConnection(HttpClient* client,
                                                      TimerHandler* handler,
                                                      Replicator* replicator,
                                                      Alarm* alarm,
                                                      SNMP::U32Scalar* remaining_nodes_scalar,
                                                      SNMP::CounterTable* timers_processed_table,
-                                                     SNMP::CounterTable* invalid_timers_processed_table) :
+                                                     SNMP::CounterTable* invalid_timers_processed_table,
+                                                     bool resync_on_start) :
+  _http(client),
   _handler(handler),
   _replicator(replicator),
   _alarm(alarm),
@@ -41,21 +43,6 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
   _timers_processed_table(timers_processed_table),
   _invalid_timers_processed_table(invalid_timers_processed_table)
 {
-  std::string bind_address;
-  __globals->get_bind_address(bind_address);
-  _http = new HttpClient(false,
-                         resolver,
-                         nullptr,
-                         nullptr,
-                         SASEvent::HttpLogLevel::NONE,
-                         nullptr,
-                         false,
-                         false,
-                         -1,
-                         false,
-                         "",
-                         bind_address);
-
   // Create an updater to control when Chronos should resynchronise. This uses
   // SIGUSR1 rather than the default SIGHUP, and we should resynchronise on
   // start up
@@ -63,7 +50,7 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
                    (this,
                    std::mem_fun(&ChronosInternalConnection::resynchronize),
                    &_sigusr1_handler,
-                   true);
+                   resync_on_start);
 
   // Zero the statistic to start with
   if (_remaining_nodes_scalar)
@@ -75,7 +62,6 @@ ChronosInternalConnection::ChronosInternalConnection(HttpResolver* resolver,
 ChronosInternalConnection::~ChronosInternalConnection()
 {
   delete _updater; _updater = NULL;
-  delete _http; _http = NULL;
 }
 
 void ChronosInternalConnection::resynchronize()
@@ -463,7 +449,11 @@ HTTPCode ChronosInternalConnection::send_delete(const std::string& server,
                                                 const std::string& body)
 {
   std::string path = "/timers/references";
-  HTTPCode rc = _http->send_delete("http://" + server + path, 0, body);
+  HttpResponse resp = HttpRequest(server, "http", _http, HttpClient::RequestType::DELETE, path)
+    .set_body(body)
+    .send();
+  HTTPCode rc = resp.get_rc();
+
   return rc;
 }
 
@@ -493,10 +483,14 @@ HTTPCode ChronosInternalConnection::send_get(const std::string& server,
 {
   std::string range_header = std::string(HEADER_RANGE) + ":" +
                              std::to_string(MAX_TIMERS_IN_RESPONSE);
-  std::vector<std::string> headers;
-  headers.push_back(range_header);
 
-  return _http->send_get("http://" + server + path, response, headers, 0);
+  HttpResponse resp = HttpRequest(server, "http", _http, HttpClient::RequestType::GET, path)
+    .add_header(range_header)
+    .send();
+  HTTPCode rc = resp.get_rc();
+  response = resp.get_body();
+
+  return rc;
 }
 
 std::string ChronosInternalConnection::create_delete_body(std::map<TimerID, int> delete_map)
@@ -552,4 +546,3 @@ bool ChronosInternalConnection::get_replica_level(int& index,
 
   return false;
 }
-

@@ -22,31 +22,37 @@ ChronosGRConnection::ChronosGRConnection(const std::string& remote_site,
 {
   std::string bind_address;
   __globals->get_bind_address(bind_address);
-  _http = new HttpConnection(remote_site,
-                             false,
-                             resolver,
-                             nullptr,
-                             nullptr,
-                             SASEvent::HttpLogLevel::NONE,
-                             nullptr,
-                             "http",
-                             false,
-                             true,
-                             -1,
-                             false,
-                             "",
-                             bind_address);
+
+  _http_client = new HttpClient(false,
+                                resolver,
+                                nullptr,
+                                nullptr,
+                                SASEvent::HttpLogLevel::NONE,
+                                nullptr,
+                                false,
+                                true,
+                                -1,
+                                false,
+                                "",
+                                bind_address);
+
+  _http_conn = new HttpConnection(remote_site,
+                                  _http_client);
 }
 
 ChronosGRConnection::~ChronosGRConnection()
 {
-  delete _http; _http = NULL;
+  delete _http_conn; _http_conn = nullptr;
+  delete _http_client; _http_client = nullptr;
 }
 
 void ChronosGRConnection::send_put(std::string url,
                                    std::string body)
 {
-  HTTPCode rc = _http->send_put(url, body, 0);
+  HttpResponse resp = _http_conn->create_request(HttpClient::RequestType::PUT, url)
+    .set_body(body)
+    .send();
+  HTTPCode rc = resp.get_rc();
 
   if (rc != HTTP_OK)
   {
