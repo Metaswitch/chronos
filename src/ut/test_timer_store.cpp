@@ -600,8 +600,47 @@ TYPED_TEST(TestTimerStore, IterateOverTimers)
     count++;
   }
 
-  ASSERT_EQ(count, 3);
+  ASSERT_EQ(3, count);
+}
 
+// Test that the ShortWheelIterator correctly skips over a timer due to pop
+// before the time_from when it's in the short wheel
+TYPED_TEST(TestTimerStore, IterateOverShortWheelTimersTimeFrom)
+{
+  // We want to add 2 timers to the short wheel, which are both in the same
+  // bucket and have some time between them. To do this, we insert the first
+  // first timer at the start of the next bucket. We then add the 2nd timer half
+  // of the SHORT_WHEEL_RESOLUTION_MS after the first, ensuring they're both in
+  // the next short wheel bucket.
+  uint32_t next_bucket_time_ms = TestFixture::ts->to_short_wheel_resolution(get_time_ms()) +
+                                 TimerStore::SHORT_WHEEL_RESOLUTION_MS;
+
+  // Create a timer that will pop at the start of the next short wheel bucket
+  Timer* timer4 = default_timer(4);
+  timer4->interval_ms = next_bucket_time_ms - get_time_ms();
+  timer4->repeat_for = timer4->interval_ms;
+  TestFixture::ts->insert(timer4);
+
+  // Create a timer that will pop halfway through the next short wheel bucket
+  Timer* timer5 = default_timer(5);
+  timer5->interval_ms = next_bucket_time_ms - get_time_ms() + (TimerStore::SHORT_WHEEL_RESOLUTION_MS / 2);
+  timer5->repeat_for = timer5->interval_ms;
+  TestFixture::ts->insert(timer5);
+
+  // Ask for timer from 1ms after the first timer, and check that only the
+  // second is returned
+  int count = 0;
+  for (TimerStore::TSIterator it = TestFixture::ts->begin(next_bucket_time_ms + 1);
+       !(it.end());
+       ++it)
+  {
+    count++;
+  }
+
+  ASSERT_EQ(1, count);
+
+  delete timer4;
+  delete timer5;
 }
 
 // Test that adding timers to the bucket "behind" where the current time
