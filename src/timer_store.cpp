@@ -525,8 +525,9 @@ bool TimerStore::TSBaseWheelIterator::end() const
           (_bucket == _end_bucket));
 }
 
-// Fill _ordered_timers with the timers from the next bucket, if we're not at
-// the end of the wheel.
+// Fill _ordered_timers with the timers from the next bucket containing any
+// timers, if we're not at the end of the wheel, and leave _iterator pointing
+// to the next timer.
 void TimerStore::TSBaseWheelIterator::next_bucket()
 {
   _ordered_timers.clear();
