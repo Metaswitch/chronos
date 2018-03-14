@@ -82,9 +82,17 @@ public:
   static const int SHORT_WHEEL_RESOLUTION_MS = 256;
 #endif
 
+  /// Base class for an iterator over Timers in the TimerStore in order from
+  /// earliest to latest.
   class TSOrderedTimerIterator
   {
   protected:
+    /// Constructor.
+    ///
+    ///
+    /// @param ts        The TimerStore over which to iterate
+    /// @param time_from The time at which to start. Only Timers due to pop
+    ///                  after this time are returned by the iterator.
     TSOrderedTimerIterator(TimerStore* ts, uint32_t time_from);
 
     void iterate_through_ordered_timers();
@@ -95,6 +103,8 @@ public:
     uint32_t _time_from;
   };
 
+  /// Abstract base class for an iterator over timers in either the short wheel
+  /// or the long wheel.
   class TSBaseWheelIterator : public TSOrderedTimerIterator
   {
   public:
@@ -103,15 +113,27 @@ public:
     bool end() const;
 
   protected:
-    // Initialisation of the iterator uses virtual methods, and so happens in
-    // the init() method rather than the constructor.
-    // Subclasses *must* call init() in their constructor to complete
-    // initialization.
+    /// Constructor.
+    ///
+    /// Initialisation of the iterator uses virtual methods, and so happens in
+    /// the init() method rather than the constructor.
+    /// Subclasses *must* call init() in their constructor to complete
+    /// initialization.
+    ///
+    /// @param ts          The TimerStore over which to iterate
+    /// @param time_from   The time at which to start. Only Timers due to pop
+    ///                    after this time are returned by the iterator.
+    /// @param resolution  The resolution in ms of the wheel.
+    /// @param num_buckets The number of buckets in the wheel.
+    /// @param period      The period in ms of the wheel.
     TSBaseWheelIterator(TimerStore* ts,
                         uint32_t time_from,
                         int resolution,
                         int num_buckets,
                         int period);
+
+    /// Performs initialisation of the iterator. Must be called in the
+    /// Constructor of any derived class.
     void init();
 
   private:
@@ -122,13 +144,21 @@ public:
     int _bucket;
     void next_bucket();
 
-    // Kick the timer store to refill this wheel.
+    /// Kick the timer store to refill this wheel.
     virtual void refill_wheel_from_timer_store() = 0;
 
-    // Round down the given time to the resolution of this wheel.
+    /// Round down the given time to the resolution of this wheel.
+    ///
+    /// @param t The time to round down.
+    ///
+    /// @returns The time rounded down to the nearest bucket boundary.
     virtual uint32_t to_wheel_resolution(uint32_t t) = 0;
 
-    // Get the Bucket at the specified index from the TimerStore.
+    /// Get the Bucket at the specified index from the TimerStore.
+    ///
+    /// @param bucket_index The index of the Bucket in the wheel.
+    ///
+    /// @returns The Bucket at the specified index.
     virtual Bucket& get_bucket(int bucket_index) = 0;
   };
 
