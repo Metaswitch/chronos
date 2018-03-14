@@ -449,9 +449,26 @@ TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
                                 to_short_wheel_resolution(
                                    _ts->_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
   {
+
     _bucket = (time_from / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
-    uint32_t current_bucket = (_ts->_tick_timestamp / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
+    int current_bucket = (_ts->_tick_timestamp / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
     _end_bucket = current_bucket + SHORT_WHEEL_NUM_BUCKETS;
+
+    // We can never return timers from a bucket earlier than the current bucket,
+    // as we clear out the bucket once we move onto the next one.
+    // Therefore, if the bucket that time_from falls into (_bucket) is less than
+    // the bucket that the current time falls into (current_bucket), then
+    // _bucket is logically in the "future".
+    // In order to ensure that we only loop through each bucket once, we add
+    // SHORT_WHEEL_NUM_BUCKETS to _bucket, moving it the correct distance from
+    // _end_bucket.
+    // Because _end_bucket is always SHORT_WHEEL_NUM_BUCKETS ahead of
+    // current_bucket, _bucket will still always be less than _end_bucket.
+    if (_bucket < current_bucket)
+    {
+      _bucket += SHORT_WHEEL_NUM_BUCKETS;
+    }
+
     next_bucket();
   }
   else
