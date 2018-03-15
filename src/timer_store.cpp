@@ -545,14 +545,12 @@ void TimerStore::TSBaseWheelIterator::next_bucket()
     {
       iterate_through_ordered_timers();
 
-      // LCOV_EXCL_START
       if (_iterator == _ordered_timers.end())
       {
         _ordered_timers.clear();
         _iterator = _ordered_timers.end();
         ++_bucket;
       }
-      // LCOV_EXCL_STOP
     }
     else
     {
