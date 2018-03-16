@@ -461,32 +461,47 @@ void TimerStore::TSBaseWheelIterator::init()
                                 to_wheel_resolution(_ts->_tick_timestamp +
                                                     _period)))
   {
-    // time_from points to a time in this wheel.
+    // time_from points to a time in this wheel, or earlier.
 
-    // Calculate which bucket time_from lies in, as that's the bucket in which
-    // our iterator should start.
-    _bucket = (_time_from / _resolution) % _num_buckets;
+    // _bucket is the bucket in which the iterator should start
+    // _end_bucket is the bucket at which is should stop
 
     // Calculate which bucket the current time lies in
     int current_bucket = (_ts->_tick_timestamp / _resolution) % _num_buckets;
 
+    if (Utils::overflow_less_than(_time_from, _ts->_tick_timestamp))
+    {
+      // We're being asked to iterate over timers from earlier than now. But
+      // any buckets "prior" to the current bucket actually contain timers later
+      // than now (because wheels are circular), so we must actually start from
+      // the current bucket.
+      _bucket = current_bucket;
+    }
+    else
+    {
+      // We're being asked to iterate over timers from later than now, so we
+      // calculate the bucket time_from lies in, and that's the starting bucket
+      // for our iterator.
+      _bucket = (_time_from / _resolution) % _num_buckets;
+
+      // We can never return timers from a bucket earlier than the current bucket,
+      // as we clear out the bucket once we move onto the next one.
+      // Therefore, if the bucket that time_from falls into (_bucket) is less than
+      // the bucket that the current time falls into (current_bucket), then
+      // _bucket is logically in the "future".
+      // In order to ensure that we only loop through each bucket once, we add
+      // _num_buckets to _bucket, moving it the correct distance from _end_bucket.
+      // Because _end_bucket is always _num_buckets ahead of current_bucket,
+      // _bucket will still always be less than _end_bucket.
+      if (_bucket < current_bucket)
+      {
+        _bucket += _num_buckets;
+      }
+    }
+
     // When iterating through the buckets, we must stop when we reach the "end"
     // of the wheel, which is always _num_buckets ahead of the current bucket.
     _end_bucket = current_bucket + _num_buckets;
-
-    // We can never return timers from a bucket earlier than the current bucket,
-    // as we clear out the bucket once we move onto the next one.
-    // Therefore, if the bucket that time_from falls into (_bucket) is less than
-    // the bucket that the current time falls into (current_bucket), then
-    // _bucket is logically in the "future".
-    // In order to ensure that we only loop through each bucket once, we add
-    // _num_buckets to _bucket, moving it the correct distance from _end_bucket.
-    // Because _end_bucket is always _num_buckets ahead of current_bucket,
-    // _bucket will still always be less than _end_bucket.
-    if (_bucket < current_bucket)
-    {
-      _bucket += _num_buckets;
-    }
 
     next_bucket();
   }
