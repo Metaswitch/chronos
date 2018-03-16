@@ -609,7 +609,7 @@ TYPED_TEST(TestTimerStore, IterateOverShortWheelTimersTimeFrom)
 {
   // We want to add 2 timers to the short wheel, which are both in the same
   // bucket and have some time between them. To do this, we insert the first
-  // timer at the start of the next bucket. We then add the 2nd timer half
+  // timer at the start of the next bucket. We then add the second timer half
   // of the SHORT_WHEEL_RESOLUTION_MS after the first, ensuring they're both in
   // the next short wheel bucket.
   uint32_t next_bucket_time_ms = TestFixture::ts->to_short_wheel_resolution(get_time_ms()) +
@@ -650,7 +650,7 @@ TYPED_TEST(TestTimerStore, IterateOverLongWheelTimersTimeFrom)
   // We want to add 2 timers to the long wheel, which are both in the same
   // bucket, but not the first bucket (as we don't want them to be moved into
   // the short wheel) and have some time between them. To do this, we insert the
-  // first timer at the start of the next but one bucket. We then add the 2nd
+  // first timer at the start of the next but one bucket. We then add the second
   // timer half of the LONG_WHEEL_RESOLUTION_MS after the first, ensuring they're
   // both in the next but one long wheel bucket.
   uint32_t next_bucket_time_ms = TestFixture::ts->to_long_wheel_resolution(get_time_ms()) +
@@ -731,7 +731,7 @@ TYPED_TEST(TestTimerStore, IterateOverShortWheelTimersTimeFromInPast)
 TYPED_TEST(TestTimerStore, IterateOverTimersSkipEarlier)
 {
   // We want to add one timer to the next short wheel bucket, and one to the
-  // one after that, to test that we correct skip over the timer in the next
+  // one after that, to test that we correctly skip over the timer in the next
   // bucket when iterating over the timers.
   uint32_t next_bucket_time_ms = TestFixture::ts->to_short_wheel_resolution(get_time_ms()) +
                                  TimerStore::SHORT_WHEEL_RESOLUTION_MS;
@@ -768,14 +768,14 @@ TYPED_TEST(TestTimerStore, IterateOverTimersSkipEarlier)
 TYPED_TEST(TestTimerStore, IterateOverTimersInPreviousBuckets)
 {
   // If the current time is pointing to a time in the first long wheel bucket,
-  // advance time by LONG_WHEEL_RESOLUTION_MS to move into the 2nd bucket
+  // advance time by LONG_WHEEL_RESOLUTION_MS to move into the second bucket
   if (TestFixture::ts->long_wheel_bucket(get_time_ms()) == &(TestFixture::ts->_long_wheel[0]))
   {
     cwtest_advance_time_ms(TimerStore::LONG_WHEEL_RESOLUTION_MS);
   }
 
   // If the current time is pointing to a time in the first short wheel bucket,
-  // advance time by SHORT_WHEEL_RESOLUTION_MS to move into the 2nd bucket
+  // advance time by SHORT_WHEEL_RESOLUTION_MS to move into the second bucket
   if (TestFixture::ts->short_wheel_bucket(get_time_ms()) == &(TestFixture::ts->_short_wheel[0]))
   {
     cwtest_advance_time_ms(TimerStore::SHORT_WHEEL_RESOLUTION_MS);

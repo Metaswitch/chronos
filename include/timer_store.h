@@ -123,9 +123,9 @@ public:
     /// @param ts          The TimerStore over which to iterate
     /// @param time_from   The time at which to start. Only Timers due to pop
     ///                    after this time are returned by the iterator.
-    /// @param resolution  The resolution in ms of the wheel.
+    /// @param resolution  The resolution (size of a bucket) in ms of the wheel.
     /// @param num_buckets The number of buckets in the wheel.
-    /// @param period      The period in ms of the wheel.
+    /// @param period      The period (size of the wheel) in ms of the wheel.
     TSBaseWheelIterator(TimerStore* ts,
                         uint32_t time_from,
                         int resolution,
@@ -154,7 +154,7 @@ public:
     /// @returns The time rounded down to the nearest bucket boundary.
     virtual uint32_t to_wheel_resolution(uint32_t t) = 0;
 
-    /// Get the Bucket at the specified index from the TimerStore.
+    /// Get the Bucket at the specified index in the wheel from the TimerStore.
     ///
     /// @param bucket_index The index of the Bucket in the wheel.
     ///
