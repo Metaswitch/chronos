@@ -684,6 +684,48 @@ TYPED_TEST(TestTimerStore, IterateOverLongWheelTimersTimeFrom)
   delete timer5;
 }
 
+// Test that the ShortWheelIterator iterates over timers in order when time_from
+// is in the past
+TYPED_TEST(TestTimerStore, IterateOverShortWheelTimersTimeFromInPast)
+{
+  // Add one timer to the next short wheel bucket, and one to the "previous"
+  // bucket (which is actually the last short wheel bucket)
+  uint32_t next_bucket_time_ms = TestFixture::ts->to_short_wheel_resolution(get_time_ms()) +
+                                 TimerStore::SHORT_WHEEL_RESOLUTION_MS;
+
+  // Create a timer that will pop at the start of the next short wheel bucket
+  Timer* timer4 = default_timer(4);
+  timer4->interval_ms = next_bucket_time_ms - get_time_ms();
+  timer4->repeat_for = timer4->interval_ms;
+  TestFixture::ts->insert(timer4);
+
+  // Create a timer that will pop in the last short wheel bucket.
+  Timer* timer5 = default_timer(5);
+  timer5->interval_ms = TimerStore::SHORT_WHEEL_RESOLUTION_MS * (TimerStore::SHORT_WHEEL_NUM_BUCKETS - 1);
+  timer5->repeat_for = timer5->interval_ms;
+  TestFixture::ts->insert(timer5);
+
+  // Ask for timers from the start of the previous bucket
+  uint32_t time_from = next_bucket_time_ms - (2 * TimerStore::SHORT_WHEEL_RESOLUTION_MS);
+
+  std::list<TimerID> ids;
+
+  for (TimerStore::TSIterator it = TestFixture::ts->begin(time_from);
+       !(it.end());
+       ++it)
+  {
+    ids.push_back((*it)->id);
+  }
+
+  // Timer4 should be the first, and Timer 5 the second
+  ASSERT_EQ(2, ids.size());
+  ASSERT_EQ(4, ids.front());
+  ASSERT_EQ(5, ids.back());
+
+  delete timer4;
+  delete timer5;
+}
+
 // Test that the BaseWheelIterator will correctly skip all timers in a bucket if
 // they're earlier than the time we're iterating from.
 TYPED_TEST(TestTimerStore, IterateOverTimersSkipEarlier)
