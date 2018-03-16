@@ -627,7 +627,7 @@ TYPED_TEST(TestTimerStore, IterateOverShortWheelTimersTimeFrom)
   timer5->repeat_for = timer5->interval_ms;
   TestFixture::ts->insert(timer5);
 
-  // Ask for timer from 1ms after the first timer, and check that only the
+  // Ask for timers from 1ms after the first timer, and check that only the
   // second is returned
   int count = 0;
   for (TimerStore::TSIterator it = TestFixture::ts->begin(next_bucket_time_ms + 1);
@@ -668,7 +668,7 @@ TYPED_TEST(TestTimerStore, IterateOverLongWheelTimersTimeFrom)
   timer5->repeat_for = timer5->interval_ms;
   TestFixture::ts->insert(timer5);
 
-  // Ask for timer from 1ms after the first timer, and check that only the
+  // Ask for timers from 1ms after the first timer, and check that only the
   // second is returned
   int count = 0;
   for (TimerStore::TSIterator it = TestFixture::ts->begin(next_bucket_time_ms + 1);
@@ -706,7 +706,7 @@ TYPED_TEST(TestTimerStore, IterateOverTimersSkipEarlier)
   timer5->repeat_for = timer5->interval_ms;
   TestFixture::ts->insert(timer5);
 
-  // Ask for timer from now, and check that only the second is returned
+  // Ask for timers from now, and check that only the second is returned
   int count = 0;
   for (TimerStore::TSIterator it = TestFixture::ts->begin(next_bucket_time_ms + 1);
        !(it.end());
