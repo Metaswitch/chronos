@@ -44,6 +44,10 @@ namespace std
 
 class TimerStore
 {
+private:
+  // Type of a single timer bucket.
+  typedef std::unordered_set<Timer*> Bucket;
+
 public:
 
   TimerStore(HealthChecker* hc);
@@ -78,9 +82,17 @@ public:
   static const int SHORT_WHEEL_RESOLUTION_MS = 256;
 #endif
 
+  /// Base class for an iterator over Timers in the TimerStore in order from
+  /// earliest to latest.
   class TSOrderedTimerIterator
   {
   protected:
+    /// Constructor.
+    ///
+    ///
+    /// @param ts        The TimerStore over which to iterate
+    /// @param time_from The time at which to start. Only Timers due to pop
+    ///                  after this time are returned by the iterator.
     TSOrderedTimerIterator(TimerStore* ts, uint32_t time_from);
 
     void iterate_through_ordered_timers();
@@ -91,32 +103,85 @@ public:
     uint32_t _time_from;
   };
 
-  class TSShortWheelIterator : public TSOrderedTimerIterator
+  /// Abstract base class for an iterator over timers in either the short wheel
+  /// or the long wheel.
+  class TSBaseWheelIterator : public TSOrderedTimerIterator
+  {
+  public:
+    TSBaseWheelIterator& operator++();
+    Timer* operator*();
+    bool end() const;
+
+  protected:
+    /// Constructor.
+    ///
+    /// Initialisation of the iterator uses virtual methods, and so happens in
+    /// the init() method rather than the constructor.
+    /// Subclasses *must* call init() in their constructor to complete
+    /// initialization.
+    ///
+    /// @param ts          The TimerStore over which to iterate
+    /// @param time_from   The time at which to start. Only Timers due to pop
+    ///                    after this time are returned by the iterator.
+    /// @param resolution  The resolution (size of a bucket) in ms of the wheel.
+    /// @param num_buckets The number of buckets in the wheel.
+    /// @param period      The period (size of the wheel) in ms of the wheel.
+    TSBaseWheelIterator(TimerStore* ts,
+                        uint32_t time_from,
+                        int resolution,
+                        int num_buckets,
+                        int period);
+
+    /// Performs initialisation of the iterator. Must be called in the
+    /// Constructor of any derived class.
+    void init();
+
+  private:
+    const int _resolution;
+    const int _num_buckets;
+    const int _period;
+    int _end_bucket;
+    int _bucket;
+    void next_bucket();
+
+    /// Kick the timer store to refill this wheel.
+    virtual void refill_wheel_from_timer_store() = 0;
+
+    /// Round down the given time to the resolution of this wheel.
+    ///
+    /// @param t The time to round down.
+    ///
+    /// @returns The time rounded down to the nearest bucket boundary.
+    virtual uint32_t to_wheel_resolution(uint32_t t) = 0;
+
+    /// Get the Bucket at the specified index in the wheel from the TimerStore.
+    ///
+    /// @param bucket_index The index of the Bucket in the wheel.
+    ///
+    /// @returns The Bucket at the specified index.
+    virtual Bucket& get_bucket(int bucket_index) = 0;
+  };
+
+  class TSShortWheelIterator : public TSBaseWheelIterator
   {
   public:
     TSShortWheelIterator(TimerStore* ts, uint32_t time_from);
-    TSShortWheelIterator& operator++();
-    Timer* operator*();
-    bool end() const;
 
   private:
-    int _end_bucket;
-    int _bucket;
-    void next_bucket();
+    virtual void refill_wheel_from_timer_store() override;
+    virtual uint32_t to_wheel_resolution(uint32_t t) override;
+    virtual Bucket& get_bucket(int bucket_index) override;
   };
 
-  class TSLongWheelIterator : public TSOrderedTimerIterator
+  class TSLongWheelIterator : public TSBaseWheelIterator
    {
    public:
     TSLongWheelIterator(TimerStore* ts, uint32_t time_from);
-    TSLongWheelIterator& operator++();
-    Timer* operator*();
-    bool end() const;
 
   private:
-    int _end_bucket;
-    int _bucket;
-    void next_bucket();
+    virtual void refill_wheel_from_timer_store() override;
+    virtual uint32_t to_wheel_resolution(uint32_t t) override;
+    virtual Bucket& get_bucket(int bucket_index) override;
   };
 
 class TSHeapIterator
@@ -228,9 +293,6 @@ private:
   static const int LONG_WHEEL_RESOLUTION_MS = SHORT_WHEEL_PERIOD_MS;
   static const int LONG_WHEEL_PERIOD_MS =
                             (LONG_WHEEL_RESOLUTION_MS * LONG_WHEEL_NUM_BUCKETS);
-
-  // Type of a single timer bucket.
-  typedef std::unordered_set<Timer*> Bucket;
 
   // Bucket for timers that are added after they were supposed to pop.
   Bucket _overdue_timers;

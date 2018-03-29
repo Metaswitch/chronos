@@ -434,36 +434,91 @@ void TimerStore::TSOrderedTimerIterator::iterate_through_ordered_timers()
   }
 }
 
-TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
-                                                       uint32_t time_from) :
-  TSOrderedTimerIterator(ts, time_from)
+// Subclasses *must* call init() in their constructor
+TimerStore::TSBaseWheelIterator::TSBaseWheelIterator(TimerStore* ts,
+                                                     uint32_t time_from,
+                                                     int resolution,
+                                                     int num_buckets,
+                                                     int period) :
+  TSOrderedTimerIterator(ts, time_from),
+  _resolution(resolution),
+  _num_buckets(num_buckets),
+  _period(period)
 {
-  // We have to check the next bucket of the long wheel for any timers which
-  // need moving into the short wheel (to ensure they'll get picked up by one of
-  // the iterators).
-  _ts->refill_short_wheel_from_next_long_bucket();
+  // Initialisation is done in the init() method
+}
+
+void TimerStore::TSBaseWheelIterator::init()
+{
+  // Kick the timer store to refill this wheel if necessary, so that any timers
+  // that need moving are picked up by the iterator.
+  refill_wheel_from_timer_store();
+
   _bucket = 0;
   _iterator = _ordered_timers.end();
 
-  if (Utils::overflow_less_than(to_short_wheel_resolution(time_from),
-                                to_short_wheel_resolution(
-                                   _ts->_tick_timestamp + SHORT_WHEEL_PERIOD_MS)))
+  if (Utils::overflow_less_than(to_wheel_resolution(_time_from),
+                                to_wheel_resolution(_ts->_tick_timestamp +
+                                                    _period)))
   {
-    _bucket = (time_from / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
-    uint32_t current_bucket = (_ts->_tick_timestamp / SHORT_WHEEL_RESOLUTION_MS) % SHORT_WHEEL_NUM_BUCKETS;
-    _end_bucket = current_bucket + SHORT_WHEEL_NUM_BUCKETS;
+    // time_from points to a time in this wheel, or earlier.
+
+    // _bucket is the bucket in which the iterator should start
+    // _end_bucket is the bucket at which is should stop
+
+    // Calculate which bucket the current time lies in
+    int current_bucket = (_ts->_tick_timestamp / _resolution) % _num_buckets;
+
+    if (Utils::overflow_less_than(_time_from, _ts->_tick_timestamp))
+    {
+      // We're being asked to iterate over timers from earlier than now. But
+      // any buckets "prior" to the current bucket actually contain timers later
+      // than now (because wheels are circular), so we must actually start from
+      // the current bucket.
+      _bucket = current_bucket;
+    }
+    else
+    {
+      // We're being asked to iterate over timers from later than now, so we
+      // calculate the bucket time_from lies in, and that's the starting bucket
+      // for our iterator.
+      _bucket = (_time_from / _resolution) % _num_buckets;
+
+      // We can never return timers from a bucket earlier than the current bucket,
+      // as we clear out the bucket once we move onto the next one.
+      // Therefore, if the bucket that time_from falls into (_bucket) is less than
+      // the bucket that the current time falls into (current_bucket), then
+      // _bucket is logically in the "future".
+      // In order to ensure that we only loop through each bucket once, we add
+      // _num_buckets to _bucket, moving it the correct distance from _end_bucket.
+      // Because _end_bucket is always _num_buckets ahead of current_bucket,
+      // _bucket will still always be less than _end_bucket.
+      if (_bucket < current_bucket)
+      {
+        _bucket += _num_buckets;
+      }
+    }
+
+    // When iterating through the buckets, we must stop when we reach the "end"
+    // of the wheel, which is always _num_buckets ahead of the current bucket.
+    _end_bucket = current_bucket + _num_buckets;
+
     next_bucket();
   }
   else
   {
-    _bucket = SHORT_WHEEL_NUM_BUCKETS;
-    _end_bucket = SHORT_WHEEL_NUM_BUCKETS;
+    // time_from is too far in the future and lies outside this wheel
+    _bucket = _num_buckets;
+    _end_bucket = _num_buckets;
   }
 }
 
-TimerStore::TSShortWheelIterator& TimerStore::TSShortWheelIterator::operator++()
+TimerStore::TSBaseWheelIterator& TimerStore::TSBaseWheelIterator::operator++()
 {
   ++_iterator;
+
+  // If we've exhausted all the timers in the current bucket, try to move to the
+  // next bucket.
   if (_iterator == _ordered_timers.end())
   {
     ++_bucket;
@@ -472,18 +527,23 @@ TimerStore::TSShortWheelIterator& TimerStore::TSShortWheelIterator::operator++()
   return *this;
 }
 
-Timer* TimerStore::TSShortWheelIterator::operator*()
+Timer* TimerStore::TSBaseWheelIterator::operator*()
 {
   return *_iterator;
 }
 
-bool TimerStore::TSShortWheelIterator::end() const
+bool TimerStore::TSBaseWheelIterator::end() const
 {
+  // We've finished iterating through timers in this wheel once we've iterated
+  // over every bucket, and every timer in the last bucket.
   return ((_iterator == _ordered_timers.end()) &&
           (_bucket == _end_bucket));
 }
 
-void TimerStore::TSShortWheelIterator::next_bucket()
+// Fill _ordered_timers with the timers from the next bucket containing any
+// timers, if we're not at the end of the wheel, and leave _iterator pointing
+// to the next timer.
+void TimerStore::TSBaseWheelIterator::next_bucket()
 {
   _ordered_timers.clear();
   _iterator = _ordered_timers.end();
@@ -491,7 +551,7 @@ void TimerStore::TSShortWheelIterator::next_bucket()
   while ((_bucket < _end_bucket) &&
          (_ordered_timers.size() == 0))
   {
-    for (Timer* timer : _ts->_short_wheel[_bucket % SHORT_WHEEL_NUM_BUCKETS])
+    for (Timer* timer : get_bucket(_bucket % _num_buckets))
     {
       _ordered_timers.push_back(timer);
     }
@@ -500,101 +560,70 @@ void TimerStore::TSShortWheelIterator::next_bucket()
     {
       iterate_through_ordered_timers();
 
-      // LCOV_EXCL_START
       if (_iterator == _ordered_timers.end())
       {
         _ordered_timers.clear();
         _iterator = _ordered_timers.end();
         ++_bucket;
       }
-      // LCOV_EXCL_STOP
     }
     else
     {
       ++_bucket;
     }
   }
+}
+
+TimerStore::TSShortWheelIterator::TSShortWheelIterator(TimerStore* ts,
+                                                       uint32_t time_from) :
+  TSBaseWheelIterator(ts,
+                      time_from,
+                      SHORT_WHEEL_RESOLUTION_MS,
+                      SHORT_WHEEL_NUM_BUCKETS,
+                      SHORT_WHEEL_PERIOD_MS)
+{
+  init();
+}
+
+void TimerStore::TSShortWheelIterator::refill_wheel_from_timer_store()
+{
+  _ts->refill_short_wheel_from_next_long_bucket();
+}
+
+uint32_t TimerStore::TSShortWheelIterator::to_wheel_resolution(uint32_t t)
+{
+  return to_short_wheel_resolution(t);
+}
+
+TimerStore::Bucket& TimerStore::TSShortWheelIterator::get_bucket(int bucket_index)
+{
+  return _ts->_short_wheel[bucket_index];
 }
 
 TimerStore::TSLongWheelIterator::TSLongWheelIterator(TimerStore* ts,
-                                                     uint32_t time_from) :
-  TSOrderedTimerIterator(ts, time_from)
+                                                       uint32_t time_from) :
+  TSBaseWheelIterator(ts,
+                      time_from,
+                      LONG_WHEEL_RESOLUTION_MS,
+                      LONG_WHEEL_NUM_BUCKETS,
+                      LONG_WHEEL_PERIOD_MS)
 {
-  // We have to top up the long wheel with times from the heap to ensure the
-  // iterators will pick them up in the correct order.
+  init();
+}
+
+void TimerStore::TSLongWheelIterator::refill_wheel_from_timer_store()
+{
   _ts->refill_long_wheel();
-  _bucket = 0;
-  _iterator = _ordered_timers.end();
-
-  if (Utils::overflow_less_than(to_long_wheel_resolution(time_from),
-                                to_long_wheel_resolution(
-                                   _ts->_tick_timestamp + LONG_WHEEL_PERIOD_MS)))
-  {
-    _bucket = (time_from / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
-    uint32_t current_bucket = (_ts->_tick_timestamp / LONG_WHEEL_RESOLUTION_MS) % LONG_WHEEL_NUM_BUCKETS;
-    _end_bucket = current_bucket + LONG_WHEEL_NUM_BUCKETS;
-    next_bucket();
-  }
-  else
-  {
-    _bucket = LONG_WHEEL_NUM_BUCKETS;
-    _end_bucket = LONG_WHEEL_NUM_BUCKETS;
-  }
 }
 
-TimerStore::TSLongWheelIterator& TimerStore::TSLongWheelIterator::operator++()
+uint32_t TimerStore::TSLongWheelIterator::to_wheel_resolution(uint32_t t)
 {
-  ++_iterator;
-  if (_iterator == _ordered_timers.end())
-  {
-    ++_bucket;
-    next_bucket();
-  }
-  return *this;
+  return to_long_wheel_resolution(t);
 }
 
-Timer* TimerStore::TSLongWheelIterator::operator*()
+TimerStore::Bucket& TimerStore::TSLongWheelIterator::get_bucket(int bucket_index)
 {
-  return *_iterator;
-}
-
-bool TimerStore::TSLongWheelIterator::end() const
-{
-  return ((_iterator == _ordered_timers.end()) &&
-          (_bucket == _end_bucket));
-}
-
-void TimerStore::TSLongWheelIterator::next_bucket()
-{
-  _ordered_timers.clear();
-  _iterator = _ordered_timers.end();
-
-  while ((_bucket < _end_bucket) &&
-         (_ordered_timers.size() == 0))
-  {
-    for (Timer* timer : _ts->_long_wheel[_bucket % LONG_WHEEL_NUM_BUCKETS])
-    {
-      _ordered_timers.push_back(timer);
-    }
-
-    if (_ordered_timers.size() != 0)
-    {
-      iterate_through_ordered_timers();
-
-      // LCOV_EXCL_START
-      if (_iterator == _ordered_timers.end())
-      {
-        _ordered_timers.clear();
-        _iterator = _ordered_timers.end();
-        ++_bucket;
-      }
-      // LCOV_EXCL_STOP
-    }
-    else
-    {
-      ++_bucket;
-    }
-  }
+  return _ts->_long_wheel[bucket_index];
 }
 
 TimerStore::TSHeapIterator::TSHeapIterator(TimerStore* ts,
